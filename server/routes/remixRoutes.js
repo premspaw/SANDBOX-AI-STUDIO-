@@ -1,9 +1,18 @@
 import express from 'express';
 import { createHiggsfieldClient } from '@higgsfield/client/v2';
+import { isValidUuid } from '../utils/validateUuid.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
-    const { uploadVideoToSupabase, resolveToPublicUrl, requireAuth, consumeCredits } = deps;
+    const { 
+        uploadVideoToSupabase, 
+        resolveToPublicUrl, 
+        requireAuth, 
+        consumeCredits,
+        supabase,
+        supabaseAdmin,
+        saveLocalAsset
+    } = deps;
 
     const getHfClient = (credentials) => {
         return createHiggsfieldClient({
@@ -134,6 +143,57 @@ export default function createRouter(deps) {
                     if (saved) persistedUrl = saved;
                 } catch (saveErr) {
                     console.warn('[REMIX] Notice: fallback to direct CDN url:', saveErr.message);
+                }
+            }
+
+            // Persist to local asset record
+            if (typeof saveLocalAsset === 'function' && userId) {
+                try {
+                    saveLocalAsset({
+                        name: prompt ? `Motion Remix: ${prompt.substring(0, 50)}` : 'Motion Remix Video',
+                        type: 'video',
+                        url: persistedUrl,
+                        user_id: userId,
+                        created_at: new Date().toISOString(),
+                        aspect: '16:9',
+                        resolution: chosenResolution,
+                        metadata: {
+                            engine: 'Higgsfield Motion Transfer',
+                            mode: 'motion-transfer',
+                            prompt,
+                            resolution: chosenResolution,
+                            requestId: result.request_id,
+                            zipUrl: result.zip?.url || null,
+                            movUrl: result.mov?.url || null
+                        }
+                    });
+                } catch (saveErr) { /* ignore */ }
+            }
+
+            // Persist to Supabase database assets table
+            const dbClient = supabaseAdmin || supabase;
+            if (dbClient && isValidUuid(userId)) {
+                try {
+                    await dbClient.from('assets').insert([{
+                        user_id: userId,
+                        type: 'video',
+                        url: persistedUrl,
+                        name: prompt ? `Motion Remix: ${prompt.substring(0, 50)}` : 'Motion Remix Video',
+                        created_at: new Date().toISOString(),
+                        model: 'higgsfield-motion-transfer',
+                        metadata: {
+                            engine: 'Higgsfield Motion Transfer',
+                            mode: 'motion-transfer',
+                            prompt,
+                            resolution: chosenResolution,
+                            requestId: result.request_id,
+                            zipUrl: result.zip?.url || null,
+                            movUrl: result.mov?.url || null
+                        }
+                    }]);
+                    console.log(`[REMIX] Saved Motion Transfer asset to database for user: ${userId}`);
+                } catch (dbErr) {
+                    console.warn('[REMIX] DB assets insert warning:', dbErr.message);
                 }
             }
 
@@ -274,6 +334,63 @@ export default function createRouter(deps) {
                     if (saved) persistedUrl = saved;
                 } catch (saveErr) {
                     console.warn('[OBJECT-SWAP] Notice: fallback to direct CDN url:', saveErr.message);
+                }
+            }
+
+            // Persist to local asset record
+            if (typeof saveLocalAsset === 'function' && userId) {
+                try {
+                    saveLocalAsset({
+                        name: prompt ? `Object Swap: ${prompt.substring(0, 50)}` : 'Object Swap Video',
+                        type: 'video',
+                        url: persistedUrl,
+                        user_id: userId,
+                        created_at: new Date().toISOString(),
+                        aspect: '16:9',
+                        resolution: chosenResolution,
+                        metadata: {
+                            engine: 'Higgsfield Object Swap',
+                            mode: 'object-swap',
+                            prompt,
+                            resolution: chosenResolution,
+                            requestId: result.request_id,
+                            zipUrl: result.zip?.url || null,
+                            movUrl: result.mov?.url || null,
+                            jsxUrl: result.jsx?.url || null,
+                            fbxUrl: result.fbx?.url || null,
+                            plyUrl: result.ply?.url || null
+                        }
+                    });
+                } catch (saveErr) { /* ignore */ }
+            }
+
+            // Persist to Supabase database assets table
+            const dbClient = supabaseAdmin || supabase;
+            if (dbClient && isValidUuid(userId)) {
+                try {
+                    await dbClient.from('assets').insert([{
+                        user_id: userId,
+                        type: 'video',
+                        url: persistedUrl,
+                        name: prompt ? `Object Swap: ${prompt.substring(0, 50)}` : 'Object Swap Video',
+                        created_at: new Date().toISOString(),
+                        model: 'higgsfield-object-swap',
+                        metadata: {
+                            engine: 'Higgsfield Object Swap',
+                            mode: 'object-swap',
+                            prompt,
+                            resolution: chosenResolution,
+                            requestId: result.request_id,
+                            zipUrl: result.zip?.url || null,
+                            movUrl: result.mov?.url || null,
+                            jsxUrl: result.jsx?.url || null,
+                            fbxUrl: result.fbx?.url || null,
+                            plyUrl: result.ply?.url || null
+                        }
+                    }]);
+                    console.log(`[OBJECT-SWAP] Saved Object Swap asset to database for user: ${userId}`);
+                } catch (dbErr) {
+                    console.warn('[OBJECT-SWAP] DB assets insert warning:', dbErr.message);
                 }
             }
 
@@ -462,6 +579,59 @@ export default function createRouter(deps) {
                     if (saved) persistedUrl = saved;
                 } catch (saveErr) {
                     console.warn('[AI-INFLUENCER] Notice: fallback to direct CDN url:', saveErr.message);
+                }
+            }
+
+            // Persist to local asset record
+            if (typeof saveLocalAsset === 'function' && userId) {
+                try {
+                    saveLocalAsset({
+                        name: brief ? `AI Influencer: ${brief.substring(0, 50)}` : 'AI Influencer Sheet',
+                        type: 'image',
+                        url: persistedUrl,
+                        user_id: userId,
+                        created_at: new Date().toISOString(),
+                        aspect: '16:9',
+                        resolution: '2K',
+                        metadata: {
+                            engine: 'Higgsfield AI Influencer',
+                            mode: 'ai-influencer',
+                            tier: activeTier,
+                            brief,
+                            prompt: brief,
+                            seed: inputPayload.seed,
+                            selection,
+                            requestId: result.request_id
+                        }
+                    });
+                } catch (saveErr) { /* ignore */ }
+            }
+
+            // Persist to Supabase database assets table
+            const dbClient = supabaseAdmin || supabase;
+            if (dbClient && isValidUuid(userId)) {
+                try {
+                    await dbClient.from('assets').insert([{
+                        user_id: userId,
+                        type: 'image',
+                        url: persistedUrl,
+                        name: brief ? `AI Influencer: ${brief.substring(0, 50)}` : 'AI Influencer Sheet',
+                        created_at: new Date().toISOString(),
+                        model: 'higgsfield-ai-influencer',
+                        metadata: {
+                            engine: 'Higgsfield AI Influencer',
+                            mode: 'ai-influencer',
+                            tier: activeTier,
+                            brief,
+                            prompt: brief,
+                            seed: inputPayload.seed,
+                            selection,
+                            requestId: result.request_id
+                        }
+                    }]);
+                    console.log(`[AI-INFLUENCER] Saved AI Influencer character sheet asset to database for user: ${userId}`);
+                } catch (dbErr) {
+                    console.warn('[AI-INFLUENCER] DB assets insert warning:', dbErr.message);
                 }
             }
 

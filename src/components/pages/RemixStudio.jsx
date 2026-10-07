@@ -41,6 +41,7 @@ import { useAppStore } from '../../store';
 import { useShorts } from '../../hooks/useShorts';
 import { SHORTS_COST } from '../../config/shortsConfig';
 import { AssetsLibrary } from '../panels/AssetsLibrary';
+import { supabase } from '../../lib/supabase';
 
 export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   // Mode: 'motion-transfer' | 'object-swap' | 'ai-influencer'
@@ -130,26 +131,92 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     ? `object_swap_${resolution}` 
     : `remix_motion_transfer_${resolution}`;
 
-  // Persistent History Load on Mount
+  // Persistent History Load on Mount + Database Sync
   useEffect(() => {
+    let isMounted = true;
+
+    // 1. Instant local restore
     try {
       const saved = localStorage.getItem('remix_studio_history_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setHistoryList(parsed);
-          setGeneratedResult(parsed[0]);
+          setGeneratedResult(prev => prev || parsed[0]);
         }
       }
     } catch (err) {
-      console.warn('[RemixStudio] Failed to load persistent history:', err);
+      console.warn('[RemixStudio] Failed to load local history:', err);
     }
-  }, []);
+
+    // 2. Fetch authenticated user's remix records from database
+    if (userProfile?.id && userProfile.id !== 'anonymous' && supabase) {
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('assets')
+            .select('*')
+            .eq('user_id', userProfile.id)
+            .order('created_at', { ascending: false })
+            .limit(60);
+
+          if (!error && Array.isArray(data) && isMounted) {
+            const dbItems = data.filter(a => {
+              const mode = a.metadata?.mode;
+              const nameLower = (a.name || '').toLowerCase();
+              return mode === 'ai-influencer' || mode === 'object-swap' || mode === 'motion-transfer' ||
+                nameLower.includes('influencer') || nameLower.includes('motion remix') || nameLower.includes('object swap');
+            }).map(a => {
+              const isInf = a.metadata?.mode === 'ai-influencer' || a.type === 'image' || (a.name || '').toLowerCase().includes('influencer');
+              return {
+                id: a.id,
+                mode: a.metadata?.mode || (isInf ? 'ai-influencer' : 'motion-transfer'),
+                type: isInf ? 'image' : 'video',
+                prompt: a.metadata?.prompt || a.name || 'Remix Generation',
+                resolution: a.metadata?.resolution || (isInf ? '2K Sheet' : '720p'),
+                url: a.url,
+                zipUrl: a.metadata?.zipUrl || null,
+                movUrl: a.metadata?.movUrl || null,
+                jsxUrl: a.metadata?.jsxUrl || null,
+                fbxUrl: a.metadata?.fbxUrl || null,
+                plyUrl: a.metadata?.plyUrl || null,
+                createdAt: a.created_at ? new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+                meta: a.metadata || {}
+              };
+            });
+
+            if (dbItems.length > 0) {
+              setHistoryList(prev => {
+                const map = new Map();
+                // Add db items first
+                dbItems.forEach(item => map.set(item.url, item));
+                prev.forEach(item => {
+                  if (!map.has(item.url)) map.set(item.url, item);
+                });
+                const merged = Array.from(map.values());
+                try {
+                  localStorage.setItem('remix_studio_history_v1', JSON.stringify(merged.slice(0, 60)));
+                } catch (_) {}
+                return merged;
+              });
+              setGeneratedResult(prev => prev || dbItems[0]);
+            }
+          }
+        } catch (dbErr) {
+          console.warn('[RemixStudio] DB history load failed:', dbErr);
+        }
+      })();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userProfile?.id]);
 
   // Helper to persist new generation into state and localStorage
   const saveToStudioHistory = (newItem) => {
     setHistoryList(prev => {
-      const updated = [newItem, ...prev.filter(item => item.id !== newItem.id)];
+      const updated = [newItem, ...prev.filter(item => item.id !== newItem.id && item.url !== newItem.url)];
       try {
         localStorage.setItem('remix_studio_history_v1', JSON.stringify(updated.slice(0, 60)));
       } catch (err) {
@@ -173,6 +240,10 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       }
       return updated;
     });
+
+    if (supabase && id && typeof id === 'string' && !id.startsWith('influencer-') && !id.startsWith('swap-') && !id.startsWith('remix-')) {
+      supabase.from('assets').delete().eq('id', id).catch(() => {});
+    }
   };
 
   // Fetch Options Catalog for AI Influencer
@@ -552,6 +623,46 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
 
         setGeneratedResult(newItem);
         saveToStudioHistory(newItem);
+
+        // Sync to unified studio store and project vault
+        try {
+          useAppStore.getState().addUnifiedAsset({
+            id: newItem.id,
+            type: 'image',
+            url: newItem.url,
+            thumbUrl: newItem.url,
+            prompt: newItem.prompt,
+            name: `AI Influencer: ${newItem.prompt.substring(0, 50)}`,
+            engine: 'Higgsfield AI Influencer',
+            resolution: '2K',
+            aspectRatio: '16:9',
+            folder: 'remix',
+            category: 'influencer'
+          });
+        } catch (storeErr) {
+          console.warn('[RemixStudio] Failed to add to unified store:', storeErr);
+        }
+
+        // Direct client database backup sync
+        if (supabase && userProfile?.id && userProfile.id !== 'anonymous') {
+          supabase.from('assets').insert([{
+            user_id: userProfile.id,
+            type: 'image',
+            url: newItem.url,
+            name: `AI Influencer: ${newItem.prompt.substring(0, 50)}`,
+            metadata: {
+              engine: 'Higgsfield AI Influencer',
+              mode: 'ai-influencer',
+              tier: aiTier,
+              prompt: newItem.prompt,
+              resolution: '2K Sheet',
+              selection: aiSelection
+            }
+          }]).then(({ error }) => {
+            if (error) console.warn('[RemixStudio] Supabase image insert notice:', error.message);
+          });
+        }
+
         setIsGenerating(false);
 
       } catch (err) {
@@ -654,6 +765,49 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
 
       setGeneratedResult(newItem);
       saveToStudioHistory(newItem);
+
+      // Sync to unified studio store and project vault
+      try {
+        useAppStore.getState().addUnifiedAsset({
+          id: newItem.id,
+          type: 'video',
+          url: newItem.url,
+          thumbUrl: newItem.url,
+          prompt: newItem.prompt,
+          name: `${isSwapMode ? 'Object Swap' : 'Motion Remix'}: ${newItem.prompt.substring(0, 50)}`,
+          engine: isSwapMode ? 'Higgsfield Object Swap' : 'Higgsfield Motion Transfer',
+          resolution: newItem.resolution,
+          aspectRatio: '16:9',
+          folder: 'remix',
+          category: isSwapMode ? 'swap' : 'remix'
+        });
+      } catch (storeErr) {
+        console.warn('[RemixStudio] Failed to add to unified store:', storeErr);
+      }
+
+      // Direct client database backup sync
+      if (supabase && userProfile?.id && userProfile.id !== 'anonymous') {
+        supabase.from('assets').insert([{
+          user_id: userProfile.id,
+          type: 'video',
+          url: newItem.url,
+          name: `${isSwapMode ? 'Object Swap' : 'Motion Remix'}: ${newItem.prompt.substring(0, 50)}`,
+          metadata: {
+            engine: isSwapMode ? 'Higgsfield Object Swap' : 'Higgsfield Motion Transfer',
+            mode: activeMode,
+            prompt: newItem.prompt,
+            resolution: newItem.resolution,
+            zipUrl: newItem.zipUrl,
+            movUrl: newItem.movUrl,
+            jsxUrl: newItem.jsxUrl,
+            fbxUrl: newItem.fbxUrl,
+            plyUrl: newItem.plyUrl
+          }
+        }]).then(({ error }) => {
+          if (error) console.warn('[RemixStudio] Supabase video insert notice:', error.message);
+        });
+      }
+
       setIsGenerating(false);
 
     } catch (err) {
@@ -1533,9 +1687,20 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                         <video src={item.url} className="w-full h-full object-cover" muted />
                       )}
                       
-                      <div className="absolute inset-0 bg-black/40 group-hover:opacity-0 transition-opacity flex items-center justify-center">
-                        <Play size={20} className="text-white opacity-80" />
-                      </div>
+                      {/* Play overlay ONLY for videos (Motion Remix / Object Swap), NOT for AI Influencer or images */}
+                      {item.type === 'video' && item.mode !== 'ai-influencer' ? (
+                        <div className="absolute inset-0 bg-black/30 group-hover:opacity-0 transition-opacity flex items-center justify-center pointer-events-none">
+                          <div className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                            <Play size={14} className="text-white fill-white ml-0.5" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 bg-black/20 group-hover:opacity-0 transition-opacity flex items-center justify-center pointer-events-none">
+                          <div className="w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center border border-white/10 opacity-70 group-hover:opacity-0 transition-opacity">
+                            <ImageIcon size={14} className="text-[#D4FF00]" />
+                          </div>
+                        </div>
+                      )}
 
                       <div className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
                         item.mode === 'ai-influencer' 
