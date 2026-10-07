@@ -196,7 +196,9 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 const merged = Array.from(map.values());
                 try {
                   localStorage.setItem('remix_studio_history_v1', JSON.stringify(merged.slice(0, 60)));
-                } catch (_) {}
+                } catch (cacheErr) {
+                  console.warn('[RemixStudio] Failed to cache merged history:', cacheErr);
+                }
                 return merged;
               });
               setGeneratedResult(prev => prev || dbItems[0]);
@@ -242,7 +244,9 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     });
 
     if (supabase && id && typeof id === 'string' && !id.startsWith('influencer-') && !id.startsWith('swap-') && !id.startsWith('remix-')) {
-      supabase.from('assets').delete().eq('id', id).catch(() => {});
+      supabase.from('assets').delete().eq('id', id).catch(err => {
+        console.warn('[RemixStudio] DB delete warning:', err);
+      });
     }
   };
 
