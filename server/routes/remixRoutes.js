@@ -336,5 +336,159 @@ export default function createRouter(deps) {
         }
     });
 
+    // ── AI Influencer Options Catalog ─────────────────────────────────────────
+    router.get(['/ai-influencer/options', '/api/remix/ai-influencer/options', '/api/ai-influencer/options'], async (req, res) => {
+        try {
+            const resp = await fetch('https://api.higgsfield.ai/models/higgsfield/ai-influencer/options');
+            if (!resp.ok) {
+                return res.status(resp.status).json({ error: 'Failed to fetch Higgsfield AI Influencer options catalog.' });
+            }
+            const catalog = await resp.json();
+            return res.json({ success: true, catalog });
+        } catch (err) {
+            console.error('[AI-INFLUENCER] Error fetching options catalog:', err);
+            return res.status(500).json({ error: err.message || 'Error fetching options catalog.' });
+        }
+    });
+
+    // ── Higgsfield AI Influencer Character Sheet Generation (v1.0) ───────────
+    router.post(['/ai-influencer', '/api/remix/ai-influencer', '/api/ai-influencer'], async (req, res) => {
+        const userId = req.headers['x-user-id'] || req.body.userId || 'anonymous';
+        const {
+            tier = 'normal',
+            brief = '',
+            image_url = null,
+            imageUrl = null,
+            item_image_urls = [],
+            itemImageUrls = [],
+            selection = {},
+            seed = null,
+            variation_index = 0,
+            variationIndex = 0,
+            body_color = null,
+            bodyColor = null,
+            pinned_species = null,
+            pinnedSpecies = null,
+            trait_variants = null
+        } = req.body;
+
+        const activeTier = tier || 'normal';
+        const rawImageUrl = image_url || imageUrl || null;
+        const rawItemImageUrls = (item_image_urls && item_image_urls.length > 0) ? item_image_urls : itemImageUrls;
+
+        try {
+            console.log(`[AI-INFLUENCER] Resolving input reference photos if provided...`);
+            let resolvedImageUrl = null;
+            if (rawImageUrl) {
+                resolvedImageUrl = await resolveToPublicUrl(rawImageUrl, userId);
+            }
+
+            let resolvedItemImageUrls = [];
+            if (Array.isArray(rawItemImageUrls) && rawItemImageUrls.length > 0) {
+                resolvedItemImageUrls = (await Promise.all(
+                    rawItemImageUrls.map(async (img) => {
+                        const url = typeof img === 'object' ? img.url : img;
+                        if (!url) return null;
+                        return await resolveToPublicUrl(url, userId);
+                    })
+                )).filter(Boolean).slice(0, 3);
+            }
+
+            const activeCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
+            if (!activeCredentials) {
+                return res.status(500).json({
+                    error: 'HF_CREDENTIALS not configured on the server. Please set HF_CREDENTIALS in .env.local'
+                });
+            }
+
+            const client = getHfClient(activeCredentials);
+
+            const isHuman = ['normal', 'freak', 'total'].includes(activeTier);
+
+            const inputPayload = {
+                tier: activeTier,
+                brief: (brief || '').substring(0, 4000),
+                image_url: resolvedImageUrl || null,
+                item_image_urls: resolvedItemImageUrls || [],
+                selection: selection || {},
+                seed: (seed !== null && seed !== undefined && !isNaN(Number(seed))) ? Math.max(1, Math.min(1000000, Number(seed))) : null,
+                variation_index: isHuman ? 0 : Math.max(0, Number(variation_index || variationIndex || 0)),
+                body_color: isHuman ? null : (body_color || bodyColor || null),
+                pinned_species: (activeTier === 'insects') ? (pinned_species || pinnedSpecies || null) : null,
+                trait_variants: trait_variants || null
+            };
+
+            console.log(`[AI-INFLUENCER] Submitting AI Influencer job to Higgsfield:`, {
+                tier: activeTier,
+                has_identity_photo: Boolean(resolvedImageUrl),
+                item_images_count: resolvedItemImageUrls.length,
+                selection_keys: Object.keys(selection || {}),
+                seed: inputPayload.seed
+            });
+
+            const result = await client.subscribe(
+                'higgsfield/ai-influencer',
+                {
+                    input: inputPayload,
+                    withPolling: true
+                }
+            );
+
+            console.log(`[AI-INFLUENCER] Job response received:`, {
+                status: result.status,
+                request_id: result.request_id,
+                images_count: result.images?.length || 0
+            });
+
+            if (result.status === 'failed') {
+                return res.status(500).json({
+                    error: result.error || 'AI Influencer sheet generation failed on Higgsfield engine.',
+                    requestId: result.request_id
+                });
+            }
+
+            const outputImageUrl = result.images?.[0]?.url;
+            if (!outputImageUrl) {
+                return res.status(500).json({
+                    error: 'Higgsfield did not return a valid output image URL for the character sheet.',
+                    details: result
+                });
+            }
+
+            let persistedUrl = outputImageUrl;
+            if (typeof uploadVideoToSupabase === 'function') {
+                try {
+                    const saved = await uploadVideoToSupabase(outputImageUrl, `ai_influencer_${Date.now()}.png`, userId);
+                    if (saved) persistedUrl = saved;
+                } catch (saveErr) {
+                    console.warn('[AI-INFLUENCER] Notice: fallback to direct CDN url:', saveErr.message);
+                }
+            }
+
+            return res.json({
+                success: true,
+                status: 'completed',
+                imageUrl: persistedUrl,
+                originalUrl: outputImageUrl,
+                images: result.images || [{ url: persistedUrl }],
+                requestId: result.request_id,
+                meta: {
+                    tier: activeTier,
+                    seed: inputPayload.seed,
+                    selection,
+                    creditCost: 26
+                }
+            });
+
+        } catch (error) {
+            console.error('[AI-INFLUENCER] Error executing ai-influencer:', error);
+            return res.status(500).json({
+                error: error.message || 'Internal server error while executing AI Influencer generation.',
+                details: error.toString()
+            });
+        }
+    });
+
     return router;
 }
+

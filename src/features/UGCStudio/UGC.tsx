@@ -26,6 +26,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
+import { calculateEngineCredits } from '../../config/shortsConfig';
 import { SHOT_BLUEPRINTS, SCENE_SEQUENCES, buildMultiCutPrompt } from './utils/ugcMultiShot';
 import { buildNicheHookContext } from './constants/hookLibrary';
 // ─── Feature module imports ──────────────────────────────────────────────────
@@ -109,10 +110,11 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 export default function UGC() {
   const { spend, refund, canAfford } = useShorts();
-  const userProfile = useAppStore(state => state.userProfile as { id?: string; role?: string } | null);
+  const userProfile = useAppStore(state => state.userProfile as { id?: string; role?: string; email?: string } | null);
   const currentUserId = userProfile?.id || 'local_user';
-  const isAdmin = useAppStore(state => state.isAdmin);
-  const isGlobalAdmin = Boolean((userProfile as any)?.role === 'admin' || (userProfile as any)?.email === 'premspaw@gmail.com' || isAdmin);
+  const isGlobalAdmin = Boolean((userProfile as any)?.email === 'premspaw@gmail.com');
+  const storeIsAdmin = useAppStore(state => state.isAdmin);
+  const isAdmin = Boolean(isGlobalAdmin || (storeIsAdmin && (userProfile as any)?.email === 'premspaw@gmail.com'));
 
   const [activeTab, setActiveTab] = useState<'ugc' | 'podcast' | 'talking-head' | 'ai-avatar' | 'home-tour' | 'edit'>('ugc');
 
@@ -371,7 +373,7 @@ export default function UGC() {
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
   const [imageStyle, setImageStyle] = useState<'studio' | 'ultra-realistic' | 'iphone' | 'short' | 'normal' | 'cinematic'>('ultra-realistic');
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | '1:1'>('9:16');
-  const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8' | '10'>('10');
+  const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8' | '10' | '15' | '30'>('10');
   const [includeAudio, setIncludeAudio] = useState(true);
   const [videoResolution, setVideoResolution] = useState<'720p' | '1080p'>('720p');
   const [selectedVideoStyle, setSelectedVideoStyle] = useState<'calm' | 'energetic' | 'action' | 'professional' | 'casual' | 'storytelling'>('calm');
@@ -536,10 +538,10 @@ export default function UGC() {
   }, [trainedStrategy]);
 
   useEffect(() => {
-    if (isAdmin || isGlobalAdmin) {
+    if ((userProfile as any)?.email === 'premspaw@gmail.com') {
       setUserShorts(15000);
     }
-  }, [isAdmin, isGlobalAdmin]);
+  }, [userProfile]);
 
   const handleAdminLogin = async () => {
     if (!adminPassword) return;
@@ -643,7 +645,7 @@ export default function UGC() {
   const [selectedMultiShotPreset, setSelectedMultiShotPreset] = useState('food_beverage_review');
   const [chatTab, setChatTab] = useState<'script' | 'video'>('script');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
-  const [videoGenMode, setVideoGenMode] = useState<'omni-flash-1.1' | 'omni-flash' | 'montage'>('omni-flash-1.1');
+  const [videoGenMode, setVideoGenMode] = useState<'omni-flash-1.1' | 'omni-flash' | 'seedance-fast' | 'seedance-2.5' | 'montage'>('omni-flash-1.1');
   const [showVideoMontageOptions, setShowVideoMontageOptions] = useState(true);
   const [showLiveGuide, setShowLiveGuide] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
@@ -681,7 +683,20 @@ export default function UGC() {
   }, [showTemplates]);
 
   useEffect(() => {
-    setDurationSeconds('10');
+    if (videoGenMode === 'seedance-2.5') {
+      if (durationSeconds !== '15' && durationSeconds !== '30') {
+        setDurationSeconds('15');
+      }
+    } else if (videoGenMode === 'seedance-fast') {
+      setDurationSeconds('15');
+      if (videoResolution === '1080p') {
+        setVideoResolution('720p');
+      }
+    } else {
+      if (durationSeconds === '15' || durationSeconds === '30') {
+        setDurationSeconds('10');
+      }
+    }
   }, [videoGenMode]);
 
   useEffect(() => {
@@ -3395,6 +3410,26 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       ? parseInt(thDuration)
       : parseInt(durationSeconds);
 
+    if (videoGenMode === 'seedance-fast') {
+      return calculateEngineCredits('seedance-fast', {
+        duration,
+        resolution: videoResolution,
+        generateAudio: audioOn,
+        activeTab: 'video',
+        panelTab: 'seedance'
+      });
+    }
+
+    if (videoGenMode === 'seedance-2.5') {
+      return calculateEngineCredits('seedance-2.5', {
+        duration,
+        resolution: videoResolution,
+        generateAudio: audioOn,
+        activeTab: 'video',
+        panelTab: 'seedance-2.5'
+      });
+    }
+
     const costPerSec = audioOn ? 6 : 5;
     return Math.ceil(costPerSec * 1.1 * duration);
   };
@@ -3895,14 +3930,15 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
   const generateVideo = async (overridePrompt?: string, referenceImageUrl?: string, targetDuration?: number) => {
     const unitCost = getCurrentCost(false);
-    const isFreeVideoEligible = !isAdmin && !isGlobalAdmin && hasFreeVideoAvailable(currentUserId);
+    const spendReason = videoGenMode === 'seedance-2.5' ? 'seedance_2_5' : videoGenMode === 'seedance-fast' ? 'seedance_fast' : 'veo_fast';
+    const isFreeVideoEligible = !isAdmin && !isGlobalAdmin && hasFreeVideoAvailable(currentUserId) && videoGenMode === 'omni-flash-1.1';
     if (!isAdmin && !isGlobalAdmin) {
       if (isFreeVideoEligible) {
         consumeFreeVideo(currentUserId);
         setFreeVideoActive(false);
         showToast('🎁 Free 10s UGC Video Trial Active! Enjoy your free render without any credit deduction.', 'success');
       } else {
-        const spendRes = await spend('veo_fast', unitCost as any);
+        const spendRes = await spend(spendReason as any, unitCost as any);
         if (!spendRes || !spendRes.success) {
           showToast(`Insufficient Credits: You need ${unitCost} Shorts to generate video.`, 'error');
           useAppStore.getState().setActiveTab('pricing');
@@ -3914,7 +3950,12 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setIsGeneratingVideo(true);
     setVideoError('');
     setVideoTimedOut(false);
-    setVideoProgressMsg('✨ Directing your video scene with Omni Flash 1.1…');
+    const initialProgressMsg = videoGenMode === 'seedance-2.5'
+      ? '✨ Initializing Seedance 2.5 Pro (Higgsfield API)...'
+      : videoGenMode === 'seedance-fast'
+      ? '⚡ Initializing Seedance 2.0 Fast...'
+      : '✨ Directing your video scene with Omni Flash 1.1…';
+    setVideoProgressMsg(initialProgressMsg);
     const placeholderVideoId = `vid-pending-${Date.now()}`;
     addToGallery({ id: placeholderVideoId, type: 'video', url: '', loading: true });
     try {
@@ -4132,6 +4173,84 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       // Remove <IMAGE_REF_x> tags since Omni Flash doesn't use this syntax
       const cleanedMotionPrompt = promptText.replace(/<IMAGE_REF_\d+>/g, 'the reference image').substring(0, 3500);
 
+      const isSeedance = videoGenMode === 'seedance-2.5' || videoGenMode === 'seedance-fast';
+
+      if (isSeedance) {
+        setVideoProgressMsg(
+          videoGenMode === 'seedance-2.5'
+            ? '✨ Directing cinematic video with Seedance 2.5 Pro (Higgsfield API)...'
+            : '⚡ Directing video with Seedance 2.0 Fast...'
+        );
+
+        const primarySeedanceFrame = imageToSend || (uniqueRefs.length > 0 ? uniqueRefs[0] : undefined);
+        const seedancePayload = {
+          engine: videoGenMode,
+          provider: videoGenMode === 'seedance-2.5' ? 'higgsfield' : 'auto',
+          prompt: cleanedMotionPrompt,
+          first_frame_url: primarySeedanceFrame,
+          firstFrame: primarySeedanceFrame,
+          reference_image_urls: uniqueRefs,
+          duration: resolvedDuration,
+          aspectRatio: resolvedAspectRatio,
+          resolution: videoGenMode === 'seedance-fast' ? '720p' : videoResolution,
+          userId: currentUserId,
+          generateAudio: resolvedIncludeAudio,
+          creditCost: unitCost,
+          creditReason: spendReason
+        };
+
+        const sResp = await fetch(getApiUrl('/api/seedance/generate'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(seedancePayload)
+        });
+
+        const sData = await sResp.json();
+        if (!sResp.ok) throw new Error(sData.error || 'Seedance generation request failed.');
+
+        let finalVideoUrl = sData.videoUrl || sData.url;
+
+        if (!finalVideoUrl && sData.requestId) {
+          const taskId = sData.requestId;
+          const startTime = Date.now();
+          const maxPollMs = 15 * 60 * 1000;
+          let isDone = false;
+
+          while (!isDone && (Date.now() - startTime) < maxPollMs) {
+            await new Promise(r => setTimeout(r, 4000));
+            const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+            setVideoProgressMsg(`🎬 Rendering ${videoGenMode === 'seedance-2.5' ? 'Seedance 2.5 Pro' : 'Seedance 2.0 Fast'} (${elapsedSec}s)...`);
+
+            const pollRes = await fetch(
+              getApiUrl(`/api/seedance/status/${taskId}?userId=${currentUserId}&aspectRatio=${resolvedAspectRatio}&engine=${sData.engine || videoGenMode}`)
+            );
+            if (!pollRes.ok) continue;
+
+            const pollData = await pollRes.json();
+            if (pollData.status === 'completed') {
+              finalVideoUrl = pollData.url || pollData.videoUrl || pollData.resultUrl;
+              isDone = true;
+              break;
+            } else if (pollData.status === 'failed') {
+              throw new Error(pollData.error || pollData.message || 'Seedance generation failed.');
+            }
+          }
+        }
+
+        if (!finalVideoUrl) throw new Error('Seedance generation timed out or returned no video URL.');
+
+        setGeneratedVideo(finalVideoUrl);
+        updateGalleryItem(placeholderVideoId, {
+          url: finalVideoUrl,
+          loading: false,
+          prompt: promptText.substring(0, 1000)
+        });
+        setIsGeneratingVideo(false);
+        setVideoProgressMsg('');
+        showToast(`${videoGenMode === 'seedance-2.5' ? 'Seedance 2.5 Pro' : 'Seedance 2.0 Fast'} video generated successfully!`, 'success');
+        return;
+      }
+
       const resp = await fetch(getApiUrl('/api/omni-i2v'), {
         method: 'POST',
         headers,
@@ -4165,10 +4284,15 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       showToast('Video scene generated successfully with Omni 1.1!', 'success');
       return;
     } catch (e: any) {
-      if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
+      if (!isAdmin && !isGlobalAdmin) refund(spendReason as any, unitCost as any);
       handleApiError(e, "Video generation");
       const errMsg = e.message || JSON.stringify(e);
-      let displayError = `Error: ${errMsg}`;
+      let displayError = errMsg;
+      if (errMsg.includes('Responsible AI') || errMsg.includes('recognizable') || errMsg.includes('policy') || errMsg.includes('prohibited') || errMsg.includes('nsfw')) {
+        displayError = "⚠️ Blocked by AI Safety Policy: Recognizable face or prohibited content detected. 100% of your credits have been automatically refunded. Please use an AI-generated reference photo or adjust your prompt.";
+      } else {
+        displayError = `Error: ${errMsg}`;
+      }
       setVideoError(displayError);
       updateGalleryItem(placeholderVideoId, { loading: false, error: displayError });
     }

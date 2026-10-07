@@ -159,6 +159,9 @@ const FULL_HEIGHT_TABS = new Set([
   'design',
   'remix',
   'object-swap',
+  'ai-influencer',
+  'creator-influencer',
+  'remixnfluencer',
 ])
 
 function App() {
@@ -169,8 +172,7 @@ function App() {
   const [isRecoveringPassword, setIsRecoveringPassword] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const userProfile = useAppStore(state => state.userProfile)
-  const isGlobalAdmin = useAppStore(state => state.isAdmin)
-  const isAdmin = userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com' || isGlobalAdmin
+  const isAdmin = userProfile?.email === 'premspaw@gmail.com';
   const isShowingAuthModal = useAppStore(state => state.isShowingAuthModal);
   const setShowingAuthModal = useAppStore(state => state.setShowingAuthModal);
 
@@ -406,6 +408,10 @@ function App() {
         return <RemixStudio initialMode="motion-transfer" />;
       case 'object-swap':
         return <RemixStudio initialMode="object-swap" />;
+      case 'ai-influencer':
+      case 'creator-influencer':
+      case 'remixnfluencer':
+        return <RemixStudio initialMode="ai-influencer" />;
       case 'design':
         return null;
       default:

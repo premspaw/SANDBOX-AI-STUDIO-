@@ -148,8 +148,8 @@ export interface UGCContextType {
   // ── Video generation ──────────────────────────────────────────────────────
   videoPrompt: string;
   setVideoPrompt: (v: string) => void;
-  videoGenMode: 'omni-flash-1.1' | 'omni-flash' | 'montage';
-  setVideoGenMode: (v: 'omni-flash-1.1' | 'omni-flash' | 'montage') => void;
+  videoGenMode: 'omni-flash-1.1' | 'omni-flash' | 'seedance-fast' | 'seedance-2.5' | 'montage';
+  setVideoGenMode: (v: 'omni-flash-1.1' | 'omni-flash' | 'seedance-fast' | 'seedance-2.5' | 'montage') => void;
   thAnimation: string;
   setThAnimation: (v: string) => void;
   isGeneratingVideo: boolean;
@@ -181,8 +181,8 @@ export interface UGCContextType {
   setGeneratedVideo: (v: string) => void;
   renderMode: 'image' | 'video';
   setRenderMode: (v: 'image' | 'video') => void;
-  durationSeconds: '4' | '6' | '8' | '10';
-  setDurationSeconds: (v: '4' | '6' | '8' | '10') => void;
+  durationSeconds: '4' | '6' | '8' | '10' | '15' | '30';
+  setDurationSeconds: (v: '4' | '6' | '8' | '10' | '15' | '30') => void;
   videoResolution: '720p' | '1080p';
   setVideoResolution: (v: '720p' | '1080p') => void;
   selectedVideoStyle: string;

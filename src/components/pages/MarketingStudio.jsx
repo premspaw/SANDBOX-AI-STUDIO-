@@ -2623,7 +2623,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 md:backdrop-blur-md p-4"
                     onClick={closeZoom}
                     onKeyDown={(e) => {
                         if (e.key === 'Escape') closeZoom();
@@ -2774,7 +2774,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 const goNext = () => setPreviewTemplateIdx((previewTemplateIdx + 1) % total);
                 return (
                     <motion.div key="tpl-preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[110] flex items-center justify-center bg-black/92 backdrop-blur-md"
+                        className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 md:backdrop-blur-md"
                         onClick={() => setPreviewTemplateIdx(null)}
                         onKeyDown={e => { if (e.key === 'Escape') setPreviewTemplateIdx(null); if (e.key === 'ArrowRight') goNext(); if (e.key === 'ArrowLeft') goPrev(); }}
                         tabIndex={0} ref={el => el && el.focus()}>

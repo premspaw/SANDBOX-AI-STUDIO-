@@ -1,8 +1,29 @@
 import express from 'express';
+import fs from 'fs';
 
 export default function createRouter(deps) {
     const router = express.Router();
-    const { requireAuth, supabaseAdmin, supabase } = deps;
+    const { requireAuth, supabaseAdmin, supabase, LOCAL_ASSETS_FILE } = deps;
+
+    // Helper to ensure requesting user is authorized as administrator
+    async function requireAdmin(req) {
+        const user = await requireAuth(req);
+        const client = supabaseAdmin || supabase;
+        if (!client) {
+            if (process.env.NODE_ENV !== 'production' || user.email === 'premspaw@gmail.com') return user;
+            throw Object.assign(new Error('Database not configured'), { status: 503 });
+        }
+        const { data: profile } = await client
+            .from('profiles')
+            .select('role, email')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (user.email === 'premspaw@gmail.com') {
+            return user;
+        }
+        throw Object.assign(new Error('Forbidden: Admin access restricted to premspaw@gmail.com'), { status: 403 });
+    }
 
     /**
      * POST /api/credits/spend
@@ -38,11 +59,12 @@ export default function createRouter(deps) {
                 .maybeSingle();
 
             if (!profile) {
-                const initialBal = (user.role === 'admin' || user.email === 'premspaw@gmail.com') ? 15000 : 50;
+                const initialBal = user.email === 'premspaw@gmail.com' ? 15000 : 50;
                 await client.from('profiles').upsert({
                     id: user.id,
                     email: user.email || null,
-                    role: user.role || 'user',
+                    role: user.email === 'premspaw@gmail.com' ? 'admin' : 'user',
+                    tier: user.email === 'premspaw@gmail.com' ? 'ADMIN_ENTERPRISE' : 'FREE',
                     shorts_balance: initialBal
                 });
                 profile = { shorts_balance: initialBal, brand_voice: {} };
@@ -53,7 +75,7 @@ export default function createRouter(deps) {
             let currentBalance = (profile?.shorts_balance ?? 0) + fractionalShorts;
 
             if (currentBalance < amount) {
-                if (user.role === 'admin' || process.env.NODE_ENV !== 'production') {
+                if (user.email === 'premspaw@gmail.com') {
                     // Refill admin/dev balance for testing
                     currentBalance = Math.max(15000, amount);
                 } else {
@@ -345,6 +367,238 @@ export default function createRouter(deps) {
         } catch (error) {
             console.error('Pricing Purchase Error:', error);
             res.status(500).json({ error: error.message });
+        }
+    });
+
+    /**
+     * GET /api/credits/history
+     * Header: Authorization: Bearer <token>
+     * Returns the authenticated user's own credit debit/refund transaction log.
+     */
+    router.get('/credits/history', async (req, res) => {
+        try {
+            const user = await requireAuth(req);
+            const client = supabaseAdmin || supabase;
+            if (!client) {
+                return res.json({ success: true, transactions: [] });
+            }
+
+            const { data: txs, error } = await client
+                .from('shorts_transactions')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(60);
+
+            if (error) {
+                console.warn('[CREDITS_HISTORY_WARN]:', error.message);
+                return res.json({ success: true, transactions: [] });
+            }
+
+            return res.json({ success: true, transactions: txs || [] });
+        } catch (err) {
+            console.error('[CREDITS_HISTORY_ERROR]:', err);
+            res.status(err.status || 500).json({ error: err.message });
+        }
+    });
+
+    /**
+     * GET /api/admin/users
+     * Header: Authorization: Bearer <token>
+     * Admin endpoint: Returns all users, their emails, roles, and current Shorts balances.
+     */
+    router.get('/admin/users', async (req, res) => {
+        try {
+            const admin = await requireAdmin(req);
+            const client = supabaseAdmin || supabase;
+            if (!client) {
+                return res.json({
+                    success: true,
+                    users: [
+                        { id: admin.id, email: admin.email || 'premspaw@gmail.com', role: 'admin', tier: 'ENTERPRISE', shorts_balance: 15000, updated_at: new Date().toISOString() }
+                    ]
+                });
+            }
+
+            const { data: users, error } = await client
+                .from('profiles')
+                .select('id, email, role, tier, shorts_balance, updated_at')
+                .order('updated_at', { ascending: false })
+                .limit(100);
+
+            if (error) {
+                const { data: basicUsers, error: basicErr } = await client
+                    .from('profiles')
+                    .select('id, shorts_balance')
+                    .limit(100);
+                if (basicErr) throw basicErr;
+                return res.json({ success: true, users: basicUsers || [] });
+            }
+
+            return res.json({ success: true, users: users || [] });
+        } catch (err) {
+            console.error('[ADMIN_USERS_ERROR]:', err);
+            res.status(err.status || 500).json({ error: err.message });
+        }
+    });
+
+    /**
+     * GET /api/admin/user-audit
+     * Query: ?userId=... or ?email=...
+     * Admin endpoint: Returns user profile, transaction ledger, and generated assets.
+     */
+    router.get('/admin/user-audit', async (req, res) => {
+        try {
+            await requireAdmin(req);
+            const { userId, email } = req.query;
+            if (!userId && !email) {
+                return res.status(400).json({ error: 'userId or email is required' });
+            }
+
+            const client = supabaseAdmin || supabase;
+            if (!client) {
+                return res.json({
+                    success: true,
+                    profile: { id: userId || 'dev_user', email: email || 'user@example.com', shorts_balance: 100, tier: 'CREATOR' },
+                    transactions: [],
+                    assets: []
+                });
+            }
+
+            let profileQuery = client.from('profiles').select('*');
+            if (userId) {
+                profileQuery = profileQuery.eq('id', userId);
+            } else {
+                profileQuery = profileQuery.eq('email', email);
+            }
+
+            const { data: profile } = await profileQuery.maybeSingle();
+            const targetUserId = profile?.id || userId;
+
+            // Fetch transactions for this user
+            let transactions = [];
+            if (targetUserId) {
+                const { data: txs } = await client
+                    .from('shorts_transactions')
+                    .select('*')
+                    .eq('user_id', targetUserId)
+                    .order('created_at', { ascending: false })
+                    .limit(100);
+                transactions = txs || [];
+            }
+
+            // Fetch generated assets for this user (Supabase or local JSON)
+            let assets = [];
+            if (targetUserId) {
+                try {
+                    const { data: dbAssets } = await client
+                        .from('assets')
+                        .select('*')
+                        .eq('user_id', targetUserId)
+                        .order('created_at', { ascending: false })
+                        .limit(50);
+                    if (Array.isArray(dbAssets) && dbAssets.length > 0) {
+                        assets = dbAssets;
+                    }
+                } catch (_) {}
+
+                try {
+                    const localPath = LOCAL_ASSETS_FILE;
+                    if (localPath && fs.existsSync(localPath)) {
+                        const localJson = JSON.parse(fs.readFileSync(localPath, 'utf8'));
+                        const matched = localJson.filter(a => a.user_id === targetUserId);
+                        assets = [...assets, ...matched];
+                    }
+                } catch (_) {}
+            }
+
+            return res.json({
+                success: true,
+                profile: profile || { id: targetUserId, email: email || null, shorts_balance: 0 },
+                transactions,
+                assets
+            });
+        } catch (err) {
+            console.error('[ADMIN_USER_AUDIT_ERROR]:', err);
+            res.status(err.status || 500).json({ error: err.message });
+        }
+    });
+
+    /**
+     * POST /api/admin/adjust-balance
+     * Body: { userId, amount, reason, actionType }
+     * Admin endpoint: Adds or deducts credits with a mandatory audit record.
+     */
+    router.post('/admin/adjust-balance', async (req, res) => {
+        try {
+            const admin = await requireAdmin(req);
+            const { userId, amount, reason, actionType, exactBalance } = req.body;
+
+            if (!userId) return res.status(400).json({ error: 'userId is required' });
+
+            const client = supabaseAdmin || supabase;
+            if (!client) {
+                return res.json({ success: true, newBalance: exactBalance !== undefined ? exactBalance : (100 + (amount || 0)), message: 'Simulated admin adjustment' });
+            }
+
+            // 1. Fetch current profile
+            const { data: profile } = await client
+                .from('profiles')
+                .select('shorts_balance, brand_voice, email')
+                .eq('id', userId)
+                .maybeSingle();
+
+            const currentBal = profile?.shorts_balance ?? 50;
+            let newBal;
+            let deltaAmount;
+
+            if (typeof exactBalance === 'number') {
+                newBal = Math.max(0, exactBalance);
+                deltaAmount = newBal - currentBal;
+            } else {
+                if (typeof amount !== 'number' || isNaN(amount) || amount === 0) {
+                    return res.status(400).json({ error: 'Valid non-zero amount or exactBalance is required' });
+                }
+                newBal = Math.max(0, currentBal + amount);
+                deltaAmount = Math.round(amount);
+            }
+
+            // 2. Update profile
+            const { error: updateErr } = await client
+                .from('profiles')
+                .upsert({
+                    id: userId,
+                    shorts_balance: Math.round(newBal),
+                    updated_at: new Date().toISOString()
+                });
+
+            if (updateErr) throw updateErr;
+
+            // 3. Insert audit log into shorts_transactions
+            const txPayload = {
+                user_id: userId,
+                amount: Math.round(deltaAmount),
+                action_type: actionType || (deltaAmount >= 0 ? 'admin_grant' : 'admin_deduction'),
+                reason: reason ? `[Admin: ${admin.email || 'support'}] ${reason}` : `Manual Admin Adjustment by ${admin.email || 'support'}`,
+                created_at: new Date().toISOString()
+            };
+
+            const { data: newTx } = await client
+                .from('shorts_transactions')
+                .insert(txPayload)
+                .select()
+                .maybeSingle();
+
+            console.log(`[ADMIN_CREDIT_ADJUSTMENT] Admin ${admin.email} adjusted user ${userId} balance by delta ${deltaAmount}. New balance: ${newBal}. Reason: ${reason}`);
+
+            return res.json({
+                success: true,
+                newBalance: newBal,
+                transaction: newTx || txPayload
+            });
+        } catch (err) {
+            console.error('[ADMIN_ADJUST_BALANCE_ERROR]:', err);
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 

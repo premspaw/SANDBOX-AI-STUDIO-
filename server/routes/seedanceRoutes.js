@@ -236,7 +236,14 @@ export default function createRouter(deps) {
                     : (resLower === '480p' ? 2.1 : 4.6);
                 requiredCredits = Math.ceil(costPerSec * durationNum);
             } else if (engine === 'seedance-2.5' || engine === 'seedance-2-5' || engine === 'bytedance/seedance-2-5') {
-                const costPerSec = resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30);
+                const isMultiRef = Boolean(
+                    (reference_image_urls && reference_image_urls.length > 1) ||
+                    (identity_images && identity_images.length > 1) ||
+                    req.body.isMultiRef
+                );
+                const costPerSec = isMultiRef
+                    ? (resLower === '1080p' ? 105 : (resLower === '480p' ? 19 : 42))
+                    : (resLower === '1080p' ? 87 : (resLower === '480p' ? 16 : 33));
                 requiredCredits = Math.ceil(costPerSec * durationNum);
             }
 

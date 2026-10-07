@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useUGC } from '../context/UGCContext';
 import { motion } from 'motion/react';
-import { Play, Video, Download, Wand2, Plus, Film, Clock } from 'lucide-react';
+import { Play, Video, Download, Wand2, Plus, Film, Clock, AlertCircle, Trash2, X, RotateCcw, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { resolveUrl } from '../../../config/apiConfig';
 import type { GalleryItem } from '../context/UGCContext';
 
@@ -187,31 +187,71 @@ export default function GalleryGrid({ onSetStartFrame, startFrameUrl, onSetRealt
             {/* Failed generation tiles */}
             {failedItems.map(item => {
               const isVideo = item.type === 'video';
+              const isPolicy = Boolean(
+                item.error?.includes('Responsible AI') ||
+                item.error?.includes('policy') ||
+                item.error?.includes('Policy') ||
+                item.error?.includes('prohibited') ||
+                item.error?.includes('recognizable') ||
+                item.error?.includes('content_blocked') ||
+                item.error?.includes('prominent individuals')
+              );
+
               return (
                 <div
                   key={item.id}
-                  className="w-full rounded-xl border border-red-500/20 bg-[#160b0c] flex flex-col items-center justify-between p-3 aspect-[9/16] relative overflow-hidden"
+                  className={`w-full rounded-2xl flex flex-col items-center justify-between p-3 aspect-[9/16] relative overflow-hidden shadow-xl group transition-all ${
+                    isPolicy
+                      ? 'border-2 border-amber-500/50 bg-gradient-to-b from-[#1c1408] to-[#0f0b04]'
+                      : 'border-2 border-red-500/40 bg-gradient-to-b from-[#180b0c] to-[#0d0506]'
+                  }`}
                 >
-                  <div className="w-full flex flex-col items-center justify-center flex-1 gap-2">
-                    <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-400">
-                      <Film size={14} className="text-red-400" />
+                  {/* Top-Right Direct Dismiss / X Button */}
+                  <button
+                    onClick={() => {
+                      setGallery(prev => prev.filter(i => i.id !== item.id));
+                    }}
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/70 hover:bg-red-500 text-white/70 hover:text-white transition-all cursor-pointer z-20 flex items-center justify-center border border-white/10 shadow-md"
+                    title="Dismiss Card"
+                  >
+                    <X size={11} />
+                  </button>
+
+                  <div className="w-full flex flex-col items-center justify-center flex-1 gap-1.5 text-center my-auto px-1">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                      isPolicy ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      <AlertCircle size={16} />
                     </div>
-                    <span className="text-[8px] font-black uppercase tracking-wider text-red-400 text-center px-1">
-                      {isVideo ? 'Video Failed' : 'Image Failed'}
+
+                    <span className={`text-[9.5px] font-black uppercase tracking-wider ${
+                      isPolicy ? 'text-amber-400' : 'text-red-400'
+                    }`}>
+                      {isPolicy ? 'Google Policy Restriction' : (isVideo ? 'Video Generation Failed' : 'Image Generation Failed')}
                     </span>
-                    <p className="text-[8px] text-white/50 leading-relaxed font-sans text-center max-h-24 overflow-y-auto px-1 custom-scrollbar">
-                      {item.error}
-                    </p>
+
+                    <div className="w-full bg-black/50 rounded-lg p-2 border border-white/5 my-0.5">
+                      <p className="text-[8px] text-white/80 leading-relaxed font-sans max-h-20 overflow-y-auto px-1 custom-scrollbar text-center">
+                        {item.error || 'Server error or generation interrupted.'}
+                      </p>
+                    </div>
+
+                    {isPolicy && (
+                      <span className="text-[7.5px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <CheckCircle2 size={8} />
+                        ✓ Shorts credits refunded
+                      </span>
+                    )}
                   </div>
-                  
-                  <div className="w-full flex gap-1.5 pt-2 border-t border-white/5">
+
+                  <div className="w-full flex gap-1.5 pt-2 border-t border-white/10 shrink-0 z-10">
                     <button
                       onClick={() => {
                         setGallery(prev => prev.filter(i => i.id !== item.id));
                       }}
-                      className="flex-1 py-1 rounded bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[8px] font-black uppercase tracking-widest transition-all"
+                      className="flex-1 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[8.5px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1"
                     >
-                      Dismiss
+                      <span>Dismiss</span>
                     </button>
                     <button
                       onClick={() => {
@@ -222,9 +262,10 @@ export default function GalleryGrid({ onSetStartFrame, startFrameUrl, onSetRealt
                           generateImage(item.prompt);
                         }
                       }}
-                      className="flex-1 py-1 rounded bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] text-[8px] font-black uppercase tracking-widest transition-all"
+                      className="flex-1 py-1.5 rounded-lg bg-[#c8f135] hover:bg-[#d8ff43] text-black text-[8.5px] font-black uppercase tracking-widest transition-all shadow-md cursor-pointer flex items-center justify-center gap-1"
                     >
-                      Retry
+                      <RotateCcw size={9} />
+                      <span>Retry</span>
                     </button>
                   </div>
                 </div>

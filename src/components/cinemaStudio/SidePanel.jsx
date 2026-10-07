@@ -29,7 +29,7 @@ const SegmentedControl = React.memo(({ options, value, onChange, label, icon: Ic
         )}
       </div>
     )}
-    <div className="grid grid-flow-col auto-cols-fr gap-1 bg-black/40 p-1 rounded-xl border border-white/[0.08] backdrop-blur-xl">
+    <div className="grid grid-flow-col auto-cols-fr gap-1 bg-black/80 p-1 rounded-xl border border-white/[0.08] md:backdrop-blur-xl">
       {options.map((opt) => {
         const isSelected = String(opt.value) === String(value);
         return (
@@ -5679,7 +5679,7 @@ export const SidePanel = React.memo(({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={onClose}
-                  className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto"
+                  className="absolute inset-0 bg-black/75 md:backdrop-blur-sm pointer-events-auto"
                 />
 
                 {/* SidePanel Drawer Container on the LEFT */}
@@ -5687,7 +5687,8 @@ export const SidePanel = React.memo(({
                   initial={{ x: '-100%', opacity: 0.5 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: '-100%', opacity: 0 }}
-                  transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+                  transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+                  style={{ willChange: 'transform', transform: 'translateZ(0)' }}
                   className="pointer-events-auto w-full md:w-[350px] lg:w-[370px] h-full z-10"
                 >
                   {panelContent}

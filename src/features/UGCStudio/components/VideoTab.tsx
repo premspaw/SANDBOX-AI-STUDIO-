@@ -120,6 +120,8 @@ export default function VideoTab() {
                 className="appearance-none bg-cyan-500/[0.08] hover:bg-cyan-500/[0.14] border border-cyan-500/30 rounded-lg pl-5 pr-4 py-1 text-[8.5px] font-bold uppercase tracking-wider text-cyan-300 hover:text-white cursor-pointer transition-all font-sans"
               >
                 <option value="omni-flash-1.1" className="bg-[#0c0c0c] text-white">⚡ OMNI FLASH 1.1</option>
+                <option value="seedance-fast" className="bg-[#0c0c0c] text-white">⚡ SEEDANCE 2.0 FAST (15s · Budget)</option>
+                <option value="seedance-2.5" className="bg-[#0c0c0c] text-white">✨ SEEDANCE 2.5 PRO (15s/30s · Cinematic)</option>
               </select>
               <Zap size={8} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
               <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
@@ -128,12 +130,14 @@ export default function VideoTab() {
             {/* Resolution Pill */}
             <div className="relative flex-shrink-0">
               <select
-                value={videoResolution}
+                value={videoGenMode === 'seedance-fast' ? '720p' : videoResolution}
                 onChange={e => setVideoResolution(e.target.value as any)}
                 className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 rounded-lg pl-5 pr-4 py-1 text-[8.5px] font-bold uppercase tracking-wider text-white/70 hover:text-white cursor-pointer transition-all font-sans"
               >
                 <option value="720p" className="bg-[#0c0c0c] text-white">720P (HD)</option>
-                <option value="1080p" className="bg-[#0c0c0c] text-white">1080P (FHD)</option>
+                {videoGenMode !== 'seedance-fast' && (
+                  <option value="1080p" className="bg-[#0c0c0c] text-white">1080P (FHD)</option>
+                )}
               </select>
               <Film size={8} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
               <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
@@ -161,10 +165,21 @@ export default function VideoTab() {
                 onChange={e => setDurationSeconds(e.target.value as any)}
                 className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 rounded-lg pl-5 pr-4 py-1 text-[8.5px] font-bold uppercase tracking-wider text-white/60 hover:text-white cursor-pointer transition-all font-sans"
               >
-                <option value="4" className="bg-[#0c0c0c] text-white">4 SEC</option>
-                <option value="6" className="bg-[#0c0c0c] text-white">6 SEC</option>
-                <option value="8" className="bg-[#0c0c0c] text-white">8 SEC</option>
-                <option value="10" className="bg-[#0c0c0c] text-white">10 SEC</option>
+                {videoGenMode === 'seedance-2.5' ? (
+                  <>
+                    <option value="15" className="bg-[#0c0c0c] text-white">15 SEC</option>
+                    <option value="30" className="bg-[#0c0c0c] text-white">30 SEC</option>
+                  </>
+                ) : videoGenMode === 'seedance-fast' ? (
+                  <option value="15" className="bg-[#0c0c0c] text-white">15 SEC</option>
+                ) : (
+                  <>
+                    <option value="4" className="bg-[#0c0c0c] text-white">4 SEC</option>
+                    <option value="6" className="bg-[#0c0c0c] text-white">6 SEC</option>
+                    <option value="8" className="bg-[#0c0c0c] text-white">8 SEC</option>
+                    <option value="10" className="bg-[#0c0c0c] text-white">10 SEC</option>
+                  </>
+                )}
               </select>
               <Clock size={8} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
               <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />

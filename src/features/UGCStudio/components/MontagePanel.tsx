@@ -150,6 +150,9 @@ export const MontagePanel: React.FC = () => {
 
     setIsGeneratingVideo(true);
     setVideoProgressMsg(`Animating ${option.title} Montage...`);
+    const placeholderMontageVidId = `montage-vid-pending-${Date.now()}`;
+    addToGallery({ id: placeholderMontageVidId, type: 'video', url: '', loading: true, prompt: option.prompt });
+
     try {
       let imageBase64 = '';
       let imageMime = 'image/jpeg';
@@ -202,7 +205,11 @@ export const MontagePanel: React.FC = () => {
       if (!data.videoUrl) throw new Error('Omni returned no video URL.');
 
       setMontageGeneratedImg('');
-      addToGallery({ id: Date.now().toString(), type: 'video', url: data.videoUrl });
+      updateGalleryItem(placeholderMontageVidId, {
+        url: data.videoUrl,
+        loading: false,
+        prompt: option.prompt
+      });
       addToTimeline({
         id: `montage-${Date.now()}`,
         url: data.videoUrl,
@@ -216,9 +223,15 @@ export const MontagePanel: React.FC = () => {
       setVideoProgressMsg('');
       setShowMontageOptions(false);
       return;
-    } catch (e) {
+    } catch (e: any) {
       if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
       handleApiError(e, 'Montage video generation');
+      const errMsg = e instanceof Error ? e.message : String(e);
+      let displayError = errMsg;
+      if (errMsg.includes('Responsible AI') || errMsg.includes('recognizable') || errMsg.includes('policy') || errMsg.includes('prohibited')) {
+        displayError = "⚠️ Blocked by Google Responsible AI: Recognizable face or prohibited content detected. 100% of your credits have been automatically refunded. Please use an AI-generated reference photo or adjust your prompt.";
+      }
+      updateGalleryItem(placeholderMontageVidId, { loading: false, error: displayError });
     }
     setIsGeneratingVideo(false);
     setVideoProgressMsg('');
@@ -269,6 +282,8 @@ export const MontagePanel: React.FC = () => {
                     className="appearance-none bg-cyan-500/10 border border-cyan-500/30 hover:border-cyan-500/60 rounded-lg pl-6 pr-5 py-1 text-[7.5px] font-mono text-cyan-300 uppercase tracking-wider cursor-pointer transition-all focus:outline-none"
                   >
                     <option value="omni-flash-1.1" className="bg-[#0c0c0c] text-white">⚡ OMNI FLASH 1.1</option>
+                    <option value="seedance-fast" className="bg-[#0c0c0c] text-white">⚡ SEEDANCE 2.0 FAST (15s)</option>
+                    <option value="seedance-2.5" className="bg-[#0c0c0c] text-white">✨ SEEDANCE 2.5 PRO (15s/30s)</option>
                   </select>
                   <Zap size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
                   <ChevronDown size={7} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-cyan-400/60 pointer-events-none" />

@@ -86,8 +86,7 @@ function SidebarNavItem({ item, activeTab, setActiveTab, isCollapsed, mouseY }) 
 export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }) {
     const mouseY = useMotionValue(Infinity);
     const { runtimeMode, apiKey, setApiKey, checkRuntimeMode, userProfile } = useAppStore();
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const isAdmin = userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com' || useAppStore.getState().isAdmin;
+    const isAdmin = userProfile?.email === 'premspaw@gmail.com';
 
     useEffect(() => {
         checkRuntimeMode();

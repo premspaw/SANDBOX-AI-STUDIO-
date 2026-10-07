@@ -9,6 +9,7 @@ import { MontagePanel } from './MontagePanel';
 import { getApiUrl, resolveUrl } from '../../../config/apiConfig';
 import { GoogleGenAI } from '@google/genai';
 import { fileToBase64, safeJsonParse } from '../utils/imageUtils';
+import { useAppStore } from '../../../store';
 
 export default function LeftSidebar() {
   const {
@@ -245,7 +246,10 @@ export default function LeftSidebar() {
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    const handleResize = () => {
+      const mobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      setIsMobile(prev => (prev !== mobile ? mobile : prev));
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -257,15 +261,15 @@ export default function LeftSidebar() {
       {/* Mobile backdrop overlay */}
       {isMobile && isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[40] md:hidden"
+          className="fixed inset-0 bg-black/75 md:backdrop-blur-xs z-[40] md:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
       <motion.div
         animate={{ width: isSidebarOpen ? sidebarWidth : 0, opacity: isSidebarOpen ? 1 : 0 }}
-        transition={{ duration: 0.25, ease: 'easeInOut' }}
+        transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
         className="h-full border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden relative z-[45]"
-        style={{ minWidth: 0 }}
+        style={{ minWidth: 0, willChange: 'width, opacity', transform: 'translateZ(0)' }}
       >
         {/* ── UNIFIED TOP TAB BAR IN SIDEBAR (ADMIN ONLY) ── */}
         {hasAdminAccess && (

@@ -801,17 +801,28 @@ export default function StudioPage() {
   const [galleryDensity, setGalleryDensity] = useState('compact'); // 'compact' (Compact default)
 
   useEffect(() => {
+    let timer = null;
+    let lastW = typeof window !== 'undefined' ? window.innerWidth : 1200;
     const handleResize = () => {
-      const w = window.innerWidth;
-      setWindowWidth(w);
-      const mobile = w < 768;
-      setIsMobile(mobile);
-      if (!mobile) {
-        setIsSidebarOpen(true);
-      }
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        const w = window.innerWidth;
+        if (Math.abs(w - lastW) > 8) {
+          lastW = w;
+          setWindowWidth(w);
+          const mobile = w < 768;
+          setIsMobile(prev => (prev !== mobile ? mobile : prev));
+          if (!mobile) {
+            setIsSidebarOpen(true);
+          }
+        }
+      }, 80);
     };
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const getAspectClass = useCallback((ratio) => {
@@ -3065,9 +3076,9 @@ export default function StudioPage() {
             width: isMobile ? '100%' : (isSidebarOpen ? (typeof window !== 'undefined' && window.innerWidth >= 1280 ? 360 : 330) : 0),
             opacity: isMobile ? 1 : (isSidebarOpen ? 1 : 0)
           }}
-          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
           className="h-full w-full border-r border-white/[0.08] bg-[#07070b] flex flex-col overflow-hidden"
-          style={{ minWidth: 0 }}
+          style={{ minWidth: 0, willChange: 'width, opacity', transform: 'translateZ(0)' }}
         >
           <SidePanel
             isOpen={true}
@@ -3213,7 +3224,7 @@ export default function StudioPage() {
         isMobile ? (mobileTab === 'gallery' ? "flex flex-1 w-full h-full min-h-0" : "hidden") : "flex-1"
       )}>
         {/* Gallery Top Navigation / Header */}
-        <div className="px-3 sm:px-5 py-2 sm:py-2.5 border-b border-white/[0.08] bg-[#09090e]/95 backdrop-blur-xl flex flex-col gap-2 z-30 shrink-0 relative">
+        <div className="px-3 sm:px-5 py-2 sm:py-2.5 border-b border-white/[0.08] bg-[#09090e]/98 md:backdrop-blur-xl flex flex-col gap-2 z-30 shrink-0 relative">
           <div className="flex items-center justify-between gap-2.5 relative z-40">
             {/* Left: Studio Gallery Title, Total Count & Refresh */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">

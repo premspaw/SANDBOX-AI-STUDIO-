@@ -9,6 +9,8 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
 import { cn } from '../../lib/utils';
+import { getApiUrl } from '../../config/apiConfig';
+import { UserCreditAuditModal } from '../admin/UserCreditAuditModal';
 
 export default function SettingsPage() {
     const profile = useAppStore(state => state.userProfile);
@@ -50,11 +52,41 @@ export default function SettingsPage() {
     const [autoAudio, setAutoAudio] = useState(() => localStorage.getItem('pref_auto_audio') !== 'false');
     const [autoMcpEnhance, setAutoMcpEnhance] = useState(() => localStorage.getItem('pref_auto_mcp') === 'true');
 
-    // Admin Trial API settings
-    const isAdmin = profile?.role === 'admin';
+    // Admin Trial API settings & permissions
+    const isAdmin = Boolean(profile?.email === 'premspaw@gmail.com' || authUser?.email === 'premspaw@gmail.com');
     const [useAdminTrialKey, setUseAdminTrialKey] = useState(false);
     const [adminTrialKey, setAdminTrialKey] = useState('');
     const [showApiKey, setShowApiKey] = useState(false);
+    const [showAuditModal, setShowAuditModal] = useState(false);
+
+    // User Transaction History state
+    const [userTransactions, setUserTransactions] = useState([]);
+    const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+    const fetchUserTransactions = useCallback(async () => {
+        setLoadingTransactions(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token || 'dev_mode_token';
+            const res = await fetch(getApiUrl('/api/credits/history'), {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success && Array.isArray(data.transactions)) {
+                setUserTransactions(data.transactions);
+            }
+        } catch (err) {
+            console.error('Failed to load user transactions:', err);
+        } finally {
+            setLoadingTransactions(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            fetchUserTransactions();
+        }
+    }, [activeTab, fetchUserTransactions]);
 
     // Top-up packs specification
     // Top-up packs specification (1 Short credit ≈ ₹1 base ratio with volume bonuses)
@@ -349,6 +381,8 @@ export default function SettingsPage() {
 
     const tabs = [
         { id: 'credits', label: 'Shorts & Subscription', icon: Coins, badge: `${userCredits}⚡` },
+        { id: 'history', label: 'Usage & Transactions', icon: Clock },
+        ...(isAdmin ? [{ id: 'admin-audit', label: 'Admin User & Credit Audit', icon: Shield, badge: 'Admin' }] : []),
         { id: 'mcp', label: 'MCP & ChatGPT Connectors', icon: Cpu, badge: 'Live' },
         { id: 'profile', label: 'Account & Identity', icon: User },
         { id: 'preferences', label: 'Studio & AI Preferences', icon: Sliders },
@@ -447,6 +481,17 @@ export default function SettingsPage() {
                             </div>
 
                             <div className="flex items-center gap-2 pt-1.5 sm:pt-0 sm:border-l sm:border-white/10 sm:pl-3">
+                                {isAdmin && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAuditModal(true)}
+                                        className="px-3 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-red-500/20 to-amber-500/20 hover:from-red-500/30 hover:to-amber-500/30 border border-red-500/40 text-red-300 hover:text-white text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+                                        title="Open User Credit Audit & Dispute Management"
+                                    >
+                                        <Shield size={13} className="text-red-400" />
+                                        <span>User Audit</span>
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('credits')}
@@ -766,6 +811,161 @@ export default function SettingsPage() {
                                         </table>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ═════════ TAB: USAGE & TRANSACTIONS (USER SELF-SERVICE AUDIT) ═════════ */}
+                    {activeTab === 'history' && (
+                        <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[10px] font-mono text-[#c8f135] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[#c8f135]/10 border border-[#c8f135]/30">
+                                            Live Ledger
+                                        </span>
+                                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                                            Verified
+                                        </span>
+                                    </div>
+                                    <h3 className="text-base sm:text-xl font-black uppercase text-white tracking-tight flex items-center gap-2">
+                                        <Clock className="w-5 h-5 text-[#c8f135]" />
+                                        <span>Credit Usage &amp; Transaction History</span>
+                                    </h3>
+                                    <p className="text-xs text-zinc-400 mt-1 max-w-2xl leading-relaxed">
+                                        Real-time chronological log of all Shorts debited for video and image generations, along with credited refunds.
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={fetchUserTransactions}
+                                    disabled={loadingTransactions}
+                                    className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 transition-all text-xs font-bold flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+                                >
+                                    <RefreshCw className={cn("w-3.5 h-3.5", loadingTransactions && "animate-spin text-[#c8f135]")} />
+                                    <span>Refresh Logs</span>
+                                </button>
+                            </div>
+
+                            {loadingTransactions ? (
+                                <div className="p-12 flex flex-col items-center justify-center gap-3 text-zinc-500">
+                                    <Loader2 className="w-8 h-8 animate-spin text-[#c8f135]" />
+                                    <span className="text-xs font-mono uppercase tracking-wider">Loading your transaction records...</span>
+                                </div>
+                            ) : userTransactions.length === 0 ? (
+                                <div className="p-12 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-2">
+                                    <Clock className="w-10 h-10 text-zinc-600 mx-auto" />
+                                    <p className="text-sm font-bold text-white">No transactions recorded yet</p>
+                                    <p className="text-xs text-zinc-500">Your AI video and image generations will appear here in real-time.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2 overflow-x-auto">
+                                    <table className="w-full text-left text-xs">
+                                        <thead>
+                                            <tr className="border-b border-white/10 text-zinc-400 font-mono text-[10px] uppercase">
+                                                <th className="pb-3 pl-2">Time</th>
+                                                <th className="pb-3">Action / Feature</th>
+                                                <th className="pb-3">Transaction ID</th>
+                                                <th className="pb-3">Amount</th>
+                                                <th className="pb-3 pr-2 text-right">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-white/5 font-mono">
+                                            {userTransactions.map((tx, idx) => {
+                                                const isCredit = Number(tx.amount) > 0;
+                                                const dateStr = tx.created_at
+                                                    ? new Date(tx.created_at).toLocaleString('en-US', {
+                                                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                                    })
+                                                    : 'Recent';
+
+                                                return (
+                                                    <tr key={tx.id || idx} className="hover:bg-white/[0.02] transition-colors">
+                                                        <td className="py-3 pl-2 text-zinc-400 text-[11px] whitespace-nowrap">
+                                                            {dateStr}
+                                                        </td>
+                                                        <td className="py-3 font-sans font-bold text-white text-xs">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={cn(
+                                                                    "w-2 h-2 rounded-full shrink-0",
+                                                                    isCredit ? "bg-emerald-400" : "bg-red-400"
+                                                                )} />
+                                                                <span className="truncate max-w-xs">{tx.reason || tx.action_type || 'Shorts Transaction'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 text-[10px] text-zinc-500 font-mono">
+                                                            {tx.id ? `${String(tx.id).slice(0, 8)}...` : '—'}
+                                                        </td>
+                                                        <td className="py-3 font-mono font-black text-xs">
+                                                            <span className={cn(
+                                                                "px-2 py-0.5 rounded",
+                                                                isCredit ? "text-emerald-400 bg-emerald-500/10" : "text-zinc-200 bg-white/5"
+                                                            )}>
+                                                                {isCredit ? `+${tx.amount}` : `${tx.amount}`}⚡
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 pr-2 text-right">
+                                                            <span className={cn(
+                                                                "px-2 py-0.5 rounded-full text-[9px] font-bold border",
+                                                                isCredit
+                                                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                                                    : "bg-white/5 text-zinc-300 border-white/10"
+                                                            )}>
+                                                                {isCredit ? 'Refund / Bonus' : 'Debited'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ═════════ TAB: ADMIN USER AUDIT & CREDIT DISPUTE ═════════ */}
+                    {activeTab === 'admin-audit' && (
+                        <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-black/40 border border-red-500/20 backdrop-blur-xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-2xl bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                                        <Shield className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base sm:text-lg font-black uppercase text-white tracking-wider flex items-center gap-2">
+                                            <span>Admin Customer Support &amp; Audit Console</span>
+                                            <span className="text-[9px] bg-red-500/20 text-red-400 border border-red-500/40 px-2 py-0.5 rounded-full font-mono">Restricted</span>
+                                        </h3>
+                                        <p className="text-xs text-zinc-400">Search users, view their full transaction ledger, inspect generated media, and resolve credit debits.</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAuditModal(true)}
+                                    className="px-4 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.3)] active:scale-95 flex items-center gap-2 cursor-pointer"
+                                >
+                                    <Shield size={14} />
+                                    <span>Launch Full Audit Tool</span>
+                                </button>
+                            </div>
+
+                            <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center justify-center text-center gap-3 py-10">
+                                <Shield className="w-12 h-12 text-[#c8f135]/50 animate-pulse" />
+                                <h4 className="text-sm font-black uppercase tracking-wider text-white">Full User Ledger &amp; Credit Dispatcher Ready</h4>
+                                <p className="text-xs text-zinc-400 max-w-md">
+                                    Open the interactive modal to view registered accounts, search specific users by email, review their video outputs, and issue instant credit refunds.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAuditModal(true)}
+                                    className="mt-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer"
+                                >
+                                    <span>Open User Directory &amp; Audit Tool</span>
+                                    <ArrowUpRight size={14} className="text-[#c8f135]" />
+                                </button>
                             </div>
                         </div>
                     )}
@@ -1259,6 +1459,12 @@ export default function SettingsPage() {
 
                 </div>
             </div>
+
+            {/* Admin User Credit Audit Modal */}
+            <UserCreditAuditModal
+                isOpen={showAuditModal}
+                onClose={() => setShowAuditModal(false)}
+            />
         </div>
     );
 }

@@ -242,8 +242,7 @@ const PROP_SUGGESTIONS = [
 export default function AvatarStudio() {
   const userProfile = useAppStore(state => state.userProfile);
   const userShorts = useAppStore(state => state.userShorts);
-  const isGlobalAdmin = useAppStore(state => state.isAdmin);
-  const isAdmin = isGlobalAdmin || userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com';
+  const isAdmin = userProfile?.email === 'premspaw@gmail.com';
   const { shorts, canAfford, refresh: refreshShorts } = useShorts();
   const userCredits = shorts ?? userShorts ?? 0;
   const userId = userProfile?.id || 'anon';
