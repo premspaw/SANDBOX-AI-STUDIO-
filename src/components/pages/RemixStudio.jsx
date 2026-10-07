@@ -31,6 +31,8 @@ import {
   FilmStrip,
   X,
   CaretDown,
+  CaretLeft,
+  CaretRight,
   PencilSimple,
   UserFocus,
   SlidersHorizontal,
@@ -108,6 +110,17 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   const fileInputIdentityRef = useRef(null);
   const fileInputItemRef = useRef(null);
   const promptTextareaRef = useRef(null);
+  const galleryScrollRef = useRef(null);
+
+  const scrollGallery = (direction) => {
+    if (galleryScrollRef.current) {
+      const scrollAmount = 300;
+      galleryScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   const { shorts, spend, refund, canAfford } = useShorts();
   const userProfile = useAppStore(state => state.userProfile);
@@ -1546,8 +1559,8 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         {/* Right Viewport: Real-time Player & Persistent Gallery Canvas */}
         <div className="flex-1 flex flex-col min-h-0 bg-[#07080c] overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-3">
           
-          {/* Main Display Stage */}
-          <div className="w-full flex-1 min-h-[360px] sm:min-h-[460px] rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl relative overflow-hidden flex items-center justify-center shadow-2xl">
+          {/* Main Display Stage (Compact preview area) */}
+          <div className="w-full h-[280px] sm:h-[360px] shrink-0 rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl relative overflow-hidden flex items-center justify-center shadow-2xl">
             
             {isGenerating ? (
               <div className="flex flex-col items-center gap-4 text-center p-6 z-10">
@@ -1576,12 +1589,12 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                     src={generatedResult.url}
                     alt="Character Sheet"
                     onClick={() => setShowLightbox(true)}
-                    className="w-full h-full object-contain max-h-[75vh] rounded-xl shadow-2xl cursor-zoom-in"
+                    className="w-full h-full object-contain max-h-[260px] sm:max-h-[340px] rounded-xl shadow-2xl cursor-zoom-in"
                   />
                 ) : (
                   <video
                     src={generatedResult.url}
-                    className="w-full h-full object-contain max-h-[75vh] rounded-xl shadow-2xl"
+                    className="w-full h-full object-contain max-h-[260px] sm:max-h-[340px] rounded-xl shadow-2xl"
                     controls
                     autoPlay
                     loop
@@ -1648,37 +1661,62 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                   </h3>
                 </div>
 
-                {/* Filter Pills */}
-                <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10">
-                  {[
-                    { id: 'all', label: 'All' },
-                    { id: 'ai-influencer', label: 'Influencers' },
-                    { id: 'motion-transfer', label: 'Motion' },
-                    { id: 'object-swap', label: 'Object Swap' },
-                  ].map(f => (
+                <div className="flex items-center gap-2">
+                  {/* Filter Pills */}
+                  <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10">
+                    {[
+                      { id: 'all', label: 'All' },
+                      { id: 'ai-influencer', label: 'Influencers' },
+                      { id: 'motion-transfer', label: 'Motion' },
+                      { id: 'object-swap', label: 'Object Swap' },
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setHistoryFilter(f.id)}
+                        className={`px-2 py-0.5 rounded-lg text-[9.5px] font-bold transition-all ${
+                          historyFilter === f.id
+                            ? 'bg-[#D4FF00] text-black shadow-sm'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Left / Right Swipe Carousel Controls */}
+                  <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10">
                     <button
-                      key={f.id}
                       type="button"
-                      onClick={() => setHistoryFilter(f.id)}
-                      className={`px-2 py-0.5 rounded-lg text-[9.5px] font-bold transition-all ${
-                        historyFilter === f.id
-                          ? 'bg-[#D4FF00] text-black shadow-sm'
-                          : 'text-zinc-400 hover:text-white'
-                      }`}
+                      onClick={() => scrollGallery('left')}
+                      className="p-1 rounded-lg hover:bg-white/10 text-zinc-300 hover:text-white transition-colors"
+                      title="Swipe left"
                     >
-                      {f.label}
+                      <CaretLeft size={13} weight="bold" />
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={() => scrollGallery('right')}
+                      className="p-1 rounded-lg hover:bg-white/10 text-zinc-300 hover:text-white transition-colors"
+                      title="Swipe right"
+                    >
+                      <CaretRight size={13} weight="bold" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Grid Tiles */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* Horizontal Swipeable Carousel (Scroll to Right) */}
+              <div 
+                ref={galleryScrollRef}
+                className="flex items-stretch gap-3 overflow-x-auto custom-scrollbar pb-3 pt-1 scroll-smooth snap-x select-none"
+              >
                 {filteredHistory.map((item) => (
                   <div
                     key={item.id}
                     onClick={() => setGeneratedResult(item)}
-                    className={`group relative rounded-2xl border bg-white/[0.02] p-2.5 cursor-pointer transition-all overflow-hidden ${
+                    className={`w-48 sm:w-56 shrink-0 snap-start group relative rounded-2xl border bg-white/[0.02] p-2.5 cursor-pointer transition-all overflow-hidden ${
                       generatedResult?.id === item.id 
                         ? 'border-[#D4FF00] shadow-[0_0_15px_rgba(212,255,0,0.2)]' 
                         : 'border-white/10 hover:border-white/30'
