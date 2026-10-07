@@ -60,6 +60,16 @@ export function getVideoToolDefinitions() {
         },
         required: ['prompt']
       },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false
+      },
+      provided_tool_annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false
+      },
       _meta: {
         ui: {
           resourceUri: 'ui://zerolens/video-result.html'

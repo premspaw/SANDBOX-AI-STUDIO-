@@ -25,6 +25,16 @@ export function getSearchToolDefinitions() {
           }
         },
         required: ['query']
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: true
+      },
+      provided_tool_annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: true
       }
     },
     {
@@ -39,6 +49,16 @@ export function getSearchToolDefinitions() {
           }
         },
         required: ['id']
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false
+      },
+      provided_tool_annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false
       }
     }
   ];

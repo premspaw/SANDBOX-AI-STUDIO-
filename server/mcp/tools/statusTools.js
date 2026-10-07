@@ -14,6 +14,16 @@ export function getStatusToolDefinitions() {
           }
         },
         required: ['generation_id']
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false
+      },
+      provided_tool_annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false
       }
     }
   ];

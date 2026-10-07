@@ -6,6 +6,16 @@ export function getUsageToolDefinitions() {
       inputSchema: {
         type: 'object',
         properties: {}
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false
+      },
+      provided_tool_annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false
       }
     }
   ];

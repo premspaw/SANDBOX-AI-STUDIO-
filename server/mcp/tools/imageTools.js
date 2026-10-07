@@ -54,6 +54,16 @@ export function getImageToolDefinitions() {
         },
         required: ['prompt']
       },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false
+      },
+      provided_tool_annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false
+      },
       _meta: {
         ui: {
           resourceUri: 'ui://zerolens/image-result.html'

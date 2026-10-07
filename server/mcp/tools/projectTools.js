@@ -12,6 +12,16 @@ export function getProjectToolDefinitions() {
             default: 20
           }
         }
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false
+      },
+      provided_tool_annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false
       }
     },
     {
@@ -31,6 +41,16 @@ export function getProjectToolDefinitions() {
           }
         },
         required: ['project_id']
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false
+      },
+      provided_tool_annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false
       }
     }
   ];

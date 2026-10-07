@@ -30,10 +30,24 @@ import { registerUGCTools, handleUGCToolCall } from './tools/ugcTools.js';
 import { registerMarketingTools, handleMarketingToolCall } from './tools/marketingTools.js';
 
 /**
- * Returns all tool definitions exposed to ChatGPT
+ * Mandatory OpenAI MCP Tool Annotations Dictionary
+ */
+const TOOL_ANNOTATION_DEFAULTS = {
+  search: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  fetch: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  generate_image: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  generate_video: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  check_generation: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  list_projects: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  get_project: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  get_usage: { readOnlyHint: true, destructiveHint: false, openWorldHint: false }
+};
+
+/**
+ * Returns all tool definitions exposed to ChatGPT with guaranteed annotations
  */
 export function getAllMcpTools() {
-  return [
+  const tools = [
     ...getSearchToolDefinitions(),
     ...getImageToolDefinitions(),
     ...getVideoToolDefinitions(),
@@ -41,6 +55,29 @@ export function getAllMcpTools() {
     ...getProjectToolDefinitions(),
     ...getUsageToolDefinitions()
   ];
+
+  return tools.map((tool) => {
+    const ann = TOOL_ANNOTATION_DEFAULTS[tool.name] || {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false
+    };
+
+    const resolvedAnnotations = {
+      readOnlyHint: Boolean(tool.annotations?.readOnlyHint ?? ann.readOnlyHint),
+      destructiveHint: Boolean(tool.annotations?.destructiveHint ?? ann.destructiveHint),
+      openWorldHint: Boolean(tool.annotations?.openWorldHint ?? ann.openWorldHint)
+    };
+
+    return {
+      ...tool,
+      annotations: resolvedAnnotations,
+      provided_tool_annotations: resolvedAnnotations,
+      readOnlyHint: resolvedAnnotations.readOnlyHint,
+      destructiveHint: resolvedAnnotations.destructiveHint,
+      openWorldHint: resolvedAnnotations.openWorldHint
+    };
+  });
 }
 
 /**
