@@ -308,6 +308,7 @@ export default function createRouter(deps) {
             location: 'global',
             googleAuthOptions: authOptions,
             httpOptions: {
+                timeout: 300000,
                 headers: {
                     'Api-Revision': '2026-05-20'
                 }
@@ -667,13 +668,6 @@ export default function createRouter(deps) {
                     }
                     const finalVideoData = videoRefObj?.data || primaryImageResolved.data;
                     const finalVideoUri = videoRefObj?.uri || undefined;
-                    if (requestedTask === 'extend') {
-                        inputParts.push({ type: 'text', text: '<VIDEO_REF_0>\n[Source Video to Extend]:\n' });
-                    } else if (requestedTask === 'edit') {
-                        inputParts.push({ type: 'text', text: '<VIDEO_REF_0>\n[Source Video to Edit]:\n' });
-                    } else {
-                        inputParts.push({ type: 'text', text: '<START_FRAME>\n[Video reference at 00:00]:\n' });
-                    }
                     const primaryVidPart = {
                         type: 'video',
                         mime_type: sanitizeMime(primaryImageResolved.mimeType, 'video/mp4')
@@ -977,13 +971,14 @@ export default function createRouter(deps) {
                 });
             }
 
+            const apiVideoTask = (finalTaskType === 'extend' || finalTaskType === 'extension') ? 'edit' : finalTaskType;
             const reqBody = {
                 model: modelName,
                 input: finalInput,
                 response_format: responseFormat,
                 generation_config: {
                     video_config: {
-                        task: finalTaskType,
+                        task: apiVideoTask,
                     }
                 }
             };
@@ -1036,135 +1031,83 @@ export default function createRouter(deps) {
             const generationConfig = reqBody.generation_config;
 
             // --- Option A: Vertex AI SDK via 'global' location with Api-Revision header ---
-            // This mirrors the Python SDK: genai.Client(vertexai=True, project=..., location='global')
+            // Matches user Colab code: client = genai.Client(vertexai=True, project="new-zerolens-api", location="global", http_options=...)
             if (token || VERTEX_PROJECT_ID) {
                 try {
                     const vertexOmniClient = createVertexOmniClient();
 
-                    console.log(`[OMNI-I2V] [Vertex AI REST PRIMARY] Calling global interactions API on project ${VERTEX_PROJECT_ID}`);
-                    const interactionRestUrl = `https://aiplatform.googleapis.com/v1beta1/projects/${VERTEX_PROJECT_ID}/locations/global/interactions`;
-                    // Vertex AI Interactions API specifically registers 'gemini-omni-flash-preview'
-                    let currentVertexModel = 'gemini-omni-flash-preview';
-                    const interactionReqBody = {
-                        model: currentVertexModel,
+                    console.log(`[OMNI-I2V] [Vertex AI SDK PRIMARY] Calling client.interactions.create with model gemini-omni-1.1-flash-preview on project ${VERTEX_PROJECT_ID}`);
+                    const interactionParams = {
+                        model: 'gemini-omni-1.1-flash-preview',
                         input: sdkInput,
                         response_format: responseFormat,
-                        generation_config: generationConfig
                     };
-
-                    let restResp = await fetch(interactionRestUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`,
-                            'Api-Revision': '2026-05-20'
-                        },
-                        body: JSON.stringify(interactionReqBody)
-                    });
-
-                    let interactionResult = await restResp.json();
-                    if ((!restResp.ok || interactionResult.error) && (JSON.stringify(interactionResult).includes('not found') || JSON.stringify(interactionResult).includes('Unsupported model interaction'))) {
-                        const vertexFallbackModel = currentVertexModel === 'gemini-omni-flash-preview' ? 'gemini-omni-1.1-flash' : 'gemini-omni-flash-preview';
-                        console.warn(`[OMNI-I2V] Vertex AI model ${currentVertexModel} failed, retrying with ${vertexFallbackModel}...`);
-                        restResp = await fetch(interactionRestUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}`,
-                                'Api-Revision': '2026-05-20'
-                            },
-                            body: JSON.stringify({
-                                ...interactionReqBody,
-                                model: vertexFallbackModel
-                            })
-                        });
-                        interactionResult = await restResp.json();
+                    if (generationConfig) {
+                        interactionParams.generation_config = generationConfig;
                     }
 
-                    if (!restResp.ok || interactionResult.error) {
-                        const errDetails = interactionResult.error?.message || JSON.stringify(interactionResult.error || interactionResult);
-                        throw new Error(`Vertex AI Interactions error (${restResp.status}): ${errDetails}`);
+                    let interaction = null;
+                    try {
+                        interaction = await vertexOmniClient.interactions.create(interactionParams);
+                    } catch (primaryModelErr) {
+                        if (primaryModelErr?.message?.includes('Unsupported model interaction') || primaryModelErr?.message?.includes('not found')) {
+                            console.warn(`[OMNI-I2V] Model gemini-omni-1.1-flash-preview failed, retrying with gemini-omni-flash-preview...`);
+                            interactionParams.model = 'gemini-omni-flash-preview';
+                            interaction = await vertexOmniClient.interactions.create(interactionParams);
+                        } else {
+                            throw primaryModelErr;
+                        }
                     }
 
-                    const steps = interactionResult.steps || [];
-                    let videoData = null;
-                    let videoUri = null;
-
+                    const steps = interaction?.steps || [];
                     for (const step of steps) {
                         if (step.type === 'model_output' && step.content) {
                             const contentItems = Array.isArray(step.content) ? step.content : [step.content];
-                            for (const content of contentItems) {
-                                if (content.type === 'video') {
-                                    if (content.data) {
-                                        videoData = content.data;
-                                    } else if (content.uri) {
-                                        videoUri = content.uri;
+                            for (const part of contentItems) {
+                                if (part.type === 'text') {
+                                    console.log('[OMNI-I2V] [Vertex AI SDK] Model output text:', part.text);
+                                } else if (part.type === 'video') {
+                                    const mimeType = part.mime_type || 'video/mp4';
+                                    let videoB64 = part.data;
+                                    if (!videoB64 && part.uri) {
+                                        if (part.uri.startsWith('gs://')) {
+                                            const pathParts = part.uri.substring('gs://'.length).split('/');
+                                            const bucketName = pathParts[0];
+                                            const blobName = pathParts.slice(1).join('/');
+                                            console.log(`[OMNI-I2V] [Vertex AI SDK] Downloading output video from GCS: ${bucketName}/${blobName}`);
+                                            const authOptions = {
+                                                projectId: VERTEX_PROJECT_ID || 'new-zerolens-api'
+                                            };
+                                            if (deps.VERTEX_KEY) {
+                                                if (typeof deps.VERTEX_KEY === 'string') authOptions.keyFilename = deps.VERTEX_KEY;
+                                                else authOptions.credentials = deps.VERTEX_KEY;
+                                            }
+                                            const storageClient = storage || new Storage(authOptions);
+                                            const [videoBytes] = await storageClient.bucket(bucketName).file(blobName).download();
+                                            videoBuffer = videoBytes;
+                                            success = true;
+                                            console.log(`[OMNI-I2V] [Vertex AI SDK] Video downloaded from GCS (${videoBuffer.length} bytes)`);
+                                        } else {
+                                            console.log(`[OMNI-I2V] [Vertex AI SDK] Downloading video from URI: ${part.uri}`);
+                                            const videoResp = await fetch(part.uri);
+                                            if (!videoResp.ok) throw new Error(`Video download failed: ${videoResp.statusText}`);
+                                            videoBuffer = Buffer.from(await videoResp.arrayBuffer());
+                                            success = true;
+                                            console.log(`[OMNI-I2V] [Vertex AI SDK] Video downloaded via URI (${videoBuffer.length} bytes)`);
+                                        }
+                                    } else if (videoB64) {
+                                        videoBuffer = Buffer.from(videoB64, 'base64');
+                                        success = true;
+                                        console.log(`[OMNI-I2V] [Vertex AI SDK] Video generated via base64 (${videoBuffer.length} bytes)`);
                                     }
                                 }
                             }
                         }
                     }
 
-                    if (!videoData && !videoUri) {
-                        console.error('[OMNI-I2V] [Vertex AI SDK] Raw result:', JSON.stringify(interactionResult).substring(0, 500));
+                    if (!videoBuffer) {
+                        console.error('[OMNI-I2V] [Vertex AI SDK] Raw result:', JSON.stringify(interaction).substring(0, 500));
                         throw new Error("No video output returned from Omni engine.");
-                    }
-
-                    if (videoData) {
-                        videoBuffer = Buffer.from(videoData, 'base64');
-                        success = true;
-                        console.log(`[OMNI-I2V] [Vertex AI SDK] Video generated via base64 (${videoBuffer.length} bytes)`);
-                    } else if (videoUri) {
-                        // For URI delivery, download via Vertex AI signed URL
-                        broadcastProgress(taskId, 2, 3, 'Processing video file (Omni Render)...');
-
-                        // Poll for file readiness if needed
-                        const match = videoUri.match(/\/files\/([^:/]+)/);
-                        const fileId = match ? match[1] : null;
-
-                        if (fileId) {
-                            let fileActive = false;
-                            let pollAttempts = 0;
-                            const maxPollAttempts = 60;
-                            while (!fileActive && pollAttempts < maxPollAttempts) {
-                                await new Promise(resolve => setTimeout(resolve, 5000));
-                                pollAttempts++;
-
-                                // Poll via Vertex AI token
-                                const filePollUrl = `https://generativelanguage.googleapis.com/v1beta/files/${fileId}`;
-                                const filePollHeaders = token 
-                                    ? { 'Authorization': `Bearer ${token}` }
-                                    : {};
-
-                                const pollResp = await fetch(filePollUrl, { headers: filePollHeaders });
-                                if (!pollResp.ok) {
-                                    console.warn(`[OMNI-I2V] File polling status error: ${pollResp.status}`);
-                                    continue;
-                                }
-                                const fileInfo = await pollResp.json();
-                                const stateName = fileInfo.state?.name || fileInfo.state;
-                                console.log(`[OMNI-I2V] [Vertex AI SDK] File ${fileId} state: ${stateName} (${pollAttempts * 5}s elapsed)`);
-
-                                if (stateName === 'ACTIVE') {
-                                    fileActive = true;
-                                } else if (stateName === 'FAILED') {
-                                    throw new Error('Omni video generation file failed processing.');
-                                }
-
-                                if (pollAttempts % 2 === 0) {
-                                    broadcastProgress(taskId, 2, 3, `Rendering video... (${pollAttempts * 5}s)`);
-                                }
-                            }
-                            if (!fileActive) throw new Error('Omni video processing timed out.');
-                        }
-
-                        console.log(`[OMNI-I2V] [Vertex AI SDK] Downloading video from URI: ${videoUri}`);
-                        const downloadHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
-                        const videoResp = await fetch(videoUri, { headers: downloadHeaders });
-                        if (!videoResp.ok) throw new Error(`Video download failed: ${videoResp.statusText}`);
-                        videoBuffer = Buffer.from(await videoResp.arrayBuffer());
-                        success = true;
-                        console.log(`[OMNI-I2V] [Vertex AI SDK] Video downloaded via URI (${videoBuffer.length} bytes)`);
                     }
                 } catch (serviceErr) {
                     lastOmniError = serviceErr.message;
