@@ -62,7 +62,6 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
 
   const [prompt, setPrompt] = useState(initialMode === 'object-swap' ? defaultSwapPrompt : defaultMotionPrompt);
   const [resolution, setResolution] = useState('720p');
-  const [mobileTab, setMobileTab] = useState('controls'); // 'controls' | 'preview'
   
   // Media State
   const [videoFile, setVideoFile] = useState(null);
@@ -719,7 +718,6 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     }
 
     setIsGenerating(true);
-    setMobileTab('preview');
     setGenerationProgress(10);
     setStatusMessage(isSwapMode ? 'Initiating Genjutsu Object Swap Engine...' : 'Initiating Genjutsu Motion Transfer Engine...');
 
@@ -960,60 +958,14 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         </div>
       </div>
 
-      {/* Mobile View Tab Switcher (Visible on mobile/tablet screens only) */}
-      <div className="flex lg:hidden items-center justify-between px-3 py-2 bg-[#08080c] border-b border-white/[0.08] shrink-0 z-20">
-        <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 w-full">
-          <button
-            type="button"
-            onClick={() => setMobileTab('controls')}
-            className={cn(
-              "flex-1 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer",
-              mobileTab === 'controls'
-                ? "bg-[#D4FF00] text-black shadow-md shadow-[#D4FF00]/25"
-                : "text-zinc-400 hover:text-white"
-            )}
-          >
-            <SlidersHorizontal size={14} weight="bold" />
-            <span>Controls</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileTab('preview')}
-            className={cn(
-              "flex-1 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer relative",
-              mobileTab === 'preview'
-                ? "bg-[#D4FF00] text-black shadow-md shadow-[#D4FF00]/25"
-                : "text-zinc-400 hover:text-white"
-            )}
-          >
-            <FilmStrip size={14} weight="bold" />
-            <span>Preview & History</span>
-            {historyList.length > 0 && (
-              <span className={cn(
-                "text-[9px] font-mono px-1.5 py-0.2 rounded-full ml-1",
-                mobileTab === 'preview' ? "bg-black/25 text-black font-extrabold" : "bg-white/10 text-white/70"
-              )}>
-                {historyList.length}
-              </span>
-            )}
-            {isGenerating && (
-              <span className="w-2 h-2 rounded-full bg-[#D4FF00] animate-ping ml-1" />
-            )}
-          </button>
-        </div>
-      </div>
-
       {/* Main Studio Body */}
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden z-10">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden z-10 custom-scrollbar">
         
         {/* Left Controls Column */}
-        <div className={cn(
-          "w-full lg:w-[400px] xl:w-[440px] border-r border-white/10 bg-[#0d0f14] flex-col h-full min-h-0 shrink-0 overflow-hidden",
-          mobileTab === 'controls' ? "flex" : "hidden lg:flex"
-        )}>
+        <div className="w-full lg:w-[400px] xl:w-[440px] border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0d0f14] flex flex-col lg:h-full min-h-0 shrink-0">
           
           {/* Scrollable Form Area */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 min-h-0 pb-20 lg:pb-3">
+          <div className="flex-1 lg:overflow-y-auto custom-scrollbar p-3 space-y-3 min-h-0 pb-3">
             
             {/* Mode Pill Toggle (Motion Transfer vs Objects Swap vs AI Influencer) */}
             <div className="grid grid-cols-3 gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
@@ -1689,10 +1641,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         </div>
 
         {/* Right Viewport: Real-time Player & Persistent Gallery Canvas */}
-        <div className={cn(
-          "flex-1 flex-col min-h-0 bg-[#07080c] overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-3 pb-24 lg:pb-4",
-          mobileTab === 'preview' ? "flex" : "hidden lg:flex"
-        )}>
+        <div className="flex-1 flex flex-col min-h-0 bg-[#07080c] lg:overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-3 pb-24 lg:pb-4">
           
           {/* Main Display Stage (Compact preview area) */}
           <div className="w-full h-[280px] sm:h-[360px] shrink-0 rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl relative overflow-hidden flex items-center justify-center shadow-2xl">

@@ -100,7 +100,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
         { id: 'cinematic-studio', label: 'Cinema Studio', icon: FilmSlate, color: 'text-fuchsia-400', bgColor: 'bg-fuchsia-400', hoverColor: 'group-hover/navitem:text-fuchsia-400', glow: 'shadow-[0_0_15px_rgba(232,121,249,0.15)]' },
         { id: 'studio', label: 'Studio Generator', icon: VideoCamera, color: 'text-violet-400', bgColor: 'bg-violet-400', hoverColor: 'group-hover/navitem:text-violet-400', glow: 'shadow-[0_0_15px_rgba(167,139,250,0.25)]' },
 
-        { id: 'remix', label: 'Remix Studio', icon: ArrowsClockwise, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.25)]' },
+        { id: 'remix', label: 'Remix Studio', icon: ArrowsClockwise, color: 'text-[#D4FF00]', bgColor: 'bg-[#D4FF00]', hoverColor: 'group-hover/navitem:text-[#D4FF00]', glow: 'shadow-[0_0_15px_rgba(212,255,0,0.25)]' },
         { id: 'carousel', label: 'Carousel Studio', icon: SquaresFour, color: 'text-pink-400', bgColor: 'bg-pink-400', hoverColor: 'group-hover/navitem:text-pink-400', glow: 'shadow-[0_0_15px_rgba(236,72,153,0.15)]' },
         { id: 'storyboard', label: 'Storyboard', icon: Kanban, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.25)]' },
         { id: 'mcp-connection', label: 'MCP Connection', icon: Cpu, color: 'text-[#c8f135]', bgColor: 'bg-[#c8f135]', hoverColor: 'group-hover/navitem:text-[#c8f135]', glow: 'shadow-[0_0_15px_rgba(200,241,53,0.25)]' },
