@@ -6,6 +6,7 @@ import path from 'path';
 import os from 'os';
 import { GoogleGenAI } from '@google/genai';
 import { Storage } from '@google-cloud/storage';
+import { getEmbeddedVertexCredentials } from '../config/vertexAuth.js';
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
 
@@ -254,17 +255,36 @@ export default function createRouter(deps) {
         storageService
     } = deps;
 
-    async function uploadToGcs(buffer, mimeType) {
-        const authOptions = {
-            projectId: VERTEX_PROJECT_ID || process.env.GOOGLE_PROJECT_ID || 'new-zerolens-api'
-        };
-        if (VERTEX_KEY) {
-            if (typeof VERTEX_KEY === 'string') {
-                authOptions.keyFilename = VERTEX_KEY;
-            } else {
-                authOptions.credentials = VERTEX_KEY;
+    function resolveVertexCredentials() {
+        let vertexKey = deps.VERTEX_KEY;
+        if (typeof vertexKey === 'object' && vertexKey !== null) {
+            return vertexKey;
+        }
+        if (typeof vertexKey === 'string' && fs.existsSync(vertexKey)) {
+            try { return JSON.parse(fs.readFileSync(vertexKey, 'utf8')); } catch (_) {}
+        }
+        const fallbackPaths = [
+            path.join(process.cwd(), 'server', 'config', 'vertexKey.json'),
+            path.join(process.cwd(), 'new-zerolens-api.json'),
+            path.join(process.cwd(), '.google-credentials-temp.json')
+        ];
+        for (const fp of fallbackPaths) {
+            if (fs.existsSync(fp)) {
+                try { return JSON.parse(fs.readFileSync(fp, 'utf8')); } catch (_) {}
             }
         }
+        if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+            try { return JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON); } catch (_) {}
+        }
+        return getEmbeddedVertexCredentials();
+    }
+
+    async function uploadToGcs(buffer, mimeType) {
+        const creds = resolveVertexCredentials();
+        const authOptions = {
+            projectId: VERTEX_PROJECT_ID || creds?.project_id || 'new-zerolens-api',
+            credentials: creds
+        };
         const storageClient = storage || new Storage(authOptions);
         const bucketName = process.env.GCS_BUCKET_NAME || BUCKET_NAME || 'zerolens-omni-new-ref-bucket';
         const bucket = storageClient.bucket(bucketName);
@@ -285,42 +305,39 @@ export default function createRouter(deps) {
 
     // Build a dedicated Vertex AI client for the Interactions API (Omni Flash)
     // Must use location='global' and Api-Revision: 2026-05-20 as per the Python SDK reference.
-    function createVertexOmniClient() {
-        let vertexKey = deps.VERTEX_KEY;
-        if (!vertexKey) {
-            const fallbackPath = path.join(process.cwd(), 'server', 'config', 'vertexKey.json');
-            if (fs.existsSync(fallbackPath)) {
-                vertexKey = fallbackPath;
-            } else {
-                const localPath = path.join(process.cwd(), 'new-zerolens-api.json');
-                if (fs.existsSync(localPath)) vertexKey = localPath;
-            }
-        }
+    function createVertexOmniClient(explicitToken) {
+        const creds = resolveVertexCredentials();
         const authOptions = {
             scopes: [
                 'https://www.googleapis.com/auth/cloud-platform',
                 'https://www.googleapis.com/auth/generative-language'
             ]
         };
-        if (vertexKey) {
-            if (typeof vertexKey === 'string') {
-                authOptions.keyFilename = vertexKey;
-            } else {
-                authOptions.credentials = vertexKey;
-            }
+        if (creds) {
+            authOptions.credentials = creds;
         }
-        return new GoogleGenAI({
+        const headers = {
+            'Api-Revision': '2026-05-20'
+        };
+        if (explicitToken) {
+            headers['Authorization'] = `Bearer ${explicitToken}`;
+        }
+        const client = new GoogleGenAI({
             vertexai: true,
-            project: VERTEX_PROJECT_ID || 'new-zerolens-api',
+            project: VERTEX_PROJECT_ID || creds?.project_id || 'new-zerolens-api',
             location: 'global',
             googleAuthOptions: authOptions,
             httpOptions: {
                 timeout: 300000,
-                headers: {
-                    'Api-Revision': '2026-05-20'
-                }
+                headers
             }
         });
+        // CRITICAL: Prevent @google/genai from falling back to process.env.GEMINI_API_KEY
+        // which causes Vertex AI to reject requests with "API keys are not supported by this API"
+        if (client.interactions?._client) {
+            client.interactions._client.apiKey = null;
+        }
+        return client;
     }
 
     // Gemini Omni/Omni Flash Video Generation Route
@@ -1040,7 +1057,7 @@ export default function createRouter(deps) {
             // Matches user Colab code: client = genai.Client(vertexai=True, project="new-zerolens-api", location="global", http_options=...)
             if (token || VERTEX_PROJECT_ID) {
                 try {
-                    const vertexOmniClient = createVertexOmniClient();
+                    const vertexOmniClient = createVertexOmniClient(token);
 
                     console.log(`[OMNI-I2V] [Vertex AI SDK PRIMARY] Calling client.interactions.create with model gemini-omni-1.1-flash-preview on project ${VERTEX_PROJECT_ID}`);
                     const interactionParams = {
@@ -1082,12 +1099,9 @@ export default function createRouter(deps) {
                                             const blobName = pathParts.slice(1).join('/');
                                             console.log(`[OMNI-I2V] [Vertex AI SDK] Downloading output video from GCS: ${bucketName}/${blobName}`);
                                             const authOptions = {
-                                                projectId: VERTEX_PROJECT_ID || 'new-zerolens-api'
+                                                projectId: VERTEX_PROJECT_ID || 'new-zerolens-api',
+                                                credentials: resolveVertexCredentials()
                                             };
-                                            if (deps.VERTEX_KEY) {
-                                                if (typeof deps.VERTEX_KEY === 'string') authOptions.keyFilename = deps.VERTEX_KEY;
-                                                else authOptions.credentials = deps.VERTEX_KEY;
-                                            }
                                             const storageClient = storage || new Storage(authOptions);
                                             const [videoBytes] = await storageClient.bucket(bucketName).file(blobName).download();
                                             videoBuffer = videoBytes;
