@@ -1480,7 +1480,7 @@ export const SidePanel = React.memo(({
   };
 
   const isVeoEngine = activeEngine.startsWith('veo-3.1') || activeEngine === 'veo3';
-  const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
+  const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash' || activeEngine === 'gemini-omni-1.1-flash-preview';
   const isSeedanceEngine = activeEngine.startsWith('seedan') || activeEngine === 'seedace';
 
   // Dynamic Credits calculation aligned with Vertex AI / Omni backend, Seedance 2.0, and Kling Motion Control
@@ -1557,7 +1557,7 @@ export const SidePanel = React.memo(({
     }
 
     startCooldown(8);
-    const engineToUse = 'gemini-omni-1.1-flash-preview';
+    const engineToUse = 'gemini-omni-1.1-flash';
     setPromptText(localPrompt);
     setActiveTab('video');
     if (!isOmniEngine) setActiveEngine(engineToUse);
@@ -1848,7 +1848,7 @@ export const SidePanel = React.memo(({
         Promise.all(rawImgs.map(img => resolveBlobToBase64(img)))
       ]);
 
-      const engineToUse = 'gemini-omni-1.1-flash-preview';
+      const engineToUse = 'gemini-omni-1.1-flash';
       setActiveTab('video');
       setActiveEngine(engineToUse);
       handleGenerate(finalPrompt, engineToUse, {
@@ -3001,7 +3001,7 @@ export const SidePanel = React.memo(({
               setPanelTab('transition');
               setActiveTab('video');
               if (transitionSubTab === 'omni-keyframe') {
-                setActiveEngine('gemini-omni-1.1-flash-preview');
+                setActiveEngine('gemini-omni-1.1-flash');
               } else {
                 setActiveEngine('seedance-2.5');
                 setDuration(5);
@@ -3042,7 +3042,7 @@ export const SidePanel = React.memo(({
             onClick={() => {
               setPanelTab('omni-multi');
               setActiveTab('video');
-              setActiveEngine('gemini-omni-1.1-flash-preview');
+              setActiveEngine('gemini-omni-1.1-flash');
             }}
             className={cn(
               "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
@@ -3254,7 +3254,7 @@ export const SidePanel = React.memo(({
                     type="button"
                     onClick={() => {
                       setTransitionSubTab('omni-keyframe');
-                      setActiveEngine('gemini-omni-1.1-flash-preview');
+                      setActiveEngine('gemini-omni-1.1-flash');
                     }}
                     className={cn(
                       "flex-1 py-1.5 px-2.5 rounded-lg text-[10.5px] font-black uppercase tracking-wide transition-all text-center select-none cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5",
@@ -3924,7 +3924,7 @@ export const SidePanel = React.memo(({
                         type="button"
                         onClick={() => {
                           setRemixEngine('omni');
-                          setActiveEngine('gemini-omni-1.1-flash-preview');
+                          setActiveEngine('gemini-omni-1.1-flash');
                         }}
                         className={cn(
                           "flex-1 py-1.5 px-2.5 rounded-xl text-[10.5px] sm:text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer",

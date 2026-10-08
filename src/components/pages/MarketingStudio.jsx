@@ -511,7 +511,7 @@ export default function MarketingStudio() {
     };
 
     useEffect(() => {
-        const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash' || videoEngine === 'omni-flash-1.1' || videoEngine === 'gemini-omni-1.1-flash-preview';
+        const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash' || videoEngine === 'omni-flash-1.1' || videoEngine === 'gemini-omni-1.1-flash' || videoEngine === 'gemini-omni-1.1-flash-preview';
         const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace';
         const isVeo3 = videoEngine.startsWith('veo-3.1');
         
@@ -1157,7 +1157,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
 
         if (generateMode === 'video') {
             try {
-                const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash' || videoEngine === 'omni-flash-1.1' || videoEngine === 'gemini-omni-1.1-flash-preview';
+                const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash' || videoEngine === 'omni-flash-1.1' || videoEngine === 'gemini-omni-1.1-flash' || videoEngine === 'gemini-omni-1.1-flash-preview';
                 const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace';
                 
                 if (isOmni) {
@@ -1169,7 +1169,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                         '1024x1792': '9:16',
                         '1792x1024': '16:9'
                     };
-                    const targetModel = 'gemini-omni-1.1-flash-preview';
+                    const targetModel = 'gemini-omni-1.1-flash';
 
                     // Convert staged reference images to expected structure
                     const ref_images = referenceImages.map(img => ({

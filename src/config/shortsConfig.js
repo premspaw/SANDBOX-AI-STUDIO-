@@ -172,7 +172,7 @@ export function calculateEngineCredits(engineId, options = {}) {
         return costPerSec * remixDur;
     }
 
-    // 5. Gemini Omni Flash (omni-flash, gemini-omni-1.1-flash-preview, omni)
+    // 5. Gemini Omni Flash (omni-flash, gemini-omni-1.1-flash, omni)
     if (panelTab === 'omni' || panelTab === 'omni-multi' || engLower.includes('omni')) {
         let costPerSec = 5;
         if (resLower === '4k') costPerSec = generateAudio ? 19 : 15;

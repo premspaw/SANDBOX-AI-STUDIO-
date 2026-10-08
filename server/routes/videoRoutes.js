@@ -955,7 +955,7 @@ export default function createRouter(deps) {
                         resolution: '1080p',
                         aspectRatio: aspectRatio || '16:9',
                         generateAudio: true,
-                        model: 'gemini-omni-1.1-flash-preview',
+                        model: 'gemini-omni-1.1-flash',
                         userId: targetUserId,
                         creditReason: 'video_upscale_1080p'
                     })

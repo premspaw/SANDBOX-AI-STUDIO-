@@ -46,7 +46,7 @@ export default function SettingsPage() {
     const [sendingReset, setSendingReset] = useState(false);
 
     // Studio Preferences
-    const [defaultEngine, setDefaultEngine] = useState(() => localStorage.getItem('pref_default_engine') || 'gemini-omni-1.1-flash-preview');
+    const [defaultEngine, setDefaultEngine] = useState(() => localStorage.getItem('pref_default_engine') || 'gemini-omni-1.1-flash');
     const [defaultAspect, setDefaultAspect] = useState(() => localStorage.getItem('pref_default_aspect') || '16:9');
     const [defaultRes, setDefaultRes] = useState(() => localStorage.getItem('pref_default_res') || '720p');
     const [autoAudio, setAutoAudio] = useState(() => localStorage.getItem('pref_auto_audio') !== 'false');
@@ -1201,7 +1201,7 @@ export default function SettingsPage() {
                                         onChange={(e) => setDefaultEngine(e.target.value)}
                                         className="w-full bg-[#0a0a10] border border-white/15 focus:border-[#c8f135] rounded-xl p-3 text-xs text-white outline-none font-medium cursor-pointer"
                                     >
-                                        <option value="gemini-omni-1.1-flash-preview">Google Gemini Omni 1.1 Flash (Multimodal Keyframes)</option>
+                                        <option value="gemini-omni-1.1-flash">Google Gemini Omni 1.1 Flash (Multimodal Keyframes)</option>
                                         <option value="kling-motion">Kling 3.0 Motion Control (Subject Image + Motion Driver)</option>
                                         <option value="veo-3.1-preview">Veo 3.1 Cinema Engine (High-Fidelity)</option>
                                     </select>

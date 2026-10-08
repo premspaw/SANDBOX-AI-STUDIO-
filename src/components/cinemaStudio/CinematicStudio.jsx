@@ -1011,7 +1011,7 @@ export default function CinematicStudio() {
   // Adjust resolution & duration options dynamically for Seedance, Veo 3.1 & Omni engines
   useEffect(() => {
     const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine === 'seedance-2.5';
-    const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
+    const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash' || activeEngine === 'gemini-omni-1.1-flash-preview';
     const isVeo3 = activeEngine.startsWith('veo-3.1');
     
     if (isOmniEngine) {
@@ -2639,7 +2639,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   };
 
   const getCompiledPrompt = () => {
-    const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
+    const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash' || activeEngine === 'gemini-omni-1.1-flash-preview';
     const domVal = textareaRef?.current?.value;
     let basePrompt = (domVal !== undefined && domVal !== '') ? domVal.trim() : (isOmniEngine ? omniPromptText.trim() : promptText.trim());
     const firstPreview = isOmniEngine ? omniFirstFramePreview : firstFramePreview;
@@ -2886,7 +2886,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       }
 
       let targetModel = activeEngine;
-      if (activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview') targetModel = 'gemini-omni-1.1-flash-preview';
+      if (activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash' || activeEngine === 'gemini-omni-1.1-flash-preview') targetModel = 'gemini-omni-1.1-flash';
 
       const identity_images = taggedItems.map(item => item.imageUrl).filter(Boolean);
       const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
@@ -3016,7 +3016,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       ? overridePrompt.trim()
       : (domVal !== undefined && domVal !== '')
         ? domVal.trim()
-        : ((resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') ? omniPromptText.trim() : promptText.trim());
+        : ((resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash' || resolvedEngine === 'gemini-omni-1.1-flash-preview') ? omniPromptText.trim() : promptText.trim());
     const activeRatio = overrideOptions?.aspectRatio !== undefined ? overrideOptions.aspectRatio : aspectRatio;
 
     // Identify all active reference tags using getTaggedRefItems
@@ -3028,7 +3028,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
     // Instant optimistic gallery placeholder update (0ms latency, eliminates loading card delay/flash!)
     const targetProj = (activeProjectId === 'all' || !activeProjectId) ? 'default' : activeProjectId;
-    const activeVarCount = (activeTab === 'image' || resolvedEngine.startsWith('veo-3.1') || resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') ? variationCount : 1;
+    const activeVarCount = (activeTab === 'image' || resolvedEngine.startsWith('veo-3.1') || resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash' || resolvedEngine === 'gemini-omni-1.1-flash-preview') ? variationCount : 1;
     const tempItems = Array.from({ length: activeVarCount }).map((_, idx) => ({
       id: `temp-${activeTab}-${Date.now()}-${idx}`,
       type: activeTab === 'image' ? 'image' : 'video',
@@ -3191,13 +3191,13 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       }
 
       if (resolvedEngine !== 'seedace' && resolvedEngine !== 'seedance-fast' && resolvedEngine !== 'seedance-mini' && resolvedEngine !== 'seedance-2.5' && resolvedEngine !== 'kling/v3-turbo-image-to-video' && resolvedEngine !== 'kling-motion' && resolvedEngine !== 'omni-motion' && resolvedEngine !== 'motion-easy' && resolvedEngine !== 'remix-motion-transfer') {
-        const isOmniEngine = resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview';
+        const isOmniEngine = resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash' || resolvedEngine === 'gemini-omni-1.1-flash-preview';
         try {
           let targetModel = resolvedEngine;
           let engineLabel = ENGINES.find(e => e.id === resolvedEngine)?.label || (isOmniEngine ? 'Omni' : 'Veo 3.1');
           
-          if (resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') {
-            targetModel = 'gemini-omni-1.1-flash-preview';
+          if (resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash' || resolvedEngine === 'gemini-omni-1.1-flash-preview') {
+            targetModel = 'gemini-omni-1.1-flash';
             engineLabel = 'Omni';
           }
 
@@ -3592,7 +3592,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               resolution: validRes,
               aspectRatio: reqAspectRatio,
               generateAudio: !!generateAudio,
-              model: 'gemini-omni-1.1-flash-preview',
+              model: 'gemini-omni-1.1-flash',
               userId,
               projectId: activeProjectId,
               creditCost: singleCost,
@@ -3959,7 +3959,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           ref_images: resolvedOmniImgs,
           resolution: resolution === '4k' ? '1080p' : resolution,
           generateAudio: generateAudio,
-          model: 'gemini-omni-1.1-flash-preview',
+          model: 'gemini-omni-1.1-flash',
           userId,
           projectId: activeProjectId,
           creditReason: 'omni_video_extension'
@@ -4139,7 +4139,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           ref_images: resolvedOmniImgs,
           resolution: resolution === '4k' ? '1080p' : resolution,
           generateAudio: generateAudio,
-          model: 'gemini-omni-1.1-flash-preview',
+          model: 'gemini-omni-1.1-flash',
           userId,
           projectId: activeProjectId,
           creditReason: 'omni_video_edit'
@@ -4196,7 +4196,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             type: 'video',
             prompt: finalPrompt,
             aspect: tempItem.aspectRatio,
-            engine: 'gemini-omni-1.1-flash-preview',
+            engine: 'gemini-omni-1.1-flash',
             userId,
             projectId: activeProjectId
           })
@@ -5539,7 +5539,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                       {(close) => (
                         <div className="space-y-0.5">
                           {(() => {
-                            const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
+                            const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash' || activeEngine === 'gemini-omni-1.1-flash-preview';
                             const isVeo3 = activeEngine.startsWith('veo-3.1');
                             const isSeedance = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
                             const currentDurationOptions = isOmniEngine
@@ -5592,7 +5592,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   )}
 
                   {/* AUDIO SFX TOGGLE (Video only, Seedance, Veo 3.1 & Omni engines) */}
-                  {activeTab === 'video' && (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine.startsWith('veo-3.1') || activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'gemini-omni-1.1-flash-preview') && (
+                  {activeTab === 'video' && (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine.startsWith('veo-3.1') || activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'gemini-omni-1.1-flash' || activeEngine === 'gemini-omni-1.1-flash-preview') && (
                     <button
                       type="button"
                       onClick={() => setGenerateAudio(!generateAudio)}

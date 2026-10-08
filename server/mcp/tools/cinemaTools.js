@@ -120,7 +120,7 @@ export async function handleCinemaToolCall(name, args) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         engine,
-        model: isSeedance ? (engine === 'seedance-fast' ? 'dreamina-seedance-2-0-fast-260128' : 'bytedance/seedance-2-5') : 'gemini-omni-1.1-flash-preview',
+        model: isSeedance ? (engine === 'seedance-fast' ? 'dreamina-seedance-2-0-fast-260128' : 'bytedance/seedance-2-5') : 'gemini-omni-1.1-flash',
         prompt: args.prompt,
         seedanceContentArray: [{ type: 'text', text: args.prompt }],
         aspectRatio: args.aspectRatio || '16:9',

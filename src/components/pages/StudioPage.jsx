@@ -543,7 +543,7 @@ export default function StudioPage() {
   }, [userId, setShowingAuthModal]);
 
   // Active Engine & Mode State
-  const [activeEngine, setActiveEngine] = useState('gemini-omni-1.1-flash-preview');
+  const [activeEngine, setActiveEngine] = useState('gemini-omni-1.1-flash');
   const [activeTab, setActiveTab] = useState('video');
   const [panelTab, setPanelTab] = useState('omni'); // 'omni' | 'omni-multi' | 'motion'
 
@@ -1319,7 +1319,7 @@ export default function StudioPage() {
           ref_images: resolvedOmniImgs,
           resolution: resolution === '4k' ? '1080p' : resolution,
           generateAudio: generateAudio,
-          model: 'gemini-omni-1.1-flash-preview',
+          model: 'gemini-omni-1.1-flash',
           userId,
           projectId: activeProjectId,
           creditReason: 'omni_video_extension'
@@ -1501,7 +1501,7 @@ export default function StudioPage() {
           ref_images: resolvedOmniImgs,
           resolution: resolution === '4k' ? '1080p' : resolution,
           generateAudio: generateAudio,
-          model: 'gemini-omni-1.1-flash-preview',
+          model: 'gemini-omni-1.1-flash',
           userId,
           projectId: activeProjectId,
           creditReason: 'omni_video_edit'
@@ -1544,7 +1544,7 @@ export default function StudioPage() {
             type: 'video',
             prompt: finalPrompt,
             aspect: tempItem.aspectRatio,
-            engine: 'gemini-omni-1.1-flash-preview',
+            engine: 'gemini-omni-1.1-flash',
             userId,
             projectId: activeProjectId
           })
@@ -1978,7 +1978,7 @@ export default function StudioPage() {
                 resolution: validRes,
                 aspectRatio: activeRatio,
                 generateAudio: !!activeAudio,
-                model: 'gemini-omni-1.1-flash-preview',
+                model: 'gemini-omni-1.1-flash',
                 userId,
                 projectId: targetProj
               })
@@ -2309,7 +2309,7 @@ export default function StudioPage() {
           payload = {
             prompt: directedPrompt,
             motionPrompt: directedPrompt,
-            model: 'gemini-omni-1.1-flash-preview',
+            model: 'gemini-omni-1.1-flash',
             task: taskToUse,
             duration: activeDuration,
             aspectRatio: activeRatio,

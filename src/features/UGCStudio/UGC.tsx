@@ -2474,7 +2474,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       const body: any = {
         motionPrompt,
         task: 'edit',
-        model: 'gemini-omni-1.1-flash-preview',
+        model: 'gemini-omni-1.1-flash',
         aspectRatio: '9:16',
         resolution: videoResolution,
         duration: sceneDurationSec,
@@ -3270,7 +3270,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
             duration: parseInt(thDuration),
             aspectRatio: thAspectRatio,
             resolution: videoResolution,
-            model: 'gemini-omni-1.1-flash-preview',
+            model: 'gemini-omni-1.1-flash',
             userId: currentUserId,
             generateAudio: true,
             creditReason: 'veo_fast'
@@ -3540,7 +3540,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
             duration: resolvedDuration,
             aspectRatio: resolvedAspectRatio,
             resolution: videoResolution || '720p',
-            model: 'gemini-omni-1.1-flash-preview',
+            model: 'gemini-omni-1.1-flash',
             userId: currentUserId,
             generateAudio: resolvedIncludeAudio,
             creditReason: 'veo_fast'
@@ -4260,7 +4260,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           duration: resolvedDuration,
           aspectRatio: resolvedAspectRatio,
           resolution: videoResolution,
-          model: 'gemini-omni-1.1-flash-preview',
+          model: 'gemini-omni-1.1-flash',
           userId: currentUserId,
           generateAudio: resolvedIncludeAudio,
           creditReason: 'veo_fast',

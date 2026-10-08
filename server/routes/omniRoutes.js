@@ -934,11 +934,11 @@ export default function createRouter(deps) {
             }
 
             // Enforce Google Gemini Omni Flash 1.1 as the active model per official Gemini cookbook
-            let modelName = 'gemini-omni-1.1-flash-preview';
-            if (req.body.model === 'gemini-omni-1.1-flash' || req.body.model === 'gemini-omni-1.1-flash-preview') {
-                modelName = req.body.model;
-            } else if (req.body.model === 'gemini-omni-flash-preview' || req.body.model === 'omni-flash' || req.body.model === 'omni-flash-1.1') {
-                modelName = 'gemini-omni-1.1-flash-preview';
+            let modelName = 'gemini-omni-1.1-flash';
+            if (req.body.model === 'gemini-omni-flash-preview') {
+                modelName = 'gemini-omni-flash-preview';
+            } else if (req.body.model === 'gemini-omni-1.1-flash' || req.body.model === 'gemini-omni-1.1-flash-preview' || req.body.model === 'omni-flash' || req.body.model === 'omni-flash-1.1' || req.body.model === 'omni') {
+                modelName = 'gemini-omni-1.1-flash';
             }
 
             const responseFormat = {
@@ -1038,14 +1038,15 @@ export default function createRouter(deps) {
 
                     console.log(`[OMNI-I2V] [Vertex AI REST PRIMARY] Calling global interactions API on project ${VERTEX_PROJECT_ID}`);
                     const interactionRestUrl = `https://aiplatform.googleapis.com/v1beta1/projects/${VERTEX_PROJECT_ID}/locations/global/interactions`;
+                    let currentVertexModel = reqBody.model || 'gemini-omni-1.1-flash';
                     const interactionReqBody = {
-                        model: reqBody.model,
+                        model: currentVertexModel,
                         input: sdkInput,
                         response_format: responseFormat,
                         generation_config: generationConfig
                     };
 
-                    const restResp = await fetch(interactionRestUrl, {
+                    let restResp = await fetch(interactionRestUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1055,7 +1056,25 @@ export default function createRouter(deps) {
                         body: JSON.stringify(interactionReqBody)
                     });
 
-                    const interactionResult = await restResp.json();
+                    let interactionResult = await restResp.json();
+                    if ((!restResp.ok || interactionResult.error) && JSON.stringify(interactionResult).includes('not found')) {
+                        const vertexFallbackModel = currentVertexModel === 'gemini-omni-flash-preview' ? 'gemini-omni-1.1-flash' : 'gemini-omni-flash-preview';
+                        console.warn(`[OMNI-I2V] Vertex AI model ${currentVertexModel} not found, retrying with ${vertexFallbackModel}...`);
+                        restResp = await fetch(interactionRestUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`,
+                                'Api-Revision': '2026-05-20'
+                            },
+                            body: JSON.stringify({
+                                ...interactionReqBody,
+                                model: vertexFallbackModel
+                            })
+                        });
+                        interactionResult = await restResp.json();
+                    }
+
                     if (!restResp.ok || interactionResult.error) {
                         const errDetails = interactionResult.error?.message || JSON.stringify(interactionResult.error || interactionResult);
                         throw new Error(`Vertex AI Interactions error (${restResp.status}): ${errDetails}`);
@@ -1177,120 +1196,136 @@ export default function createRouter(deps) {
                 // Deduplicate keys
                 const uniqueKeys = [...new Set(candidateKeys)];
 
+                // Candidate models in preference order (Omni 1.1 first, legacy preview fallback)
+                const candidateModels = [...new Set([
+                    modelName,
+                    'gemini-omni-1.1-flash',
+                    'gemini-omni-flash-preview'
+                ])].filter(Boolean);
+
                 for (const studioKey of uniqueKeys) {
-                    try {
-                        const endpoint = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${studioKey}`;
-                        const headers = { 'Content-Type': 'application/json' };
+                    if (success) break;
+                    for (const testModel of candidateModels) {
+                        if (success) break;
+                        try {
+                            const endpoint = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${studioKey}`;
+                            const headers = { 'Content-Type': 'application/json' };
 
-                        const studioReqBody = {
-                            model: 'gemini-omni-1.1-flash-preview',
-                            input: sdkInput,
-                            response_format: {
-                                ...responseFormat,
-                                delivery: "uri"
-                            },
-                            generation_config: generationConfig
-                        };
+                            const studioReqBody = {
+                                model: testModel,
+                                input: sdkInput,
+                                response_format: {
+                                    ...responseFormat,
+                                    delivery: "uri"
+                                },
+                                generation_config: generationConfig
+                            };
 
-                        console.log(`[OMNI-I2V] [AI Studio Fallback] Trying key ${studioKey.substring(0, 10)}... on ${endpoint}`);
-                        const restResponse = await fetch(endpoint, {
-                            method: 'POST',
-                            headers,
-                            body: JSON.stringify(studioReqBody)
-                        });
+                            console.log(`[OMNI-I2V] [AI Studio Fallback] Trying key ${studioKey.substring(0, 10)}... (model: ${testModel}) on ${endpoint}`);
+                            const restResponse = await fetch(endpoint, {
+                                method: 'POST',
+                                headers,
+                                body: JSON.stringify(studioReqBody)
+                            });
 
-                        const interactionResult = await restResponse.json();
-                        if (interactionResult.error) {
-                            const errMessage = interactionResult.error.message || JSON.stringify(interactionResult.error);
-                            console.warn(`[OMNI-I2V] [AI Studio Fallback] Key ${studioKey.substring(0, 10)} failed: ${errMessage}`);
-                            // If key is depleted, skip and do not overwrite Vertex error
-                            if (errMessage.includes('prepayment credits are depleted')) {
-                                console.warn(`[OMNI-I2V] [AI Studio Fallback] Key has depleted credits, skipping AI Studio.`);
+                            const interactionResult = await restResponse.json();
+                            if (interactionResult.error) {
+                                const errMessage = interactionResult.error.message || JSON.stringify(interactionResult.error);
+                                console.warn(`[OMNI-I2V] [AI Studio Fallback] Key ${studioKey.substring(0, 10)} model ${testModel} failed: ${errMessage}`);
+                                // If model is not found, continue to next candidate model
+                                if (errMessage.includes('not found') || errMessage.includes('Did you mean')) {
+                                    lastOmniError = errMessage;
+                                    continue;
+                                }
+                                // If key is depleted, skip this key completely
+                                if (errMessage.includes('prepayment credits are depleted')) {
+                                    console.warn(`[OMNI-I2V] [AI Studio Fallback] Key has depleted credits, skipping AI Studio.`);
+                                    break;
+                                }
+                                lastOmniError = errMessage;
+                                if (errMessage.includes('content_blocked') || errMessage.includes('Responsible AI') || errMessage.includes('prohibited') || errMessage.includes('prominent individuals') || errMessage.includes('safety violations') || errMessage.includes('harmful content')) {
+                                    lastOmniError = errMessage;
+                                    break;
+                                }
                                 continue;
                             }
-                            lastOmniError = errMessage;
-                            if (errMessage.includes('content_blocked') || errMessage.includes('Responsible AI') || errMessage.includes('prohibited') || errMessage.includes('prominent individuals') || errMessage.includes('safety violations') || errMessage.includes('harmful content')) {
-                                lastOmniError = errMessage;
-                                break;
-                            }
-                            continue;
-                        }
 
-                        const steps = interactionResult.steps || [];
-                        let videoData = null;
-                        let videoUri = null;
+                            const steps = interactionResult.steps || [];
+                            let videoData = null;
+                            let videoUri = null;
 
-                        for (const step of steps) {
-                            if (step.type === 'model_output' && step.content) {
-                                for (const content of step.content) {
-                                    if (content.type === 'video') {
-                                        if (content.data) {
-                                            videoData = content.data;
-                                        } else if (content.uri) {
-                                            videoUri = content.uri;
+                            for (const step of steps) {
+                                if (step.type === 'model_output' && step.content) {
+                                    for (const content of step.content) {
+                                        if (content.type === 'video') {
+                                            if (content.data) {
+                                                videoData = content.data;
+                                            } else if (content.uri) {
+                                                videoUri = content.uri;
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        if (!videoData && !videoUri) {
-                            console.warn(`[OMNI-I2V] [AI Studio Fallback] No video output returned with key ${studioKey.substring(0, 10)}`);
-                            continue;
-                        }
-
-                        if (videoData) {
-                            videoBuffer = Buffer.from(videoData, 'base64');
-                            success = true;
-                            break;
-                        } else if (videoUri) {
-                            const match = videoUri.match(/\/files\/([^:/]+)/);
-                            const fileId = match ? match[1] : null;
-                            if (!fileId) continue;
-
-                            broadcastProgress(taskId, 2, 3, 'Processing video file (Omni Render)...');
-                            
-                            let fileActive = false;
-                            let pollAttempts = 0;
-                            const maxPollAttempts = 60;
-                            while (!fileActive && pollAttempts < maxPollAttempts) {
-                                await new Promise(resolve => setTimeout(resolve, 5000));
-                                pollAttempts++;
-                                
-                                const filePollUrl = `https://generativelanguage.googleapis.com/v1beta/files/${fileId}?key=${studioKey}`;
-                                const pollResp = await fetch(filePollUrl);
-                                if (!pollResp.ok) {
-                                    const pollErrText = await pollResp.text().catch(() => '');
-                                    console.warn(`[OMNI-I2V] File polling status error (${pollResp.status}): ${pollErrText.substring(0, 200)}`);
-                                    continue;
-                                }
-                                const fileInfo = await pollResp.json();
-                                const stateName = fileInfo.state?.name || fileInfo.state;
-                                console.log(`[OMNI-I2V] [API Key] [${taskId}] File ${fileId} state: ${stateName} (${pollAttempts * 5}s elapsed)`);
-                                
-                                if (stateName === 'ACTIVE') {
-                                    fileActive = true;
-                                } else if (stateName === 'FAILED') {
-                                    break;
-                                }
-                                
-                                if (pollAttempts % 2 === 0) {
-                                    broadcastProgress(taskId, 2, 3, `Rendering video... (${pollAttempts * 5}s)`);
-                                }
+                            if (!videoData && !videoUri) {
+                                console.warn(`[OMNI-I2V] [AI Studio Fallback] No video output returned with key ${studioKey.substring(0, 10)} model ${testModel}`);
+                                continue;
                             }
 
-                            if (!fileActive) continue;
+                            if (videoData) {
+                                videoBuffer = Buffer.from(videoData, 'base64');
+                                success = true;
+                                break;
+                            } else if (videoUri) {
+                                const match = videoUri.match(/\/files\/([^:/]+)/);
+                                const fileId = match ? match[1] : null;
+                                if (!fileId) continue;
 
-                            console.log(`[OMNI-I2V] Downloading URI: ${videoUri}`);
-                            const downloadUrl = videoUri.includes('?') ? `${videoUri}&key=${studioKey}` : `${videoUri}?key=${studioKey}`;
-                            const videoResp = await fetch(downloadUrl);
-                            if (!videoResp.ok) continue;
-                            videoBuffer = Buffer.from(await videoResp.arrayBuffer());
-                            success = true;
-                            break;
+                                broadcastProgress(taskId, 2, 3, 'Processing video file (Omni Render)...');
+                                
+                                let fileActive = false;
+                                let pollAttempts = 0;
+                                const maxPollAttempts = 60;
+                                while (!fileActive && pollAttempts < maxPollAttempts) {
+                                    await new Promise(resolve => setTimeout(resolve, 5000));
+                                    pollAttempts++;
+                                    
+                                    const filePollUrl = `https://generativelanguage.googleapis.com/v1beta/files/${fileId}?key=${studioKey}`;
+                                    const pollResp = await fetch(filePollUrl);
+                                    if (!pollResp.ok) {
+                                        const pollErrText = await pollResp.text().catch(() => '');
+                                        console.warn(`[OMNI-I2V] File polling status error (${pollResp.status}): ${pollErrText.substring(0, 200)}`);
+                                        continue;
+                                    }
+                                    const fileInfo = await pollResp.json();
+                                    const stateName = fileInfo.state?.name || fileInfo.state;
+                                    console.log(`[OMNI-I2V] [API Key] [${taskId}] File ${fileId} state: ${stateName} (${pollAttempts * 5}s elapsed)`);
+                                    
+                                    if (stateName === 'ACTIVE') {
+                                        fileActive = true;
+                                    } else if (stateName === 'FAILED') {
+                                        break;
+                                    }
+                                    
+                                    if (pollAttempts % 2 === 0) {
+                                        broadcastProgress(taskId, 2, 3, `Rendering video... (${pollAttempts * 5}s)`);
+                                    }
+                                }
+
+                                if (!fileActive) continue;
+
+                                console.log(`[OMNI-I2V] Downloading URI: ${videoUri}`);
+                                const downloadUrl = videoUri.includes('?') ? `${videoUri}&key=${studioKey}` : `${videoUri}?key=${studioKey}`;
+                                const videoResp = await fetch(downloadUrl);
+                                if (!videoResp.ok) continue;
+                                videoBuffer = Buffer.from(await videoResp.arrayBuffer());
+                                success = true;
+                                break;
+                            }
+                        } catch (apiKeyErr) {
+                            console.warn(`[OMNI-I2V] [API Key ${studioKey.substring(0, 10)}] Failed: ${apiKeyErr.message}`);
                         }
-                    } catch (apiKeyErr) {
-                        console.warn(`[OMNI-I2V] [API Key ${studioKey.substring(0, 10)}] Failed: ${apiKeyErr.message}`);
                     }
                 }
             }

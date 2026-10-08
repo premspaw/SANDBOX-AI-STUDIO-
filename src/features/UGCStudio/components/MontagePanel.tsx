@@ -193,7 +193,7 @@ export const MontagePanel: React.FC = () => {
           duration: duration,
           aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio,
           resolution: videoResolution || '720p',
-          model: 'gemini-omni-1.1-flash-preview',
+          model: 'gemini-omni-1.1-flash',
           userId: currentUserId,
           generateAudio: montageAudioEnabled,
           creditReason: 'ugc_video_generation'
