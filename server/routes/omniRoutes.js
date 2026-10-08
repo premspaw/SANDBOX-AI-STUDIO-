@@ -530,17 +530,18 @@ export default function createRouter(deps) {
             
             // Construct input parts for Gemini Omni Flash (multimodal)
             let inputParts = [];
-            const isExtendOrEdit = requestedTask === 'extend' || requestedTask === 'edit';
+            const inputVideo = req.body.video || req.body.sourceVideo || req.body.refVideo;
+            const isExtendOrEdit = requestedTask === 'extend' || requestedTask === 'edit' || (!!inputVideo && !image && !req.body.firstFrameImage && !req.body.firstFrame);
             // In multi-reference / i2v, inputImage must ONLY be an actual image, NEVER fall back to refVideo!
-            const inputImage = image || req.body.firstFrameImage || req.body.firstFrame || (isExtendOrEdit ? (req.body.video || req.body.sourceVideo || req.body.refVideo) : null);
+            const inputImage = image || req.body.firstFrameImage || req.body.firstFrame || (isExtendOrEdit ? inputVideo : null);
             const endImage = req.body.lastFrameImage || req.body.imageEnd || req.body.lastFrame;
 
-            // 1. Primary image (Start Frame): only include if not doing pure text_to_video
+            // 1. Primary image (Start Frame) or Primary Video (for Extend / Edit)
             let primaryImageResolved = null;
             if (inputImage && requestedTask !== 'text_to_video') {
                 primaryImageResolved = await resolveMediaToBase64(inputImage);
                 if (primaryImageResolved) {
-                    console.log(`[OMNI-I2V] ✅ Resolved Start Frame image (${primaryImageResolved.mimeType}, ${primaryImageResolved.data.length} chars)`);
+                    console.log(`[OMNI-I2V] ✅ Resolved Start Frame / Video (${primaryImageResolved.mimeType}, ${primaryImageResolved.data.length} chars)`);
                 }
             }
 
@@ -1042,7 +1043,8 @@ export default function createRouter(deps) {
 
                     console.log(`[OMNI-I2V] [Vertex AI REST PRIMARY] Calling global interactions API on project ${VERTEX_PROJECT_ID}`);
                     const interactionRestUrl = `https://aiplatform.googleapis.com/v1beta1/projects/${VERTEX_PROJECT_ID}/locations/global/interactions`;
-                    let currentVertexModel = reqBody.model || 'gemini-omni-1.1-flash';
+                    // Vertex AI Interactions API specifically registers 'gemini-omni-flash-preview'
+                    let currentVertexModel = 'gemini-omni-flash-preview';
                     const interactionReqBody = {
                         model: currentVertexModel,
                         input: sdkInput,
@@ -1061,9 +1063,9 @@ export default function createRouter(deps) {
                     });
 
                     let interactionResult = await restResp.json();
-                    if ((!restResp.ok || interactionResult.error) && JSON.stringify(interactionResult).includes('not found')) {
+                    if ((!restResp.ok || interactionResult.error) && (JSON.stringify(interactionResult).includes('not found') || JSON.stringify(interactionResult).includes('Unsupported model interaction'))) {
                         const vertexFallbackModel = currentVertexModel === 'gemini-omni-flash-preview' ? 'gemini-omni-1.1-flash' : 'gemini-omni-flash-preview';
-                        console.warn(`[OMNI-I2V] Vertex AI model ${currentVertexModel} not found, retrying with ${vertexFallbackModel}...`);
+                        console.warn(`[OMNI-I2V] Vertex AI model ${currentVertexModel} failed, retrying with ${vertexFallbackModel}...`);
                         restResp = await fetch(interactionRestUrl, {
                             method: 'POST',
                             headers: {
