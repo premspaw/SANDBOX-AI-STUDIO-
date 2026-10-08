@@ -34,6 +34,10 @@ export const resolveBlobToBase64 = async (urlOrItem) => {
         url = url.url || url.data || url.dataUrl || url.imageUrl || '';
     }
     if (!url || typeof url !== 'string') return null;
+    if (url.includes('proxy-image?url=')) {
+        const match = url.match(/[?&]url=([^&]+)/);
+        if (match) url = decodeURIComponent(match[1]);
+    }
     if (!url.startsWith('blob:')) return url;
     try {
         const resp = await fetch(url);

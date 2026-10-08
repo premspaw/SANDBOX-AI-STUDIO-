@@ -916,10 +916,9 @@ export default function createRouter(deps) {
                 finalTaskType = 'reference_to_video';
             }
 
-            // Vertex AI Interactions API parameter constraints:
-            // 1. 'reference_to_video' requires at least 1 image or audio reference.
-            if (finalTaskType === 'reference_to_video' && finalImageCount === 0 && finalAudioCount === 0 && finalVideoCount === 0) {
-                finalTaskType = 'text_to_video';
+            // 1. 'reference_to_video' requires at least 1 image or audio reference. If only video is supplied, route to 'edit'.
+            if (finalTaskType === 'reference_to_video' && finalImageCount === 0 && finalAudioCount === 0) {
+                finalTaskType = finalVideoCount > 0 ? 'edit' : 'text_to_video';
             }
 
             // 2. 'image_to_video' requires at least 1 image

@@ -1003,6 +1003,10 @@ export default function StudioPage() {
       url = url.url || url.data || url.dataUrl || url.imageUrl || url.videoUrl || '';
     }
     if (!url || typeof url !== 'string') return null;
+    if (url.includes('proxy-image?url=')) {
+      const match = url.match(/[?&]url=([^&]+)/);
+      if (match) url = decodeURIComponent(match[1]);
+    }
     if (url.startsWith('data:') || !url.startsWith('blob:')) return url;
     try {
       const res = await fetch(url);
@@ -1483,7 +1487,12 @@ export default function StudioPage() {
         throw new Error('Failed to authorize credit deduction.');
       }
 
-      const resolvedVideo = await resolveBlobToBase64(rawVideo);
+      let cleanVideoUrl = rawVideo;
+      if (typeof cleanVideoUrl === 'string' && cleanVideoUrl.includes('proxy-image?url=')) {
+        const match = cleanVideoUrl.match(/[?&]url=([^&]+)/);
+        if (match) cleanVideoUrl = decodeURIComponent(match[1]);
+      }
+      const resolvedVideo = await resolveBlobToBase64(cleanVideoUrl);
       if (!resolvedVideo) {
         throw new Error('Failed to resolve source video file for editing.');
       }
