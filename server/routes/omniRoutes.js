@@ -73,6 +73,12 @@ async function resolveMediaToBase64(mediaUrl) {
         }
     }
     mediaUrl = mediaUrl.trim();
+    if (mediaUrl.includes('proxy-image?url=') || mediaUrl.includes('proxy-video?url=')) {
+        const match = mediaUrl.match(/[?&]url=([^&]+)/);
+        if (match) {
+            mediaUrl = decodeURIComponent(match[1]);
+        }
+    }
     if (mediaUrl.startsWith('blob:')) {
         console.warn(`[OMNI-I2V] Cannot resolve browser-local blob URL on backend: ${mediaUrl}`);
         return null;
@@ -87,7 +93,8 @@ async function resolveMediaToBase64(mediaUrl) {
     } else if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://') || mediaUrl.startsWith('//') || mediaUrl.startsWith('/')) {
         let fullUrl = mediaUrl;
         if (mediaUrl.startsWith('//')) fullUrl = `https:${mediaUrl}`;
-        else if (mediaUrl.startsWith('/')) fullUrl = `https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev${mediaUrl}`;
+        else if (mediaUrl.startsWith('/api/')) fullUrl = `http://127.0.0.1:${process.env.PORT || 3002}${mediaUrl}`;
+        else if (mediaUrl.startsWith('/')) fullUrl = `https://cdn.zerolens.in${mediaUrl}`;
         
         let success = false;
         let lastErr = null;

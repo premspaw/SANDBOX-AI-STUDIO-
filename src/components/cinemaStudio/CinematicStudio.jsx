@@ -3936,7 +3936,12 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         throw new Error('Failed to authorize credit deduction.');
       }
 
-      const resolvedVideo = await resolveBlobToBase64(resolvedVideoSrc || rawVideo);
+      let cleanVideoUrl = rawVideo || resolvedVideoSrc;
+      if (typeof cleanVideoUrl === 'string' && cleanVideoUrl.includes('proxy-image?url=')) {
+        const match = cleanVideoUrl.match(/[?&]url=([^&]+)/);
+        if (match) cleanVideoUrl = decodeURIComponent(match[1]);
+      }
+      const resolvedVideo = await resolveBlobToBase64(cleanVideoUrl);
       if (!resolvedVideo) {
         throw new Error('Failed to resolve source video file for extension.');
       }
