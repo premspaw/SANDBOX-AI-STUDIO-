@@ -4,13 +4,14 @@ import {
     User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare,
     Square, Zap, ChevronRight, ChevronDown, ChevronUp, Key, Sparkles, TrendingUp, Clock, Gem, Fingerprint,
     ShieldCheck, BellRing, KeyRound, Copy, Check, Sliders, Cpu, ArrowUpRight,
-    ExternalLink, RefreshCw, Layers, Film, Volume2, Wand2, Eye, EyeOff, AlertCircle
+    ExternalLink, RefreshCw, Layers, Film, Volume2, Wand2, Eye, EyeOff, AlertCircle, FolderOpen
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
 import { cn } from '../../lib/utils';
 import { getApiUrl } from '../../config/apiConfig';
 import { UserCreditAuditModal } from '../admin/UserCreditAuditModal';
+import { AssetsLibrary } from '../panels/AssetsLibrary';
 
 export default function SettingsPage() {
     const profile = useAppStore(state => state.userProfile);
@@ -21,6 +22,7 @@ export default function SettingsPage() {
 
     const [authUser, setAuthUser] = useState(null);
     const [activeTab, setActiveTab] = useState('credits'); // Default to credits & subscription
+    const [showProductionRates, setShowProductionRates] = useState(false);
     const [expandedPacks, setExpandedPacks] = useState({});
     const togglePack = (id) => setExpandedPacks(prev => ({ ...prev, [id]: !prev[id] }));
     const [loading, setLoading] = useState(false);
@@ -381,6 +383,7 @@ export default function SettingsPage() {
 
     const tabs = [
         { id: 'credits', label: 'Shorts & Subscription', icon: Coins, badge: `${userCredits}⚡` },
+        { id: 'assets', label: 'Assets & History Library', icon: FolderOpen, badge: 'Media' },
         { id: 'history', label: 'Usage & Transactions', icon: Clock },
         ...(isAdmin ? [{ id: 'admin-audit', label: 'Admin User & Credit Audit', icon: Shield, badge: 'Admin' }] : []),
         { id: 'mcp', label: 'MCP & ChatGPT Connectors', icon: Cpu, badge: 'Live' },
@@ -502,6 +505,15 @@ export default function SettingsPage() {
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={() => setActiveTab('assets')}
+                                    className="px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-[11px] sm:text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                    title="Open Assets & History Vault"
+                                >
+                                    <FolderOpen size={13} className="text-[#c8f135]" />
+                                    <span className="hidden sm:inline">Assets</span>
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={() => setActiveTabGlobal('pricing')}
                                     className="px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-[11px] sm:text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center"
                                     title="View All Studio Plans"
@@ -567,7 +579,15 @@ export default function SettingsPage() {
                                         </h3>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveTab('assets')}
+                                            className="px-3 sm:px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-[11px] sm:text-xs font-black uppercase tracking-wider border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
+                                        >
+                                            <FolderOpen size={12} className="text-[#c8f135]" />
+                                            <span>Assets & History</span>
+                                        </button>
                                         <button
                                             type="button"
                                             onClick={() => setActiveTabGlobal('pricing')}
@@ -579,37 +599,60 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                {/* Model Costs Breakdown Matrix */}
-                                <div className="space-y-2">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block">
-                                        Current Production Rates per Generation
-                                    </span>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 space-y-0.5">
-                                            <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
-                                                <Zap size={11} className="text-[#c8f135]" /> Omni Flash Video
-                                            </span>
-                                            <p className="text-xs font-black text-white font-mono">5 cr / sec (4s = 20⚡)</p>
+                                {/* Model Costs Breakdown Matrix - Collapsible Accordion Dropdown */}
+                                <div className="rounded-xl border border-white/10 bg-black/40 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowProductionRates(prev => !prev)}
+                                        className="w-full p-2.5 sm:p-3 flex items-center justify-between hover:bg-white/[0.04] transition-colors cursor-pointer text-left"
+                                    >
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                                            <Zap size={12} className="text-[#c8f135]" />
+                                            <span>Current Production Rates per Generation</span>
+                                        </span>
+                                        <div className="flex items-center gap-1.5 text-zinc-400 text-[10px] font-mono">
+                                            <span>{showProductionRates ? 'Hide' : 'View Rates'}</span>
+                                            {showProductionRates ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                                         </div>
-                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 space-y-0.5">
-                                            <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
-                                                <Film size={11} className="text-cyan-400" /> Kling Motion Driver
-                                            </span>
-                                            <p className="text-xs font-black text-white font-mono">7 cr / sec (5s = 35⚡)</p>
-                                        </div>
-                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 space-y-0.5">
-                                            <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
-                                                <Layers size={11} className="text-purple-400" /> 4K AI Upscaler
-                                            </span>
-                                            <p className="text-xs font-black text-white font-mono">2 cr / upscale</p>
-                                        </div>
-                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 space-y-0.5">
-                                            <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
-                                                <Volume2 size={11} className="text-emerald-400" /> Neural Speech
-                                            </span>
-                                            <p className="text-xs font-black text-white font-mono">Included Free</p>
-                                        </div>
-                                    </div>
+                                    </button>
+                                    <AnimatePresence>
+                                        {showProductionRates && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="overflow-hidden border-t border-white/5 p-2.5 pt-2"
+                                            >
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                                    <div className="p-2.5 rounded-xl bg-black/50 border border-white/5 space-y-0.5">
+                                                        <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
+                                                            <Zap size={11} className="text-[#c8f135]" /> Omni Flash Video
+                                                        </span>
+                                                        <p className="text-xs font-black text-white font-mono">5 cr / sec (4s = 20⚡)</p>
+                                                    </div>
+                                                    <div className="p-2.5 rounded-xl bg-black/50 border border-white/5 space-y-0.5">
+                                                        <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
+                                                            <Film size={11} className="text-cyan-400" /> Kling Motion Driver
+                                                        </span>
+                                                        <p className="text-xs font-black text-white font-mono">7 cr / sec (5s = 35⚡)</p>
+                                                    </div>
+                                                    <div className="p-2.5 rounded-xl bg-black/50 border border-white/5 space-y-0.5">
+                                                        <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
+                                                            <Layers size={11} className="text-purple-400" /> 4K AI Upscaler
+                                                        </span>
+                                                        <p className="text-xs font-black text-white font-mono">2 cr / upscale</p>
+                                                    </div>
+                                                    <div className="p-2.5 rounded-xl bg-black/50 border border-white/5 space-y-0.5">
+                                                        <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
+                                                            <Volume2 size={11} className="text-emerald-400" /> Neural Speech
+                                                        </span>
+                                                        <p className="text-xs font-black text-white font-mono">Included Free</p>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
                             </div>
 
@@ -811,6 +854,37 @@ export default function SettingsPage() {
                                         </table>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ═════════ TAB: ASSETS & MEDIA LIBRARY ═════════ */}
+                    {activeTab === 'assets' && (
+                        <div className="p-3 sm:p-6 rounded-2xl sm:rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[10px] font-mono text-[#c8f135] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[#c8f135]/10 border border-[#c8f135]/30">
+                                            Vault
+                                        </span>
+                                        <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">
+                                            Cloud Synced
+                                        </span>
+                                    </div>
+                                    <h3 className="text-base sm:text-xl font-black uppercase text-white tracking-tight flex items-center gap-2">
+                                        <FolderOpen className="w-5 h-5 text-[#c8f135]" />
+                                        <span>Studio Assets &amp; Generation History</span>
+                                    </h3>
+                                    <p className="text-xs text-zinc-400 mt-1 max-w-2xl leading-relaxed">
+                                        Browse your media library, character references, videos, audio, and generation history.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="min-h-[550px] rounded-2xl border border-white/10 bg-[#08080c] overflow-hidden p-2 sm:p-4">
+                                <AssetsLibrary
+                                    setActiveTab={setActiveTabGlobal}
+                                    onSelectReference={() => setActiveTabGlobal('studio')}
+                                />
                             </div>
                         </div>
                     )}
