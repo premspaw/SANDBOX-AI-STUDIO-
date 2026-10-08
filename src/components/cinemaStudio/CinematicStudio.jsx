@@ -498,16 +498,15 @@ const FastPromptInput = React.memo(({
   handleGenerate,
   activeTab
 }) => {
-  // Auto-resize textarea height smoothly via requestAnimationFrame to avoid synchronous layout reflow
+  const isTypingRef = React.useRef(false);
+
+  // Auto-resize textarea height smoothly and synchronously to avoid frame flashes or cursor jumping
   const adjustHeight = React.useCallback(() => {
     const tx = textareaRef?.current;
     if (!tx) return;
-    requestAnimationFrame(() => {
-      if (!tx) return;
-      tx.style.height = 'auto';
-      const targetHeight = Math.min(Math.max(tx.scrollHeight, 38), 180);
-      tx.style.height = `${targetHeight}px`;
-    });
+    tx.style.height = 'auto';
+    const targetHeight = Math.min(Math.max(tx.scrollHeight, 38), 180);
+    tx.style.height = `${targetHeight}px`;
   }, [textareaRef]);
 
   // Keep DOM value in sync with external promptText updates (presets, suggestions, recipes, clear)
@@ -515,6 +514,7 @@ const FastPromptInput = React.memo(({
   useEffect(() => {
     const tx = textareaRef?.current;
     if (!tx) return;
+    if (isTypingRef.current) return;
     if (tx.value !== (promptText || '') && document.activeElement !== tx) {
       tx.value = promptText || '';
       adjustHeight();
@@ -527,11 +527,13 @@ const FastPromptInput = React.memo(({
   }, [adjustHeight]);
 
   const handleInput = (e) => {
+    isTypingRef.current = true;
     adjustHeight();
     handleTextChange(e, false);
   };
 
   const handleBlur = (e) => {
+    isTypingRef.current = false;
     handleTextChange(e, true);
   };
 
@@ -876,6 +878,7 @@ export default function CinematicStudio() {
 
   // Core Inputs for Veo 3.1
   const [promptText, setPromptText] = useState('');
+  const [hasDraftText, setHasDraftText] = useState(false);
   const [firstFrameImage, setFirstFrameImage] = useState('');
   const [firstFramePreview, setFirstFramePreview] = useState('');
   const [lastFrameImage, setLastFrameImage] = useState('');
@@ -1856,19 +1859,24 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     const val = e.target?.value ?? '';
     const cursor = e.target?.selectionStart || 0;
 
-    // Fast inline mention detection
+    // Fast inline mention detection (only update state if search query changed)
     if (activeEngineRef.current === 'kling/v3-turbo-image-to-video') {
       setMentionSearch(prev => (prev !== null ? null : prev));
     } else {
       const match = val.slice(0, cursor).match(/@([\w_<>]*)$/);
       if (match) {
-        setMentionSearch(match[1].toLowerCase());
+        const query = match[1].toLowerCase();
+        setMentionSearch(prev => (prev !== query ? query : prev));
         setMentionCursorPos(cursor);
         setMentionField('promptText');
       } else {
         setMentionSearch(prev => (prev !== null ? null : prev));
       }
     }
+
+    // Instant presence tracking for zero-latency Generate button activation
+    const hasText = Boolean(val.trim());
+    setHasDraftText(prev => (prev !== hasText ? hasText : prev));
 
     if (promptDebounceRef.current) clearTimeout(promptDebounceRef.current);
 
@@ -1880,13 +1888,13 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       return;
     }
 
-    // Debounce parent studio state updates by 800ms with startTransition (zero typing lag)
+    // Smoothly debounce parent studio state updates by 120ms with startTransition (zero typing lag)
     promptDebounceRef.current = setTimeout(() => {
       React.startTransition(() => {
         setPromptText(val);
         setOmniPromptText(val);
       });
-    }, 800);
+    }, 120);
   }, []);
 
   const selectMention = (item) => {
@@ -2246,7 +2254,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     (omniRefPreviews && omniRefPreviews.some(Boolean))
   );
 
-  const hasInput = Boolean(activePromptText || activeFirstFramePreview || taggedItemsCount > 0 || hasRefBoardMedia);
+  const hasInput = Boolean(activePromptText || hasDraftText || (textareaRef?.current?.value?.trim()) || activeFirstFramePreview || taggedItemsCount > 0 || hasRefBoardMedia);
   const canGenerate = hasInput && userCredits >= requiredCredits && !isMaxConcurrentReached;
 
   const triggerRefund = async (reason) => {
@@ -2976,7 +2984,16 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     // Use override engine if provided (avoids React batching race from SidePanel)
     const resolvedEngine = overrideEngine || activeEngine;
 
-    if (!hasInput && !overridePrompt) {
+    // Read current value from DOM textarea or override to bypass any debounced state lag
+    const domVal = textareaRef?.current?.value?.trim();
+    const resolvedPrompt = overridePrompt
+      ? overridePrompt.trim()
+      : (domVal !== undefined && domVal !== '')
+        ? domVal
+        : ((resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash' || resolvedEngine === 'gemini-omni-1.1-flash-preview') ? omniPromptText.trim() : promptText.trim());
+
+    const effectiveHasInput = Boolean(resolvedPrompt || hasInput || activeFirstFramePreview || hasRefBoardMedia);
+    if (!effectiveHasInput) {
       const showToast = useAppStore.getState().showToast;
       if (showToast) showToast("Please type prompt text, upload a frame, or tag reference elements before generating.", "error");
       return;
@@ -3010,13 +3027,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     setErrorMsg('');
     setPollMsg('');
 
-    // Use overridePrompt from SidePanel or DOM textarea if provided to bypass stale debounced state reads
-    const domVal = textareaRef?.current?.value;
-    const basePrompt = overridePrompt
-      ? overridePrompt.trim()
-      : (domVal !== undefined && domVal !== '')
-        ? domVal.trim()
-        : ((resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash' || resolvedEngine === 'gemini-omni-1.1-flash-preview') ? omniPromptText.trim() : promptText.trim());
+    // Use resolvedPrompt from SidePanel or DOM textarea
+    const basePrompt = resolvedPrompt;
     const activeRatio = overrideOptions?.aspectRatio !== undefined ? overrideOptions.aspectRatio : aspectRatio;
 
     // Identify all active reference tags using getTaggedRefItems
@@ -5655,7 +5667,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
                 {/* Generate Button — CSS pulse replaces framer-motion infinite loop (GPU-friendly) */}
                 <motion.button
-                  onClick={() => handleGenerate()}
+                  onClick={() => handleGenerate(textareaRef?.current?.value?.trim())}
                   disabled={isBusy}
                   whileHover={canGenerate ? { scale: 1.02, backgroundColor: '#d5fb3b' } : {}}
                   whileTap={canGenerate ? { scale: 0.97 } : {}}

@@ -1184,11 +1184,14 @@ export const SidePanel = React.memo(({
   const [mentionCursorPos, setMentionCursorPos] = useState(0);
   const [localPrompt, setLocalPrompt] = useState(promptText || '');
   const localPromptRef = useRef(promptText || '');
+  const isTypingRef = useRef(false);
   const [isAstraWriting, setIsAstraWriting] = useState(false);
   const debounceTimerRef = useRef(null);
 
   useEffect(() => {
-    // Only synchronize if the incoming prop is genuinely different from local state
+    // Only synchronize from external source if user is not actively typing or focused
+    if (isTypingRef.current) return;
+    if (document.activeElement === textareaRef.current) return;
     if (promptText !== undefined && promptText !== localPromptRef.current) {
       localPromptRef.current = promptText || '';
       setLocalPrompt(promptText || '');
@@ -2232,26 +2235,42 @@ export const SidePanel = React.memo(({
   const handlePromptChange = useCallback((e) => {
     const val = e.target.value;
     const cursorPos = e.target.selectionStart;
+    isTypingRef.current = true;
     localPromptRef.current = val;
     setLocalPrompt(val);
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      React.startTransition(() => {
-        if (setPromptText) setPromptText(val);
-      });
-    }, 250);
+      isTypingRef.current = false;
+      if (setPromptText) {
+        React.startTransition(() => {
+          setPromptText(localPromptRef.current);
+        });
+      }
+    }, 150);
 
     const textBeforeCursor = val.slice(0, cursorPos);
     const match = textBeforeCursor.match(/@([\w_<>]*)$/);
 
     if (match) {
-      setMentionSearch(match[1]);
+      const q = match[1];
+      setMentionSearch(prev => (prev !== q ? q : prev));
       setMentionCursorPos(cursorPos);
     } else {
-      setMentionSearch(null);
+      setMentionSearch(prev => (prev !== null ? null : prev));
     }
   }, [setPromptText]);
+
+  const handlePromptBlur = useCallback(() => {
+    isTypingRef.current = false;
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    if (setPromptText && localPromptRef.current !== promptText) {
+      setPromptText(localPromptRef.current);
+    }
+  }, [setPromptText, promptText]);
 
   const selectMention = (item) => {
     const textarea = textareaRef.current;
@@ -2797,63 +2816,66 @@ export const SidePanel = React.memo(({
           </div>
         </div>
 
-        {/* Autocomplete Popup */}
-        {mentionSearch !== null && (
-          <div 
-            className="bg-[#12141d] border border-zinc-700 rounded-2xl p-1.5 shadow-[0_25px_80px_rgba(0,0,0,1)] max-h-56 overflow-y-auto custom-scrollbar z-[250]"
-            style={{ backgroundColor: '#12141d' }}
-          >
-            {(() => {
-              const query = (mentionSearch || '').trim().toLowerCase();
-              const matched = availableMentionItems.filter(item => 
-                !query || 
-                (item.name && item.name.toLowerCase().includes(query)) || 
-                (item.category && item.category.toLowerCase().includes(query))
-              );
-
-              if (matched.length === 0) {
-                return (
-                  <div className="p-3 text-center text-[10px] text-zinc-500 font-mono">
-                    No reference items found
-                  </div>
+        {/* ── CLEAN RESPONSIVE PROMPT BOX WITH FLOATING AUTOCOMPLETE ── */}
+        <div className="relative w-full">
+          {/* Autocomplete Popup — Floats cleanly above without pushing the textarea down */}
+          {mentionSearch !== null && (
+            <div 
+              className="absolute bottom-full mb-2 left-0 right-0 bg-[#12141d] border border-zinc-700 rounded-2xl p-1.5 shadow-[0_25px_80px_rgba(0,0,0,1)] max-h-56 overflow-y-auto custom-scrollbar z-[250]"
+              style={{ backgroundColor: '#12141d' }}
+            >
+              {(() => {
+                const query = (mentionSearch || '').trim().toLowerCase();
+                const matched = availableMentionItems.filter(item => 
+                  !query || 
+                  (item.name && item.name.toLowerCase().includes(query)) || 
+                  (item.category && item.category.toLowerCase().includes(query))
                 );
-              }
 
-              return matched.map((item, idx) => (
-                <button
-                  key={item.id || idx}
-                  type="button"
-                  onClick={() => selectMention(item)}
-                  className="w-full px-2.5 py-2 rounded-lg text-left text-xs font-semibold flex items-center gap-2 hover:bg-white/[0.08] text-zinc-300 hover:text-white transition-all cursor-pointer"
-                >
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} className="w-5 h-5 rounded object-cover border border-white/20" alt={item.name} />
-                  ) : item.isVideo ? (
-                    <Video className="w-4 h-4 text-cyan-400" />
-                  ) : item.isAudio ? (
-                    <Music className="w-4 h-4 text-amber-400" />
-                  ) : null}
-                  <span className="text-[#c8f135] font-mono text-[11px]">@{item.name}</span>
-                  <span className="text-[9px] text-zinc-500">({item.category})</span>
-                </button>
-              ));
-            })()}
-          </div>
-        )}
+                if (matched.length === 0) {
+                  return (
+                    <div className="p-3 text-center text-[10px] text-zinc-500 font-mono">
+                      No reference items found
+                    </div>
+                  );
+                }
 
-        {/* ── CLEAN RESPONSIVE PROMPT BOX (BIGGER & SPACIOUS) ── */}
-        <div className="relative w-full rounded-2xl bg-black/50 border border-white/15 focus-within:border-[#c8f135]/70 transition-all overflow-hidden shadow-inner backdrop-blur-2xl group">
-          <textarea
-            ref={textareaRef}
-            value={localPrompt}
-            onChange={handlePromptChange}
-            onSelect={updateCursorState}
-            onKeyUp={updateCursorState}
-            onMouseUp={updateCursorState}
-            placeholder={placeholderText}
-            rows={6}
-            className="w-full bg-transparent p-3 sm:p-4 text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium caret-[#c8f135] selection:bg-[#c8f135]/30 selection:text-white min-h-[120px] sm:min-h-[180px] max-h-[380px]"
-          />
+                return matched.map((item, idx) => (
+                  <button
+                    key={item.id || idx}
+                    type="button"
+                    onClick={() => selectMention(item)}
+                    className="w-full px-2.5 py-2 rounded-lg text-left text-xs font-semibold flex items-center gap-2 hover:bg-white/[0.08] text-zinc-300 hover:text-white transition-all cursor-pointer"
+                  >
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} className="w-5 h-5 rounded object-cover border border-white/20" alt={item.name} />
+                    ) : item.isVideo ? (
+                      <Video className="w-4 h-4 text-cyan-400" />
+                    ) : item.isAudio ? (
+                      <Music className="w-4 h-4 text-amber-400" />
+                    ) : null}
+                    <span className="text-[#c8f135] font-mono text-[11px]">@{item.name}</span>
+                    <span className="text-[9px] text-zinc-500">({item.category})</span>
+                  </button>
+                ));
+              })()}
+            </div>
+          )}
+
+          {/* ── CLEAN RESPONSIVE PROMPT BOX (BIGGER & SPACIOUS) ── */}
+          <div className="relative w-full rounded-2xl bg-black/50 border border-white/15 focus-within:border-[#c8f135]/70 transition-all overflow-hidden shadow-inner backdrop-blur-2xl group">
+            <textarea
+              ref={textareaRef}
+              value={localPrompt}
+              onChange={handlePromptChange}
+              onBlur={handlePromptBlur}
+              onSelect={updateCursorState}
+              onKeyUp={updateCursorState}
+              onMouseUp={updateCursorState}
+              placeholder={placeholderText}
+              rows={6}
+              className="w-full bg-transparent p-3 sm:p-4 text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium caret-[#c8f135] selection:bg-[#c8f135]/30 selection:text-white min-h-[120px] sm:min-h-[180px] max-h-[380px]"
+            />
 
           {/* Bottom Reference Status Bar */}
           <div className="px-3.5 py-1.5 bg-black/40 border-t border-white/5 flex items-center justify-between text-[9px] font-mono select-none">
@@ -2880,6 +2902,7 @@ export const SidePanel = React.memo(({
               {localPrompt.length} chars
             </span>
           </div>
+        </div>
         </div>
 
         {/* Multi-Reference Quick Tag Helper Chips (Shown ONLY in omni-multi mode) */}
@@ -3546,6 +3569,7 @@ export const SidePanel = React.memo(({
                           ref={textareaRef}
                           value={localPrompt}
                           onChange={handlePromptChange}
+                          onBlur={handlePromptBlur}
                           placeholder="Describe your scene in detail. Use @ to reference assets"
                           rows={6}
                           className="w-full bg-transparent text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium caret-[#c8f135] min-h-[120px] sm:min-h-[180px] max-h-[380px]"
@@ -4471,6 +4495,7 @@ export const SidePanel = React.memo(({
                       <textarea
                         value={localPrompt}
                         onChange={handlePromptChange}
+                        onBlur={handlePromptBlur}
                         placeholder="Optional: Add extra direction, style notes, lighting, or scene changes..."
                         rows={2}
                         className="w-full bg-black/50 border border-white/15 focus:border-[#c8f135]/60 rounded-xl p-2.5 text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium backdrop-blur-2xl transition-all"
