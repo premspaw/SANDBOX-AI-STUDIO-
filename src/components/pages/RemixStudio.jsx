@@ -62,6 +62,16 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
 
   const [prompt, setPrompt] = useState(initialMode === 'object-swap' ? defaultSwapPrompt : defaultMotionPrompt);
   const [resolution, setResolution] = useState('720p');
+  const [mobileTab, setMobileTab] = useState('controls'); // 'controls' | 'gallery'
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Media State
   const [videoFile, setVideoFile] = useState(null);
@@ -584,6 +594,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       }
 
       setIsGenerating(true);
+      if (isMobile) setMobileTab('gallery');
       setGenerationProgress(10);
       setStatusMessage('Forging AI Influencer Character Sheet...');
 
@@ -717,6 +728,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     }
 
     setIsGenerating(true);
+    if (isMobile) setMobileTab('gallery');
     setGenerationProgress(10);
     setStatusMessage(isSwapMode ? 'Initiating Genjutsu Object Swap Engine...' : 'Initiating Genjutsu Motion Transfer Engine...');
 
@@ -957,14 +969,62 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         </div>
       </div>
 
+      {/* ── MOBILE VIEW TAB SWITCHER (MATCHING UGC & GENERATOR STUDIO) ── */}
+      {isMobile && (
+        <div className="flex lg:hidden items-center justify-between px-3 py-2 bg-[#08080c] border-b border-white/[0.08] shrink-0 z-30">
+          <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 w-full">
+            <button
+              type="button"
+              onClick={() => setMobileTab('controls')}
+              className={cn(
+                "flex-1 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                mobileTab === 'controls'
+                  ? "bg-[#D4FF00] text-black shadow-md shadow-[#D4FF00]/25 font-black"
+                  : "text-zinc-400 hover:text-white"
+              )}
+            >
+              <SlidersHorizontal size={14} weight="bold" />
+              <span>Remix Controls</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('gallery')}
+              className={cn(
+                "flex-1 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer relative",
+                mobileTab === 'gallery'
+                  ? "bg-[#D4FF00] text-black shadow-md shadow-[#D4FF00]/25 font-black"
+                  : "text-zinc-400 hover:text-white"
+              )}
+            >
+              <FilmStrip size={14} weight="bold" />
+              <span>Gallery</span>
+              {historyList.length > 0 && (
+                <span className={cn(
+                  "text-[9px] font-mono px-1.5 py-0.2 rounded-full ml-1",
+                  mobileTab === 'gallery' ? "bg-black/25 text-black font-extrabold" : "bg-white/10 text-white/70"
+                )}>
+                  {historyList.length}
+                </span>
+              )}
+              {isGenerating && (
+                <span className="w-2 h-2 rounded-full bg-[#D4FF00] animate-ping ml-1" />
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Studio Body */}
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden z-10 custom-scrollbar">
+      <div className="flex-1 flex min-h-0 overflow-hidden z-10">
         
         {/* Left Controls Column */}
-        <div className="w-full lg:w-[400px] xl:w-[440px] border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0d0f14] flex flex-col lg:h-full min-h-0 shrink-0">
+        <div className={cn(
+          "w-full lg:w-[400px] xl:w-[440px] border-r border-white/10 bg-[#0d0f14] flex-col h-full min-h-0 shrink-0 overflow-hidden",
+          isMobile ? (mobileTab === 'controls' ? "flex flex-1 w-full h-full min-h-0" : "hidden") : "flex"
+        )}>
           
           {/* Scrollable Form Area */}
-          <div className="flex-1 lg:overflow-y-auto custom-scrollbar p-3 space-y-3 min-h-0 pb-3">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 min-h-0 pb-4">
             
             {/* Mode Pill Toggle (Motion Transfer vs Objects Swap vs AI Influencer) */}
             <div className="grid grid-cols-3 gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
@@ -1640,7 +1700,10 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         </div>
 
         {/* Right Viewport: Real-time Player & Persistent Gallery Canvas */}
-        <div className="flex-1 flex flex-col min-h-0 bg-[#07080c] lg:overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-3 pb-24 lg:pb-4">
+        <div className={cn(
+          "flex-1 flex-col min-h-0 bg-[#07080c] overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-3 pb-28 lg:pb-4 relative",
+          isMobile ? (mobileTab === 'gallery' ? "flex flex-1 w-full h-full min-h-0" : "hidden") : "flex"
+        )}>
           
           {/* Main Display Stage (Compact preview area) */}
           <div className="w-full h-[280px] sm:h-[360px] shrink-0 rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl relative overflow-hidden flex items-center justify-center shadow-2xl">
@@ -1872,6 +1935,18 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 ))}
               </div>
             </div>
+          )}
+
+          {/* Mobile Floating "Remix Controls" Action Button */}
+          {isMobile && mobileTab === 'gallery' && (
+            <button
+              type="button"
+              onClick={() => setMobileTab('controls')}
+              className="lg:hidden fixed bottom-24 right-4 z-40 px-4 py-2.5 rounded-full bg-[#D4FF00] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_25px_rgba(212,255,0,0.5)] border border-[#D4FF00] flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
+            >
+              <SlidersHorizontal size={14} weight="bold" />
+              <span>Remix Controls</span>
+            </button>
           )}
 
         </div>
