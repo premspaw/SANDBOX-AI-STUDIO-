@@ -933,13 +933,21 @@ export default function createRouter(deps) {
                 finalTaskType = finalImageCount > 0 ? 'reference_to_video' : 'text_to_video';
             }
 
-            // Enforce Google Gemini Omni Flash 1.1 as the sole model
-            const modelName = 'gemini-omni-1.1-flash-preview';
+            // Enforce Google Gemini Omni Flash 1.1 as the active model per official Gemini cookbook
+            let modelName = 'gemini-omni-1.1-flash-preview';
+            if (req.body.model === 'gemini-omni-1.1-flash' || req.body.model === 'gemini-omni-1.1-flash-preview') {
+                modelName = req.body.model;
+            } else if (req.body.model === 'gemini-omni-flash-preview' || req.body.model === 'omni-flash' || req.body.model === 'omni-flash-1.1') {
+                modelName = 'gemini-omni-1.1-flash-preview';
+            }
 
             const responseFormat = {
                 type: "video",
                 delivery: token ? "inline" : "uri"
             };
+            if (req.body.resolution) {
+                responseFormat.resolution = req.body.resolution;
+            }
 
             if (finalTaskType !== 'edit' && finalTaskType !== 'extend') {
                 responseFormat.aspect_ratio = validAspectRatio;
@@ -1031,23 +1039,11 @@ export default function createRouter(deps) {
 
                     console.log(`[OMNI-I2V] [Vertex AI REST PRIMARY] Calling global interactions API on project ${VERTEX_PROJECT_ID}`);
                     const interactionRestUrl = `https://aiplatform.googleapis.com/v1beta1/projects/${VERTEX_PROJECT_ID}/locations/global/interactions`;
-                    
-                    const standardSafetySettings = [
-                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "block_only_high" },
-                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "block_only_high" },
-                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "block_only_high" },
-                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "block_only_high" }
-                    ];
-
                     const interactionReqBody = {
                         model: reqBody.model,
                         input: sdkInput,
                         response_format: responseFormat,
-                        generation_config: {
-                            ...(generationConfig || {}),
-                            safety_settings: standardSafetySettings
-                        },
-                        safety_settings: standardSafetySettings
+                        generation_config: generationConfig
                     };
 
                     const restResp = await fetch(interactionRestUrl, {
@@ -1153,21 +1149,22 @@ export default function createRouter(deps) {
             }
 
             const isVertexPolicyViolation = lastOmniError && (
-                lastOmniError.includes('content_blocked') ||
-                lastOmniError.includes('policy') ||
-                lastOmniError.includes('Policy') ||
-                lastOmniError.includes('Responsible AI') ||
-                lastOmniError.includes('prohibited') ||
-                lastOmniError.includes('prominent individuals') ||
-                lastOmniError.includes('photorealistic individuals') ||
-                lastOmniError.includes('reputational harms') ||
-                lastOmniError.includes('violates Google') ||
-                lastOmniError.includes('safety violations') ||
-                lastOmniError.includes('harmful content')
+                !lastOmniError.includes('Unknown parameter') &&
+                !lastOmniError.includes('safety_settings') &&
+                (
+                    lastOmniError.includes('content_blocked') ||
+                    lastOmniError.includes('Responsible AI') ||
+                    lastOmniError.includes('prohibited_content') ||
+                    lastOmniError.includes('prohibited content') ||
+                    lastOmniError.includes('prominent individuals') ||
+                    lastOmniError.includes('photorealistic individuals') ||
+                    lastOmniError.includes('reputational harms') ||
+                    lastOmniError.includes('violates Google') ||
+                    lastOmniError.includes('safety violations') ||
+                    lastOmniError.includes('harmful content')
+                )
             );
 
-            // Veo Fast fallback has been completely removed per architecture requirements.
-            // When Omni Flash encounters a policy violation or fails, do not silently fall back to Veo or generate text-only videos.
             // Option B: Multi-Key Google AI Studio Fallback (Only if not a policy block)
             if (!success && !isVertexPolicyViolation) {
                 const candidateKeys = [
@@ -1186,17 +1183,21 @@ export default function createRouter(deps) {
                         const endpoint = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${studioKey}`;
                         const headers = { 'Content-Type': 'application/json' };
 
-                        // Force URI delivery mode for Google AI Studio API Key fallback
-                        reqBody.response_format.delivery = "uri";
-                        if (reqBody.model === 'gemini-omni-1.1-flash-preview') {
-                            reqBody.model = 'gemini-omni-flash-preview';
-                        }
+                        const studioReqBody = {
+                            model: 'gemini-omni-1.1-flash-preview',
+                            input: sdkInput,
+                            response_format: {
+                                ...responseFormat,
+                                delivery: "uri"
+                            },
+                            generation_config: generationConfig
+                        };
 
                         console.log(`[OMNI-I2V] [AI Studio Fallback] Trying key ${studioKey.substring(0, 10)}... on ${endpoint}`);
                         const restResponse = await fetch(endpoint, {
                             method: 'POST',
                             headers,
-                            body: JSON.stringify(reqBody)
+                            body: JSON.stringify(studioReqBody)
                         });
 
                         const interactionResult = await restResponse.json();
@@ -1209,7 +1210,7 @@ export default function createRouter(deps) {
                                 continue;
                             }
                             lastOmniError = errMessage;
-                            if (errMessage.includes('content_blocked') || errMessage.includes('policy') || errMessage.includes('Responsible AI') || errMessage.includes('prohibited') || errMessage.includes('prominent individuals') || errMessage.includes('safety violations') || errMessage.includes('harmful content')) {
+                            if (errMessage.includes('content_blocked') || errMessage.includes('Responsible AI') || errMessage.includes('prohibited') || errMessage.includes('prominent individuals') || errMessage.includes('safety violations') || errMessage.includes('harmful content')) {
                                 lastOmniError = errMessage;
                                 break;
                             }
@@ -1354,9 +1355,10 @@ export default function createRouter(deps) {
             }
 
             let msg = error.message || 'Video generation failed';
+            const isParamOrConfigError = msg.includes('Unknown parameter') || msg.includes('safety_settings');
             if (msg.includes('speech edits')) {
                 msg = "Google's video edit model currently cannot edit audio/speech tracks. The audio track has been automatically stripped. Please try again. Your credits have been refunded.";
-            } else if (msg.includes('Responsible AI') || msg.includes('violates Google') || msg.includes('prominent individuals') || msg.includes('prohibited_content') || msg.includes('prohibited content') || msg.includes('content_blocked') || msg.includes('policy') || msg.includes('Policy') || msg.includes('Safety') || msg.includes('safety') || msg.includes('reputational harms') || msg.includes('photorealistic individuals')) {
+            } else if (!isParamOrConfigError && (msg.includes('Responsible AI') || msg.includes('violates Google') || msg.includes('prominent individuals') || msg.includes('prohibited_content') || msg.includes('prohibited content') || msg.includes('content_blocked') || msg.includes('safety violations') || msg.includes('harmful content') || msg.includes('reputational harms') || msg.includes('photorealistic individuals'))) {
                 msg = "Google's Responsible AI policy blocked this generation (detected recognizable persons or prohibited content). Please use a different reference image/video or adjust your prompt and try again. Your credits have been refunded.";
             } else if (msg.includes('prepayment credits are depleted')) {
                 msg = "Google AI Studio API key prepayment credits are depleted. Please add credits at https://ai.studio/projects or wait for Vertex AI quota to reset. Credits refunded.";

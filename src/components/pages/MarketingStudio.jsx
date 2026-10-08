@@ -1169,7 +1169,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                         '1024x1792': '9:16',
                         '1792x1024': '16:9'
                     };
-                    const targetModel = videoEngine === 'omni' ? 'gemini-omni-preview' : 'gemini-omni-flash-preview';
+                    const targetModel = 'gemini-omni-1.1-flash-preview';
 
                     // Convert staged reference images to expected structure
                     const ref_images = referenceImages.map(img => ({

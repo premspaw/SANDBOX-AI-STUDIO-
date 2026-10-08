@@ -1802,7 +1802,7 @@ Return ONLY a valid JSON array containing exactly ${targetShotsCount} shot objec
                         duration: shot.duration || 5,
                         aspectRatio: targetAspectRatio,
                         resolution: targetResolution,
-                        model: 'gemini-omni-flash-preview',
+                        model: 'gemini-omni-1.1-flash-preview',
                         ref_images: refImages,
                         userId,
                         generateAudio: true,

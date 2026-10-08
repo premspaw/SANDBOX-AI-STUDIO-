@@ -1174,7 +1174,7 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
             duration: segmentDuration,
             aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio as any,
             resolution: videoResolution || '720p',
-            model: 'gemini-omni-flash-preview',
+            model: 'gemini-omni-1.1-flash-preview',
             userId: currentUserId,
             generateAudio: includeAudio,
             creditReason: 'veo_fast',

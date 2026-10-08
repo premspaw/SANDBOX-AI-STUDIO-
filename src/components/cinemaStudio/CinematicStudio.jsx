@@ -2886,9 +2886,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       }
 
       let targetModel = activeEngine;
-      if (activeEngine === 'omni') targetModel = 'gemini-omni-preview';
-      else if (activeEngine === 'omni-flash') targetModel = 'gemini-omni-flash-preview';
-      else if (activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview') targetModel = 'gemini-omni-1.1-flash-preview';
+      if (activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview') targetModel = 'gemini-omni-1.1-flash-preview';
 
       const identity_images = taggedItems.map(item => item.imageUrl).filter(Boolean);
       const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
@@ -3198,13 +3196,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           let targetModel = resolvedEngine;
           let engineLabel = ENGINES.find(e => e.id === resolvedEngine)?.label || (isOmniEngine ? 'Omni' : 'Veo 3.1');
           
-          if (resolvedEngine === 'omni') {
-            targetModel = 'gemini-omni-preview';
-            engineLabel = 'Omni';
-          } else if (resolvedEngine === 'omni-flash') {
-            targetModel = 'gemini-omni-flash-preview';
-            engineLabel = 'Omni';
-          } else if (resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') {
+          if (resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') {
             targetModel = 'gemini-omni-1.1-flash-preview';
             engineLabel = 'Omni';
           }

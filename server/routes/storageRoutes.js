@@ -54,6 +54,11 @@ export default function createRouter(deps) {
                 }
             }
 
+            // Remap legacy or DNS-unresolvable R2 dev domain to the custom CDN domain cdn.zerolens.in
+            if (typeof url === 'string') {
+                url = url.replace(/pub-05a4fe33e706492e8d437c36f9a8aa94\.r2\.dev/g, 'cdn.zerolens.in');
+            }
+
             // Secure validation to prevent SSRF
             const parsedUrl = await validateProxyUrl(url);
             const finalUrl = parsedUrl.toString();
