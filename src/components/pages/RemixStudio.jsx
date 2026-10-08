@@ -1600,32 +1600,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
               </div>
             )}
 
-            {/* In-form Generate Button */}
-            <div className="pt-1">
-              <button
-                onClick={handleStartGeneration}
-                disabled={isGenerating}
-                className={`w-full py-3.5 rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
-                  isGenerating
-                    ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed border border-white/10'
-                    : 'bg-[#D4FF00] hover:bg-[#bce400] text-black shadow-[0_0_25px_rgba(212,255,0,0.3)] active:scale-[0.98]'
-                }`}
-              >
-                {isGenerating ? (
-                  <>
-                    <ArrowsClockwise size={18} className="animate-spin text-black" />
-                    <span>Processing ({generationProgress}%)</span>
-                  </>
-                ) : (
-                  <>
-                    <Lightning size={16} weight="fill" />
-                    <span>
-                      Generate • {isInfluencerMode ? '6 Shorts (₹6 · 2K Sheet)' : `${costAmount} Shorts (${effectiveDuration}s)`}
-                    </span>
-                  </>
-                )}
-              </button>
-            </div>
+
           </div>
 
           {/* Fixed Bottom Generate Action (Pinned, always visible) */}
