@@ -1185,7 +1185,7 @@ export default function LeftSidebar() {
                 </section>
               )}
             </>
-          ))}
+          )}
         </div>
 
         {/* ── Bottom Controls Bar (Fixed at bottom for ALL tabs) ── */}
