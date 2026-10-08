@@ -236,6 +236,8 @@ export interface UGCContextType {
   setIsGalleryOpen: (v: boolean) => void;
   leftPanelMode: 'image' | 'video';
   setLeftPanelMode: (v: 'image' | 'video') => void;
+  mobileTab: 'controls' | 'gallery';
+  setMobileTab: (v: 'controls' | 'gallery') => void;
   inpaintImg: string | null;
   setInpaintImg: (v: string | null) => void;
   showVideoMontageOptions: boolean;

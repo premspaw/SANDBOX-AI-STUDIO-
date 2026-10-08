@@ -254,21 +254,12 @@ export default function LeftSidebar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const sidebarWidth = isMobile ? (typeof window !== 'undefined' ? Math.min(Math.round(window.innerWidth * 0.88), 350) : 340) : 280;
-
   return (
-    <div className="absolute md:relative flex shrink-0 h-full z-[45]">
-      {/* Mobile backdrop overlay */}
-      {isMobile && isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/75 md:backdrop-blur-xs z-[40] md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+    <div className="w-full md:w-auto relative flex shrink-0 h-full z-[45]">
       <motion.div
-        animate={{ width: isSidebarOpen ? sidebarWidth : 0, opacity: isSidebarOpen ? 1 : 0 }}
+        animate={{ width: isMobile ? '100%' : (isSidebarOpen ? 280 : 0), opacity: isMobile ? 1 : (isSidebarOpen ? 1 : 0) }}
         transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-        className="h-full border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden relative z-[45]"
+        className="h-full w-full md:w-auto border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden relative z-[45]"
         style={{ minWidth: 0, willChange: 'width, opacity', transform: 'translateZ(0)' }}
       >
         {/* ── UNIFIED TOP TAB BAR IN SIDEBAR (ADMIN ONLY) ── */}
@@ -1711,22 +1702,24 @@ export default function LeftSidebar() {
         </div>
       </motion.div>
 
-      {/* Drawer toggle button — sits on the right edge of the sidebar wrapper */}
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className={`absolute top-1/2 -translate-y-1/2 ${isSidebarOpen ? '-right-11 md:-right-7' : '-right-11 md:-right-7'} z-[70] w-11 h-16 md:w-7 md:h-14 flex items-center justify-center rounded-r-2xl transition-all shadow-2xl cursor-pointer select-none
-          ${isSidebarOpen
-            ? 'bg-[#111113] border border-[#c8f135]/40 text-[#c8f135] hover:border-[#c8f135]/80 hover:bg-[#c8f135]/10 shadow-[0_0_12px_rgba(200,241,53,0.25)]'
-            : 'bg-[#c8f135] border-2 border-[#c8f135] text-black hover:bg-[#d8ff43] shadow-[0_0_25px_rgba(200,241,53,0.85)] scale-105 active:scale-95'
-          }`}
-        title={isSidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-      >
-        {isSidebarOpen ? (
-          <ChevronLeft className="w-6 h-6 md:w-4 md:h-4 stroke-[2.5]" />
-        ) : (
-          <ChevronRight className="w-6 h-6 md:w-4 md:h-4 stroke-[2.5]" />
-        )}
-      </button>
+      {/* Drawer toggle button — sits on the right edge of the sidebar wrapper (Desktop only) */}
+      {!isMobile && (
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className={`hidden md:flex absolute top-1/2 -translate-y-1/2 -right-7 z-[70] w-7 h-14 items-center justify-center rounded-r-2xl transition-all shadow-2xl cursor-pointer select-none
+            ${isSidebarOpen
+              ? 'bg-[#111113] border border-[#c8f135]/40 text-[#c8f135] hover:border-[#c8f135]/80 hover:bg-[#c8f135]/10 shadow-[0_0_12px_rgba(200,241,53,0.25)]'
+              : 'bg-[#c8f135] border-2 border-[#c8f135] text-black hover:bg-[#d8ff43] shadow-[0_0_25px_rgba(200,241,53,0.85)] scale-105 active:scale-95'
+            }`}
+          title={isSidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+        >
+          {isSidebarOpen ? (
+            <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
+          ) : (
+            <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+          )}
+        </button>
+      )}
     </div>
   );
 }

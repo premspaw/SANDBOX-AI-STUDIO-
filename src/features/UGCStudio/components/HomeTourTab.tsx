@@ -2062,10 +2062,10 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         </div>
       </motion.div>
 
-      {/* Drawer toggle button */}
+      {/* Drawer toggle button (Desktop only) */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className={`absolute z-30 w-10 h-16 md:w-6 md:h-12 flex items-center justify-center rounded-r-xl transition-all shadow-lg
+        className={`absolute z-30 w-10 h-16 md:w-6 md:h-12 hidden md:flex items-center justify-center rounded-r-xl transition-all shadow-lg
           ${isSidebarOpen
             ? 'bg-[#111113] border border-[#c8f135]/20 text-[#c8f135]/60 hover:text-[#c8f135] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/5 shadow-[0_0_8px_rgba(200,241,53,0.1)] hover:shadow-[0_0_12px_rgba(200,241,53,0.35)]'
             : 'bg-[#c8f135] border border-[#c8f135] text-black hover:bg-[#d4f545] animate-pulse shadow-[0_0_12px_rgba(200,241,53,0.7)]'

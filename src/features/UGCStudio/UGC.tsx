@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Upload, User, Box, FileText, Camera, Play, Pause, Wand2, Loader2, Volume2, VolumeX, Sparkles, Video, X, Scissors, Plus, Trash2, Folder, ChevronRight, ChevronLeft, ChevronDown, Layout, AlertCircle, HelpCircle, Settings, SidebarClose, Download, GripVertical, Check, CheckCircle, BrainCircuit, Zap, ShieldCheck, Shield, Clock, Activity, Maximize, Layers, Search, Package, Droplets, Wind, Fingerprint, Lock, PlayCircle, RotateCcw, Film, MapPin, Pencil } from 'lucide-react';
+import { Upload, User, Box, FileText, Camera, Play, Pause, Wand2, Loader2, Volume2, VolumeX, Sparkles, Video, X, Scissors, Plus, Trash2, Folder, ChevronRight, ChevronLeft, ChevronDown, Layout, AlertCircle, HelpCircle, Settings, SidebarClose, Download, GripVertical, Check, CheckCircle, BrainCircuit, Zap, ShieldCheck, Shield, Clock, Activity, Maximize, Layers, Search, Package, Droplets, Wind, Fingerprint, Lock, PlayCircle, RotateCcw, Film, MapPin, Pencil, Sliders } from 'lucide-react';
 // Note: LucideIcons wildcard import removed — use named imports above instead
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
@@ -8,6 +8,7 @@ import { supabase as rawSupabase } from '../../lib/supabase';
 const supabase = rawSupabase as any;
 import { useAppStore } from '../../store';
 import { useShorts } from '../../hooks/useShorts';
+import { cn } from '../../lib/utils';
 import {
   DndContext,
   closestCenter,
@@ -633,6 +634,17 @@ export default function UGC() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(true);
   const [inpaintImg, setInpaintImg] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth > 768 : true);
+  const [mobileTab, setMobileTab] = useState<'controls' | 'gallery'>('controls');
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      setIsMobile(prev => (prev !== mobile ? mobile : prev));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [attachedRefImage, setAttachedRefImage] = useState<string | null>(null);
   const [attachedRefImages, setAttachedRefImages] = useState<string[]>([]);
   const [spokenDialog, setSpokenDialog] = useState<string>('');
@@ -3958,6 +3970,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setVideoProgressMsg(initialProgressMsg);
     const placeholderVideoId = `vid-pending-${Date.now()}`;
     addToGallery({ id: placeholderVideoId, type: 'video', url: '', loading: true });
+    if (isMobile) setMobileTab('gallery');
     try {
       let stylePrompt = '';
       if (imageStyle === 'ultra-realistic') {
@@ -4440,6 +4453,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setIsGalleryOpen,
     leftPanelMode,
     setLeftPanelMode,
+    mobileTab,
+    setMobileTab,
     inpaintImg,
     setInpaintImg,
     showVideoMontageOptions,
@@ -4623,13 +4638,63 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       {/* ── Scene Templates Aside ─────────────────────────────────── */}
       <SceneTemplatesAside />
 
+      {/* ── MOBILE VIEW TAB SWITCHER (VISIBLE ON MOBILE ONLY) ── */}
+      {isMobile && (
+        <div className="flex md:hidden items-center justify-between px-3 py-2 bg-[#08080c] border-b border-white/[0.08] shrink-0 z-30">
+          <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 w-full">
+            <button
+              type="button"
+              onClick={() => setMobileTab('controls')}
+              className={cn(
+                "flex-1 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                mobileTab === 'controls'
+                  ? "bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/25"
+                  : "text-zinc-400 hover:text-white"
+              )}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>UGC Controls</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('gallery')}
+              className={cn(
+                "flex-1 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer relative",
+                mobileTab === 'gallery'
+                  ? "bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/25"
+                  : "text-zinc-400 hover:text-white"
+              )}
+            >
+              <Film className="w-3.5 h-3.5" />
+              <span>Gallery</span>
+              {gallery.length > 0 && (
+                <span className={cn(
+                  "text-[9px] font-mono px-1.5 py-0.2 rounded-full ml-1",
+                  mobileTab === 'gallery' ? "bg-black/25 text-black font-extrabold" : "bg-white/10 text-white/70"
+                )}>
+                  {gallery.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Main DirectorStudio Layout ───────────────────────────── */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Left Sidebar */}
-        <LeftSidebar />
+        <div className={cn(
+          "h-full shrink-0",
+          isMobile ? (mobileTab === 'controls' ? "flex flex-1 w-full min-h-0" : "hidden") : "flex"
+        )}>
+          <LeftSidebar />
+        </div>
 
         {/* Center Column — Gallery / Editor */}
-        <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden relative">
+        <div className={cn(
+          "min-w-0 flex flex-col h-full overflow-hidden relative",
+          isMobile ? (mobileTab === 'gallery' ? "flex flex-1 w-full min-h-0" : "hidden") : "flex-1"
+        )}>
           <Header />
 
 
