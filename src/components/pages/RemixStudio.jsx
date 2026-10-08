@@ -846,6 +846,63 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     setTimeout(() => setCopiedUrl(false), 2000);
   };
 
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadMedia = async (url, type = 'video', mode = 'motion-transfer') => {
+    if (!url) return;
+    const showToast = useAppStore.getState().showToast;
+    try {
+      setIsDownloading(true);
+      if (showToast) showToast("Downloading directly to your device...", "info");
+
+      const ext = (type === 'image' || mode === 'ai-influencer') ? 'png' : 'mp4';
+      const filename = mode === 'ai-influencer' 
+        ? `remix_influencer_${Date.now()}.${ext}` 
+        : mode === 'object-swap' 
+        ? `remix_object_swap_${Date.now()}.${ext}` 
+        : `remix_motion_${Date.now()}.${ext}`;
+
+      // Fetch as blob to trigger direct local browser download and avoid navigating/opening new tabs
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Download request failed: ${res.statusText}`);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+      }, 300);
+
+      if (showToast) showToast("Download completed successfully!", "success");
+    } catch (err) {
+      console.warn("Direct blob download error, falling back to proxy stream:", err);
+      try {
+        const ext = (type === 'image' || mode === 'ai-influencer') ? 'png' : 'mp4';
+        const filename = `remix_${Date.now()}.${ext}`;
+        const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}&download=${encodeURIComponent(filename)}`;
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = proxyUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => document.body.removeChild(a), 300);
+      } catch (fallbackErr) {
+        console.error("All direct download methods failed:", fallbackErr);
+        if (showToast) showToast("Download failed. Opening asset in view...", "error");
+        window.open(url, '_blank');
+      }
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // Filter categories by current tier
   const visibleCategories = useMemo(() => {
     if (!optionsCatalog || optionsCatalog.length === 0) return [];
@@ -1689,16 +1746,16 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                     <Copy size={14} />
                     <span>{copiedUrl ? 'Copied!' : 'Copy'}</span>
                   </button>
-                  <a
-                    href={generatedResult.url}
-                    download={generatedResult.mode === 'ai-influencer' ? "ai-influencer-sheet.png" : generatedResult.mode === 'object-swap' ? "genjutsu-object-swap.mp4" : "remix-motion-transfer.mp4"}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-1.5 sm:p-2 rounded-xl bg-[#D4FF00] text-black font-bold hover:bg-[#bce400] transition-all flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs"
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadMedia(generatedResult.url, generatedResult.type, generatedResult.mode)}
+                    disabled={isDownloading}
+                    className="p-1.5 sm:p-2 rounded-xl bg-[#D4FF00] text-black font-bold hover:bg-[#bce400] transition-all flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs cursor-pointer active:scale-95 disabled:opacity-50 shadow-lg"
+                    title="Download directly to your computer or phone"
                   >
-                    <DownloadSimple size={14} weight="bold" />
-                    <span>Download</span>
-                  </a>
+                    <DownloadSimple size={14} weight="bold" className={isDownloading ? "animate-bounce" : ""} />
+                    <span>{isDownloading ? 'Downloading...' : 'Download'}</span>
+                  </button>
                 </div>
               </div>
             ) : (
@@ -1832,15 +1889,28 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                         {item.mode === 'ai-influencer' ? 'Influencer' : item.mode === 'object-swap' ? 'Swap' : 'Remix'}
                       </div>
 
-                      {/* Delete Action */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteHistoryItem(item.id, e)}
-                        className="absolute top-1.5 right-1.5 p-1 rounded bg-red-500/80 hover:bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Delete from studio gallery"
-                      >
-                        <Trash size={11} />
-                      </button>
+                      {/* Card Actions (Direct Download & Delete) */}
+                      <div className="absolute top-1.5 right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadMedia(item.url, item.type, item.mode);
+                          }}
+                          className="p-1 rounded bg-black/70 hover:bg-[#D4FF00] hover:text-black text-white transition-colors cursor-pointer"
+                          title="Download directly to your device"
+                        >
+                          <DownloadSimple size={11} weight="bold" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteHistoryItem(item.id, e)}
+                          className="p-1 rounded bg-red-500/80 hover:bg-red-500 text-white transition-colors cursor-pointer"
+                          title="Delete from studio gallery"
+                        >
+                          <Trash size={11} />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="p-1 mt-1">
@@ -1918,13 +1988,24 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         {showLightbox && generatedResult && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 sm:p-8">
             <div className="relative max-w-5xl max-h-[90vh] flex flex-col items-center justify-center">
-              <button
-                type="button"
-                onClick={() => setShowLightbox(false)}
-                className="absolute -top-10 right-0 p-2 text-zinc-400 hover:text-white rounded-full bg-white/10"
-              >
-                <X size={20} />
-              </button>
+              <div className="absolute -top-10 right-0 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadMedia(generatedResult.url, generatedResult.type, generatedResult.mode)}
+                  disabled={isDownloading}
+                  className="px-3 py-1.5 text-xs font-bold rounded-full bg-[#D4FF00] text-black hover:bg-[#bce400] flex items-center gap-1.5 shadow-lg cursor-pointer transition-all active:scale-95"
+                >
+                  <DownloadSimple size={14} weight="bold" />
+                  <span>Download</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLightbox(false)}
+                  className="p-2 text-zinc-400 hover:text-white rounded-full bg-white/10 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
               <img
                 src={generatedResult.url}
                 alt="Character Sheet Lightbox"
