@@ -44,6 +44,7 @@ import { useShorts } from '../../hooks/useShorts';
 import { SHORTS_COST } from '../../config/shortsConfig';
 import { AssetsLibrary } from '../panels/AssetsLibrary';
 import { supabase } from '../../lib/supabase';
+import { cn } from '../../lib/utils';
 
 export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   // Mode: 'motion-transfer' | 'object-swap' | 'ai-influencer'
@@ -61,6 +62,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
 
   const [prompt, setPrompt] = useState(initialMode === 'object-swap' ? defaultSwapPrompt : defaultMotionPrompt);
   const [resolution, setResolution] = useState('720p');
+  const [mobileTab, setMobileTab] = useState('controls'); // 'controls' | 'preview'
   
   // Media State
   const [videoFile, setVideoFile] = useState(null);
@@ -583,6 +585,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       }
 
       setIsGenerating(true);
+      setMobileTab('preview');
       setGenerationProgress(10);
       setStatusMessage('Forging AI Influencer Character Sheet...');
 
@@ -716,6 +719,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     }
 
     setIsGenerating(true);
+    setMobileTab('preview');
     setGenerationProgress(10);
     setStatusMessage(isSwapMode ? 'Initiating Genjutsu Object Swap Engine...' : 'Initiating Genjutsu Motion Transfer Engine...');
 
@@ -857,19 +861,19 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   return (
     <div className="flex-1 h-full w-full bg-[#0a0c10] text-white flex flex-col overflow-hidden relative font-sans">
       {/* Top Header Bar */}
-      <div className="h-14 border-b border-white/10 px-6 flex items-center justify-between bg-black/40 backdrop-blur-xl z-20 shrink-0">
-        <div className="flex items-center gap-6">
+      <div className="h-14 border-b border-white/10 px-3 sm:px-6 flex items-center justify-between bg-black/40 backdrop-blur-xl z-20 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-6">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-white tracking-wide">Remix Studio</span>
           </div>
         </div>
 
         {/* Header Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Credit Pill */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-zinc-300">
-            <Coins size={15} className="text-[#D4FF00]" />
-            <span>Shorts Balance:</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-zinc-300">
+            <Coins size={14} className="text-[#D4FF00]" />
+            <span className="hidden sm:inline">Shorts Balance:</span>
             <span className="font-bold text-white">{shorts ?? 0}</span>
           </div>
 
@@ -877,7 +881,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
           <button
             onClick={handleStartGeneration}
             disabled={isGenerating}
-            className={`px-4 py-2 rounded-xl font-black uppercase tracking-wider text-xs flex items-center gap-2 transition-all ${
+            className={`px-3 sm:px-4 py-2 rounded-xl font-black uppercase tracking-wider text-[11px] sm:text-xs flex items-center gap-1.5 sm:gap-2 transition-all ${
               isGenerating
                 ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed border border-white/10'
                 : 'bg-[#D4FF00] hover:bg-[#bce400] text-black shadow-[0_0_20px_rgba(212,255,0,0.3)] active:scale-95'
@@ -885,14 +889,58 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
           >
             {isGenerating ? (
               <>
-                <ArrowsClockwise size={15} className="animate-spin text-black" />
-                <span>Processing ({generationProgress}%)</span>
+                <ArrowsClockwise size={14} className="animate-spin text-black" />
+                <span>{generationProgress}%</span>
               </>
             ) : (
               <>
-                <Lightning size={15} weight="fill" />
-                <span>Generate • {isInfluencerMode ? '6 Shorts' : `${costAmount} Shorts`}</span>
+                <Lightning size={14} weight="fill" />
+                <span className="hidden sm:inline">Generate • {isInfluencerMode ? '6 Shorts' : `${costAmount} Shorts`}</span>
+                <span className="sm:hidden">{isInfluencerMode ? '6⚡' : `${costAmount}⚡`}</span>
               </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile View Tab Switcher (Visible on mobile/tablet screens only) */}
+      <div className="flex lg:hidden items-center justify-between px-3 py-2 bg-[#08080c] border-b border-white/[0.08] shrink-0 z-20">
+        <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 w-full">
+          <button
+            type="button"
+            onClick={() => setMobileTab('controls')}
+            className={cn(
+              "flex-1 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+              mobileTab === 'controls'
+                ? "bg-[#D4FF00] text-black shadow-md shadow-[#D4FF00]/25"
+                : "text-zinc-400 hover:text-white"
+            )}
+          >
+            <SlidersHorizontal size={14} weight="bold" />
+            <span>Controls</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('preview')}
+            className={cn(
+              "flex-1 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer relative",
+              mobileTab === 'preview'
+                ? "bg-[#D4FF00] text-black shadow-md shadow-[#D4FF00]/25"
+                : "text-zinc-400 hover:text-white"
+            )}
+          >
+            <FilmStrip size={14} weight="bold" />
+            <span>Preview & History</span>
+            {historyList.length > 0 && (
+              <span className={cn(
+                "text-[9px] font-mono px-1.5 py-0.2 rounded-full ml-1",
+                mobileTab === 'preview' ? "bg-black/25 text-black font-extrabold" : "bg-white/10 text-white/70"
+              )}>
+                {historyList.length}
+              </span>
+            )}
+            {isGenerating && (
+              <span className="w-2 h-2 rounded-full bg-[#D4FF00] animate-ping ml-1" />
             )}
           </button>
         </div>
@@ -902,10 +950,13 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden z-10">
         
         {/* Left Controls Column */}
-        <div className="w-full lg:w-[400px] xl:w-[440px] border-r border-white/10 bg-[#0d0f14] flex flex-col h-full min-h-0 shrink-0 overflow-hidden">
+        <div className={cn(
+          "w-full lg:w-[400px] xl:w-[440px] border-r border-white/10 bg-[#0d0f14] flex-col h-full min-h-0 shrink-0 overflow-hidden",
+          mobileTab === 'controls' ? "flex" : "hidden lg:flex"
+        )}>
           
           {/* Scrollable Form Area */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 min-h-0">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 min-h-0 pb-20 lg:pb-3">
             
             {/* Mode Pill Toggle (Motion Transfer vs Objects Swap vs AI Influencer) */}
             <div className="grid grid-cols-3 gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
@@ -1606,7 +1657,10 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         </div>
 
         {/* Right Viewport: Real-time Player & Persistent Gallery Canvas */}
-        <div className="flex-1 flex flex-col min-h-0 bg-[#07080c] overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-3">
+        <div className={cn(
+          "flex-1 flex-col min-h-0 bg-[#07080c] overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-3 pb-24 lg:pb-4",
+          mobileTab === 'preview' ? "flex" : "hidden lg:flex"
+        )}>
           
           {/* Main Display Stage (Compact preview area) */}
           <div className="w-full h-[280px] sm:h-[360px] shrink-0 rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl relative overflow-hidden flex items-center justify-center shadow-2xl">
@@ -1651,24 +1705,24 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 )}
                 
                 {/* Overlay Action Bar */}
-                <div className="absolute top-4 right-4 flex items-center gap-2">
+                <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex items-center gap-1.5 sm:gap-2 z-10">
                   <button
                     type="button"
                     onClick={() => handleCopyLink(generatedResult.url)}
-                    className="p-2 rounded-xl bg-black/70 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all flex items-center gap-1.5 text-xs font-semibold"
+                    className="p-1.5 sm:p-2 rounded-xl bg-black/70 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-semibold"
                   >
-                    <Copy size={15} />
-                    <span>{copiedUrl ? 'Copied!' : 'Copy Link'}</span>
+                    <Copy size={14} />
+                    <span>{copiedUrl ? 'Copied!' : 'Copy'}</span>
                   </button>
                   <a
                     href={generatedResult.url}
                     download={generatedResult.mode === 'ai-influencer' ? "ai-influencer-sheet.png" : generatedResult.mode === 'object-swap' ? "genjutsu-object-swap.mp4" : "remix-motion-transfer.mp4"}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-2 rounded-xl bg-[#D4FF00] text-black font-bold hover:bg-[#bce400] transition-all flex items-center gap-1.5 text-xs"
+                    className="p-1.5 sm:p-2 rounded-xl bg-[#D4FF00] text-black font-bold hover:bg-[#bce400] transition-all flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs"
                   >
-                    <DownloadSimple size={15} weight="bold" />
-                    <span>Download {generatedResult.mode === 'ai-influencer' ? '2K Sheet' : 'MP4'}</span>
+                    <DownloadSimple size={14} weight="bold" />
+                    <span>Download</span>
                   </a>
                 </div>
               </div>
@@ -1826,6 +1880,18 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
               </div>
             </div>
           )}
+
+          {/* Mobile Floating Back to Controls Button */}
+          <div className="lg:hidden sticky bottom-2 left-0 right-0 pt-2 flex justify-center z-30 pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => setMobileTab('controls')}
+              className="px-4 py-2.5 rounded-xl bg-zinc-900/95 backdrop-blur-xl border border-white/20 text-white text-xs font-black uppercase tracking-wider shadow-2xl hover:bg-zinc-800 flex items-center gap-2 active:scale-95"
+            >
+              <SlidersHorizontal size={14} className="text-[#D4FF00]" />
+              <span>Back to Controls</span>
+            </button>
+          </div>
         </div>
       </div>
 
