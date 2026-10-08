@@ -584,7 +584,6 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       }
 
       setIsGenerating(true);
-      setMobileTab('preview');
       setGenerationProgress(10);
       setStatusMessage('Forging AI Influencer Character Sheet...');
 
@@ -1875,17 +1874,6 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
             </div>
           )}
 
-          {/* Mobile Floating Back to Controls Button */}
-          <div className="lg:hidden sticky bottom-2 left-0 right-0 pt-2 flex justify-center z-30 pointer-events-auto">
-            <button
-              type="button"
-              onClick={() => setMobileTab('controls')}
-              className="px-4 py-2.5 rounded-xl bg-zinc-900/95 backdrop-blur-xl border border-white/20 text-white text-xs font-black uppercase tracking-wider shadow-2xl hover:bg-zinc-800 flex items-center gap-2 active:scale-95"
-            >
-              <SlidersHorizontal size={14} className="text-[#D4FF00]" />
-              <span>Back to Controls</span>
-            </button>
-          </div>
         </div>
       </div>
 
