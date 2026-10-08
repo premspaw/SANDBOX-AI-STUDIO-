@@ -987,55 +987,54 @@ export default function createRouter(deps) {
             let success = false;
             let lastOmniError = null;
 
+            // Build the structured input in the format required by interactions API
+            // The Python SDK format: input=[{type:'user_input', content:[{type:'text', data:'...'}]}]
+            let sdkContent;
+            if (typeof finalInput === 'string') {
+                // Plain text prompt — wrap as text content object
+                sdkContent = [{ type: 'text', text: finalInput }];
+            } else if (Array.isArray(finalInput)) {
+                // Multimodal parts — remap to interactions API content format
+                sdkContent = finalInput.map(part => {
+                    if (part.type === 'text') return { type: 'text', text: part.text };
+                    if (part.type === 'image') return { type: 'image', data: part.data, mime_type: part.mime_type };
+                    if (part.type === 'video') {
+                        if (part.uri && (part.uri.startsWith('gs://') || part.uri.startsWith('https://generativelanguage.googleapis.com'))) {
+                            return { type: 'video', uri: part.uri };
+                        }
+                        return {
+                            type: 'video',
+                            data: part.data,
+                            mime_type: part.mime_type || 'video/mp4'
+                        };
+                    }
+                    if (part.type === 'document') {
+                        if (part.data) return { type: 'document', data: part.data };
+                        if (part.uri) return { type: 'document', uri: part.uri };
+                        return null;
+                    }
+                    if (part.type === 'audio') return { type: 'audio', data: part.data, mime_type: part.mime_type };
+                    return part;
+                }).filter(Boolean);
+            } else {
+                sdkContent = [{ type: 'text', text: String(finalInput) }];
+            }
+            
+            const sdkInput = [
+                {
+                    type: 'user_input',
+                    content: sdkContent
+                }
+            ];
+
+            // Construct generation_config from reqBody
+            const generationConfig = reqBody.generation_config;
+
             // --- Option A: Vertex AI SDK via 'global' location with Api-Revision header ---
             // This mirrors the Python SDK: genai.Client(vertexai=True, project=..., location='global')
             if (token || VERTEX_PROJECT_ID) {
                 try {
                     const vertexOmniClient = createVertexOmniClient();
-                    
-                    // Build the structured input in the format required by interactions API
-                    // The Python SDK format: input=[{type:'user_input', content:[{type:'text', data:'...'}]}]
-                    let sdkContent;
-                    if (typeof finalInput === 'string') {
-                        // Plain text prompt — wrap as text content object
-                        sdkContent = [{ type: 'text', text: finalInput }];
-                    } else if (Array.isArray(finalInput)) {
-                        // Multimodal parts — remap to interactions API content format
-                        sdkContent = finalInput.map(part => {
-                            if (part.type === 'text') return { type: 'text', text: part.text };
-                            if (part.type === 'image') return { type: 'image', data: part.data, mime_type: part.mime_type };
-                            if (part.type === 'video') {
-                                if (part.uri && (part.uri.startsWith('gs://') || part.uri.startsWith('https://generativelanguage.googleapis.com'))) {
-                                    return { type: 'video', uri: part.uri };
-                                }
-                                return {
-                                    type: 'video',
-                                    data: part.data,
-                                    mime_type: part.mime_type || 'video/mp4'
-                                };
-                            }
-                            if (part.type === 'document') {
-                                if (part.data) return { type: 'document', data: part.data };
-                                if (part.uri) return { type: 'document', uri: part.uri };
-                                return null;
-                            }
-                            if (part.type === 'audio') return { type: 'audio', data: part.data, mime_type: part.mime_type };
-                            return part;
-                        }).filter(Boolean);
-                    } else {
-                        sdkContent = [{ type: 'text', text: String(finalInput) }];
-                    }
-                    
-                    const sdkInput = [
-                        {
-                            type: 'user_input',
-                            content: sdkContent
-                        }
-                    ];
-
-                    // Construct response_format from reqBody
-                    const responseFormat = reqBody.response_format;
-                    const generationConfig = reqBody.generation_config;
 
                     console.log(`[OMNI-I2V] [Vertex AI REST PRIMARY] Calling global interactions API on project ${VERTEX_PROJECT_ID}`);
                     const interactionRestUrl = `https://aiplatform.googleapis.com/v1beta1/projects/${VERTEX_PROJECT_ID}/locations/global/interactions`;
