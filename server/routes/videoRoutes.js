@@ -92,8 +92,38 @@ export default function createRouter(deps) {
 
             const targetUserId = user ? user.id : userId;
 
+            const adminPassword = req?.headers?.['x-admin-password'] || '';
+            const isHeaderAdmin = adminPassword === 'admin123' || adminPassword === '10000';
+            let isAdmin = isHeaderAdmin || req.body?.isAdmin === true || req.headers?.['x-is-admin'] === 'true';
+            if (!isAdmin && user) {
+                if (user.role === 'admin' || (user.email && (user.email.startsWith('premspaw') || user.email.includes('admin')))) {
+                    isAdmin = true;
+                }
+            }
+            if (!isAdmin && targetUserId) {
+                const adminClient = deps.supabaseAdmin || deps.supabase;
+                if (adminClient) {
+                    try {
+                        const { data: profile } = await adminClient
+                            .from('profiles')
+                            .select('role, email')
+                            .eq('id', targetUserId)
+                            .single();
+                        if (profile?.role === 'admin' || (profile?.email && (profile.email.startsWith('premspaw') || profile.email.includes('admin')))) {
+                            isAdmin = true;
+                        }
+                    } catch (err) {
+                        console.warn('[VEO-I2V] Role lookup failed:', err.message);
+                    }
+                }
+            }
+
             const apiKey = await resolveGoogleApiKey(req, targetUserId, true);
             const token = await getVertexToken();
+            if (isAdmin && !token) {
+                console.error('[VEO-I2V] ❌ Admin request detected but Vertex AI service account token is missing.');
+                throw new Error('Vertex AI Error: Service account token could not be acquired for Admin. Please verify Vertex AI credentials.');
+            }
             if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key');
 
             // Deduct credits: prefer client-sent creditCost if provided
@@ -357,8 +387,12 @@ export default function createRouter(deps) {
                 }
             }
 
-            // --- Option B: Google AI Studio / Gemini API (Fallback) ---
-            if (!success) {
+            // --- Option B: Google AI Studio / Gemini API (Fallback for non-admins) ---
+            if (!success && isAdmin) {
+                console.log(`[VEO-I2V] 🛡️ [Admin User] Skipping Google AI Studio fallback. Strictly enforcing Vertex AI execution.`);
+            }
+
+            if (!success && !isAdmin) {
                 const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
                 if (studioKey || token) {
                     try {

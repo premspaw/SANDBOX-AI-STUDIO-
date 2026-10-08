@@ -390,9 +390,9 @@ export default function createRouter(deps) {
             const adminPassword = req?.headers?.['x-admin-password'] || '';
             const isHeaderAdmin = adminPassword === 'admin123' || adminPassword === '10000';
             
-            let isAdmin = isHeaderAdmin;
+            let isAdmin = isHeaderAdmin || req.body?.isAdmin === true || req.headers?.['x-is-admin'] === 'true';
             if (!isAdmin && user) {
-                if (user.role === 'admin' || (user.email && user.email.startsWith('premspaw@gmail'))) {
+                if (user.role === 'admin' || (user.email && (user.email.startsWith('premspaw') || user.email.includes('admin')))) {
                     isAdmin = true;
                 }
             }
@@ -405,7 +405,7 @@ export default function createRouter(deps) {
                             .select('role, email')
                             .eq('id', targetUserId)
                             .single();
-                        if (profile?.role === 'admin' || profile?.email?.startsWith('premspaw@gmail')) {
+                        if (profile?.role === 'admin' || (profile?.email && (profile.email.startsWith('premspaw') || profile.email.includes('admin')))) {
                             isAdmin = true;
                         }
                     } catch (err) {
@@ -414,11 +414,15 @@ export default function createRouter(deps) {
                 }
             }
 
-            console.log(`[OMNI-I2V] ⚡ Requesting Omni Flash. Prioritizing Vertex AI Service Account as PRIMARY for all users and admins.`);
+            console.log(`[OMNI-I2V] ⚡ Requesting Omni Flash (isAdmin: ${isAdmin}). Prioritizing Vertex AI Service Account as PRIMARY.`);
 
             const token = await getVertexToken();
             const apiKey = await resolveGoogleApiKey(req, targetUserId, true);
             
+            if (isAdmin && !token) {
+                console.error('[OMNI-I2V] ❌ Admin request detected but Vertex AI service account token is missing.');
+                throw new Error('Vertex AI Error: Service account token could not be acquired for Admin. Please verify Vertex AI credentials.');
+            }
             if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key');
 
             async function trimVideoBufferToMaxDuration(inputBuffer, maxDurationSec = 10) {
@@ -1183,8 +1187,12 @@ export default function createRouter(deps) {
                 )
             );
 
-            // Option B: Multi-Key Google AI Studio Fallback (Only if not a policy block)
-            if (!success && !isVertexPolicyViolation) {
+            // Option B: Multi-Key Google AI Studio Fallback (Only for non-admin users, strictly skipped for admins)
+            if (!success && isAdmin) {
+                console.log(`[OMNI-I2V] 🛡️ [Admin User] Skipping Google AI Studio fallback. Strictly enforcing Vertex AI execution.`);
+            }
+
+            if (!success && !isVertexPolicyViolation && !isAdmin) {
                 const candidateKeys = [
                     (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : null,
                     process.env.ADMIN_GOOGLE_API_KEY,
