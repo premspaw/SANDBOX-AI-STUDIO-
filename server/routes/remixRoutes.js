@@ -127,6 +127,8 @@ export default function createRouter(deps) {
                 prompt: prompt.substring(0, 40)
             });
 
+            const shouldPollServerSide = req.body.sync === true;
+
             const result = await client.subscribe(
                 'higgsfield/genjutsu/motion-transfer/v1.0',
                 {
@@ -136,7 +138,7 @@ export default function createRouter(deps) {
                         image_urls: resolvedImageUrls,
                         resolution: chosenResolution
                     },
-                    withPolling: true
+                    withPolling: shouldPollServerSide
                 }
             );
 
@@ -145,6 +147,27 @@ export default function createRouter(deps) {
                 request_id: result.request_id,
                 has_video: Boolean(result.video?.url)
             });
+
+            // Async mode (default): Return immediately so client polls without gateway/proxy timeouts
+            if (!shouldPollServerSide) {
+                if (result.status === 'failed') {
+                    return res.status(500).json({
+                        error: sanitizeServerError(result.error) || 'Motion Transfer generation could not be completed.',
+                        requestId: result.request_id
+                    });
+                }
+
+                return res.json({
+                    success: true,
+                    status: result.status || 'processing',
+                    requestId: result.request_id,
+                    creditKey,
+                    meta: {
+                        prompt,
+                        resolution: chosenResolution
+                    }
+                });
+            }
 
             if (result.status === 'failed') {
                 return res.status(500).json({
@@ -318,6 +341,8 @@ export default function createRouter(deps) {
                 prompt: prompt.substring(0, 40)
             });
 
+            const shouldPollServerSide = req.body.sync === true;
+
             const result = await client.subscribe(
                 'higgsfield/genjutsu/object-swap/v1.0',
                 {
@@ -327,7 +352,7 @@ export default function createRouter(deps) {
                         image_urls: resolvedImageUrls,
                         resolution: chosenResolution
                     },
-                    withPolling: true
+                    withPolling: shouldPollServerSide
                 }
             );
 
@@ -336,6 +361,27 @@ export default function createRouter(deps) {
                 request_id: result.request_id,
                 has_video: Boolean(result.video?.url)
             });
+
+            // Async mode (default): Return immediately so client polls without gateway/proxy timeouts
+            if (!shouldPollServerSide) {
+                if (result.status === 'failed') {
+                    return res.status(500).json({
+                        error: sanitizeServerError(result.error) || 'Object Swap generation could not be completed.',
+                        requestId: result.request_id
+                    });
+                }
+
+                return res.json({
+                    success: true,
+                    status: result.status || 'processing',
+                    requestId: result.request_id,
+                    creditKey,
+                    meta: {
+                        prompt,
+                        resolution: chosenResolution
+                    }
+                });
+            }
 
             if (result.status === 'failed') {
                 return res.status(500).json({
@@ -447,7 +493,7 @@ export default function createRouter(deps) {
         }
     });
 
-    // ── Check Higgsfield Job Status by Request ID ────────────────────────────
+    // ── Check Higgsfield Job Status by Request ID (Fault-Tolerant, Never Aborts Early) ──
     router.get(['/status/:requestId', '/api/remix/status/:requestId'], async (req, res) => {
         const { requestId } = req.params;
         const activeCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
@@ -460,22 +506,101 @@ export default function createRouter(deps) {
                 return res.status(500).json({ error: 'Invalid HF_CREDENTIALS format.' });
             }
             const authHeader = `Key ${parts[0]}:${parts[1]}`;
-            const ep = `https://api.higgsfield.ai/v1/requests/${requestId}/status`;
+            // Correct Higgsfield status endpoint is /requests/${requestId}/status
+            const ep = `https://api.higgsfield.ai/requests/${requestId}/status`;
             const resp = await fetch(ep, {
-                headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' }
+                headers: { 
+                    'Authorization': authHeader, 
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'ZeroLensStudio/2.5'
+                },
+                signal: AbortSignal.timeout(25000)
             });
+
+            if (!resp.ok) {
+                console.warn(`[REMIX-STATUS] Upstream HTTP ${resp.status} for ${requestId}. Continuing to wait.`);
+                // Return processing so client keeps polling without failing
+                return res.json({ success: true, status: 'processing', requestId });
+            }
+
             const data = await resp.json();
+            console.log(`[REMIX-STATUS] ${requestId} status:`, data.status);
+
+            if (data.status === 'completed') {
+                let finalVideoUrl = data.video?.url || null;
+                let finalImageUrl = data.images?.[0]?.url || data.image?.url || null;
+
+                // Re-host video to R2/Supabase if present
+                if (finalVideoUrl && typeof uploadVideoToSupabase === 'function') {
+                    try {
+                        const saved = await uploadVideoToSupabase(finalVideoUrl, `remix_${Date.now()}.mp4`, req.query.userId || 'anon');
+                        if (saved) finalVideoUrl = saved;
+                    } catch (e) {
+                        console.warn('[REMIX-STATUS] Video re-host notice:', e.message);
+                    }
+                }
+
+                // Re-host image to R2 if present
+                if (finalImageUrl && storageService && typeof storageService.uploadToGCS === 'function') {
+                    try {
+                        const imgResp = await fetch(finalImageUrl);
+                        if (imgResp.ok) {
+                            const ab = await imgResp.arrayBuffer();
+                            const saved = await storageService.uploadToGCS(Buffer.from(ab), `users/${req.query.userId || 'anon'}/generated/ai_influencer_${Date.now()}.png`, 'image/png');
+                            if (saved) finalImageUrl = saved;
+                        }
+                    } catch (e) {
+                        console.warn('[REMIX-STATUS] Image re-host notice:', e.message);
+                    }
+                }
+
+                return res.json({
+                    success: true,
+                    status: 'completed',
+                    requestId,
+                    videoUrl: finalVideoUrl,
+                    imageUrl: finalImageUrl,
+                    url: finalVideoUrl || finalImageUrl,
+                    images: data.images || (finalImageUrl ? [{ url: finalImageUrl }] : []),
+                    zipUrl: data.zip?.url || null,
+                    movUrl: data.mov?.url || null,
+                    raw: data
+                });
+            }
+
+            if (data.status === 'failed') {
+                return res.json({
+                    success: false,
+                    status: 'failed',
+                    error: sanitizeServerError(data.error) || 'Generation could not be completed.'
+                });
+            }
+
+            if (data.status === 'nsfw') {
+                return res.json({
+                    success: false,
+                    status: 'nsfw',
+                    error: '⚠️ Content Safety Policy Restriction: Generation flagged by safety filter.'
+                });
+            }
+
+            // Still in progress / queued / pending
             return res.json({
                 success: true,
-                status: data.status,
+                status: 'processing',
+                progress: data.progress || 50,
                 requestId,
-                videoUrl: data.video?.url || null,
-                zipUrl: data.zip?.url || null,
-                movUrl: data.mov?.url || null,
                 raw: data
             });
         } catch (err) {
-            return res.status(500).json({ error: 'Status check temporarily unavailable. Please contact support@zerolens.in.' });
+            console.warn(`[REMIX-STATUS] Temporary polling warning for ${requestId}:`, err.message);
+            // CRITICAL: return 'processing' so transient network blips never fail or trigger premature refunds!
+            return res.json({ 
+                success: true, 
+                status: 'processing',
+                requestId,
+                warning: 'Transient upstream polling delay, continuing to wait...' 
+            });
         }
     });
 
@@ -569,11 +694,13 @@ export default function createRouter(deps) {
                 seed: inputPayload.seed
             });
 
+            const shouldPollServerSide = req.body.sync === true;
+
             const result = await client.subscribe(
                 'higgsfield/ai-influencer',
                 {
                     input: inputPayload,
-                    withPolling: true
+                    withPolling: shouldPollServerSide
                 }
             );
 
@@ -582,6 +709,28 @@ export default function createRouter(deps) {
                 request_id: result.request_id,
                 images_count: result.images?.length || 0
             });
+
+            // Async mode (default): Return immediately so client polls without gateway/proxy timeouts
+            if (!shouldPollServerSide) {
+                if (result.status === 'failed') {
+                    return res.status(500).json({
+                        error: sanitizeServerError(result.error) || 'AI Influencer generation could not be completed.',
+                        requestId: result.request_id
+                    });
+                }
+
+                return res.json({
+                    success: true,
+                    status: result.status || 'processing',
+                    requestId: result.request_id,
+                    meta: {
+                        tier: activeTier,
+                        seed: inputPayload.seed,
+                        selection,
+                        creditCost: 26
+                    }
+                });
+            }
 
             if (result.status === 'failed') {
                 return res.status(500).json({

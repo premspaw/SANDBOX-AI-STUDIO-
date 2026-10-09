@@ -1794,7 +1794,28 @@ export default function StudioPage() {
           }
 
           const data = await resp.json();
-          const finalUrl = data.videoUrl || data.originalUrl;
+          let finalUrl = data.videoUrl || data.originalUrl;
+          if (!finalUrl && data.requestId) {
+            for (let i = 0; i < 200; i++) {
+              await new Promise(r => setTimeout(r, 4500));
+              try {
+                const sResp = await fetch(getApiUrl(`/api/remix/status/${data.requestId}`));
+                if (!sResp.ok) continue;
+                const sData = await sResp.json();
+                if (sData.status === 'completed') {
+                  finalUrl = sData.videoUrl || sData.url;
+                  break;
+                }
+                if (sData.status === 'failed' || sData.status === 'nsfw') {
+                  throw new Error(sData.error || 'Motion Transfer failed.');
+                }
+              } catch (pollErr) {
+                if (pollErr.message && (pollErr.message.includes('failed') || pollErr.message.includes('Safety') || pollErr.message.includes('policy'))) {
+                  throw pollErr;
+                }
+              }
+            }
+          }
           if (!finalUrl) throw new Error(data.error || "No video URL returned from Remix Engine");
 
           const finishedRemixItem = {

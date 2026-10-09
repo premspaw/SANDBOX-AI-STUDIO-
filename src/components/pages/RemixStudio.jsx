@@ -593,6 +593,44 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     setErrorMessage('');
   };
 
+  // Resilient Remix Status Polling Helper (tolerates upstream delay & network glitches up to ~17 mins)
+  const pollRemixStatus = async (requestId, { mode = 'motion-transfer', onProgress } = {}) => {
+    for (let attempt = 0; attempt < 250; attempt++) {
+      await new Promise(r => setTimeout(r, 4000));
+      try {
+        const resp = await fetch(`/api/remix/status/${requestId}`);
+        if (!resp.ok) {
+          console.warn(`[RemixStudio Poll] HTTP ${resp.status}, continuing to wait...`);
+          continue;
+        }
+        const data = await resp.json();
+        if (data.status === 'completed') {
+          return data;
+        }
+        if (data.status === 'failed') {
+          throw new Error(data.error || 'Generation could not be completed.');
+        }
+        if (data.status === 'nsfw') {
+          throw new Error(data.error || '⚠️ Content Safety Policy Restriction: Generation flagged by safety filter.');
+        }
+        if (typeof onProgress === 'function') {
+          onProgress(data.progress, attempt);
+        }
+      } catch (pollErr) {
+        if (pollErr.message && (
+          pollErr.message.includes('failed') || 
+          pollErr.message.includes('Safety') || 
+          pollErr.message.includes('policy') || 
+          pollErr.message.includes('nsfw')
+        )) {
+          throw pollErr;
+        }
+        console.warn(`[RemixStudio Poll] Transient notice for ${requestId}:`, pollErr.message);
+      }
+    }
+    throw new Error('Generation is taking longer than expected. Please check your Studio Gallery in a few minutes or contact support@zerolens.in.');
+  };
+
   // Execute Generation
   const handleStartGeneration = async () => {
     if (isGenerating) return;
@@ -653,19 +691,30 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
           throw new Error(data.error || 'Failed to complete AI Influencer character sheet generation.');
         }
 
+        let finalData = data;
+        if (data.status === 'processing' && data.requestId) {
+          finalData = await pollRemixStatus(data.requestId, {
+            mode: 'ai-influencer',
+            onProgress: (p, attempt) => {
+              const elapsed = (attempt + 1) * 4;
+              setStatusMessage(`Synthesizing 2K character sheet... (${elapsed}s)`);
+            }
+          });
+        }
+
         clearInterval(progressInterval);
         setGenerationProgress(100);
         setStatusMessage('AI Influencer Character Sheet Complete!');
 
         const newItem = {
-          id: data.requestId || `influencer-${Date.now()}`,
+          id: finalData.requestId || `influencer-${Date.now()}`,
           mode: 'ai-influencer',
           type: 'image',
           prompt: aiBrief || `${aiTier} Character Sheet`,
-          url: data.imageUrl || data.originalUrl,
-          images: data.images || [{ url: data.imageUrl }],
+          url: finalData.imageUrl || finalData.originalUrl || finalData.url,
+          images: finalData.images || [{ url: finalData.imageUrl || finalData.url }],
           createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          meta: data.meta || {}
+          meta: finalData.meta || {}
         };
 
         setGeneratedResult(newItem);
@@ -792,22 +841,37 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         throw new Error(data.error || `Failed to complete ${isSwapMode ? 'Object Swap' : 'Motion Remix'}.`);
       }
 
+      let finalData = data;
+      if (data.status === 'processing' && data.requestId) {
+        finalData = await pollRemixStatus(data.requestId, {
+          mode: isSwapMode ? 'object-swap' : 'motion-transfer',
+          onProgress: (p, attempt) => {
+            const elapsed = (attempt + 1) * 4;
+            if (isSwapMode) {
+              setStatusMessage(`Synthesizing Object Swap & Neural Inpainting... (${elapsed}s)`);
+            } else {
+              setStatusMessage(`Synthesizing Neural Motion Transfer Layers... (${elapsed}s)`);
+            }
+          }
+        });
+      }
+
       clearInterval(progressInterval);
       setGenerationProgress(100);
       setStatusMessage(`${isSwapMode ? 'Object Swap' : 'Motion Remix'} Synthesis Complete!`);
 
       const newItem = {
-        id: data.requestId || `${isSwapMode ? 'swap' : 'remix'}-${Date.now()}`,
+        id: finalData.requestId || `${isSwapMode ? 'swap' : 'remix'}-${Date.now()}`,
         mode: activeMode,
         type: 'video',
         prompt,
         resolution,
-        url: data.videoUrl || data.originalUrl,
-        zipUrl: data.zipUrl,
-        movUrl: data.movUrl,
-        jsxUrl: data.jsxUrl,
-        fbxUrl: data.fbxUrl,
-        plyUrl: data.plyUrl,
+        url: finalData.videoUrl || finalData.originalUrl || finalData.url,
+        zipUrl: finalData.zipUrl,
+        movUrl: finalData.movUrl,
+        jsxUrl: finalData.jsxUrl,
+        fbxUrl: finalData.fbxUrl,
+        plyUrl: finalData.plyUrl,
         createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 

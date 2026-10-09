@@ -2428,9 +2428,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   /* ─── SEEDANCE POLL ──────────────────────────────────────── */
   const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine, tempId = null) => {
     setStatus('polling');
-    const engineLabel = engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : 'Seedance 2.0';
+    const engineLabel = (engine.includes('2.5') || engine.includes('2-5')) ? 'Seedance 2.5' : engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : 'Seedance 2.0';
 
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 200; i++) {
       await new Promise(r => setTimeout(r, 6000));
       const elapsed = (i + 1) * 6;
       setPollMsg(`Rendering video... (${elapsed}s)`);
@@ -3759,7 +3759,32 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           const data = await resp.json();
           if (!resp.ok) throw new Error(data.error || 'Remix Motion Transfer failed.');
 
-          const finalUrl = data.videoUrl || data.originalUrl;
+          let finalUrl = data.videoUrl || data.originalUrl;
+          if (!finalUrl && data.requestId) {
+            setStatus('polling');
+            for (let i = 0; i < 200; i++) {
+              await new Promise(r => setTimeout(r, 4500));
+              const elapsed = Math.round((i + 1) * 4.5);
+              setPollMsg(`Synthesizing Motion Transfer... (${elapsed}s)`);
+              try {
+                const sResp = await fetch(getApiUrl(`/api/remix/status/${data.requestId}`));
+                if (!sResp.ok) continue;
+                const sData = await sResp.json();
+                if (sData.status === 'completed') {
+                  finalUrl = sData.videoUrl || sData.url;
+                  break;
+                }
+                if (sData.status === 'failed' || sData.status === 'nsfw') {
+                  throw new Error(sData.error || 'Motion Transfer failed.');
+                }
+              } catch (pollErr) {
+                if (pollErr.message && (pollErr.message.includes('failed') || pollErr.message.includes('Safety') || pollErr.message.includes('policy'))) {
+                  throw pollErr;
+                }
+              }
+            }
+          }
+
           if (!finalUrl) throw new Error(data.error || 'No video URL returned from Remix Engine.');
 
           setGallery(prev => prev.map(item => item.id === tempId ? {

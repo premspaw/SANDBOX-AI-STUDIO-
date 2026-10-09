@@ -764,15 +764,35 @@ export default function createRouter(deps) {
                             generate_audio: hfInputPayload.generate_audio
                         });
 
+                        const shouldPollServerSide = req.body.sync === true;
+
                         const hfResult = await hfClient.subscribe(
                             targetEndpoint,
                             {
                                 input: hfInputPayload,
-                                withPolling: true
+                                withPolling: shouldPollServerSide
                             }
                         );
 
-                        console.log(`[SEEDANCE-2.5-HIGGSFIELD] Result status:`, hfResult.status);
+                        console.log(`[SEEDANCE-2.5-HIGGSFIELD] Result status:`, hfResult.status, 'requestId:', hfResult.request_id);
+
+                        // Async mode (default): Return immediately with requestId for client-side polling
+                        if (!shouldPollServerSide && hfResult.request_id) {
+                            return res.json({
+                                success: true,
+                                status: 'processing',
+                                requestId: hfResult.request_id,
+                                engine: 'seedance-2.5-higgsfield',
+                                provider: 'higgsfield',
+                                meta: {
+                                    prompt: finalPrompt,
+                                    duration: durationClamped,
+                                    resolution: resolution25,
+                                    aspectRatio: hfRatio,
+                                    provider: 'higgsfield'
+                                }
+                            });
+                        }
 
                         if (hfResult.status === 'completed' && (hfResult.video?.url || hfResult.videos?.[0]?.url || hfResult.url)) {
                             let finalVideoUrl = hfResult.video?.url || hfResult.videos?.[0]?.url || hfResult.url;
@@ -933,6 +953,76 @@ export default function createRouter(deps) {
             const { userId, aspectRatio = '16:9', engine, folder, projectId } = req.query;
 
             console.log(`[SEEDANCE-STATUS] Checking status | id: ${requestId} | engine: ${engine}`);
+
+            // 0. Handle Higgsfield / Xfield Seedance 2.5 polling
+            const isHfUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId);
+            const isHfEngine = engine?.includes('higgsfield') || req.query.provider === 'higgsfield' || isHfUuid;
+
+            if (isHfEngine && (process.env.HF_CREDENTIALS || process.env.HF_KEY)) {
+                const creds = (process.env.HF_CREDENTIALS || process.env.HF_KEY).trim();
+                let pollResp;
+                try {
+                    pollResp = await fetch(`https://api.higgsfield.ai/requests/${requestId}/status`, {
+                        headers: {
+                            'Authorization': `Key ${creds}`,
+                            'User-Agent': 'higgsfield-server-js/2.0'
+                        },
+                        signal: AbortSignal.timeout(15000)
+                    });
+                } catch (netErr) {
+                    console.warn(`[SEEDANCE-STATUS-HF] Polling delay for ${requestId}: ${netErr.message}`);
+                    return res.json({ status: 'processing' });
+                }
+
+                if (!pollResp.ok) {
+                    console.warn(`[SEEDANCE-STATUS-HF] HTTP ${pollResp.status} from Higgsfield. Continuing polling.`);
+                    return res.json({ status: 'processing' });
+                }
+
+                let data;
+                try {
+                    data = await pollResp.json();
+                } catch (parseErr) {
+                    console.warn(`[SEEDANCE-STATUS-HF] Failed to parse JSON for ${requestId}: ${parseErr.message}`);
+                    return res.json({ status: 'processing' });
+                }
+
+                console.log(`[SEEDANCE-STATUS-HF] ${requestId}: ${data.status}`);
+
+                if (data.status === 'completed') {
+                    let finalUrl = data.video?.url || data.videos?.[0]?.url || data.url || data.video_url;
+                    if (!finalUrl && data.images?.[0]?.url) finalUrl = data.images[0].url;
+
+                    if (!finalUrl) {
+                        return res.json({ status: 'processing' });
+                    }
+
+                    let supabaseUrl = finalUrl;
+                    if (typeof uploadVideoToSupabase === 'function') {
+                        try {
+                            const extraMeta = projectId ? { projectId } : {};
+                            const saved = await uploadVideoToSupabase(finalUrl, userId, aspectRatio, folder || 'generated', undefined, 'Seedance 2.5', extraMeta);
+                            if (saved) supabaseUrl = saved;
+                        } catch (e) {
+                            console.warn('[SEEDANCE-STATUS-HF] Supabase upload notice:', e.message);
+                        }
+                    }
+
+                    return res.json({
+                        status: 'completed',
+                        url: supabaseUrl,
+                        videoUrl: supabaseUrl,
+                        zipUrl: data.zip?.url || null,
+                        movUrl: data.mov?.url || null
+                    });
+                } else if (data.status === 'failed') {
+                    return res.json({ status: 'failed', error: sanitizeServerError(data.error || 'Video generation failed') });
+                } else if (data.status === 'nsfw') {
+                    return res.json({ status: 'failed', error: '⚠️ Content Safety Policy Restriction: Generation flagged by safety filter.' });
+                }
+
+                return res.json({ status: 'processing' });
+            }
 
             // 1. Handle Ark engine polling (only if explicitly seedace-ark or Ark is requested AND not a Kie task ID)
             const isKieEngine = engine === 'seedace-kie' || engine === 'seedace' || engine === 'seedance-mini' || engine === 'seedance-2.5-kie' || engine === 'seedance-2.5' || engine === 'seedance-2-5' || engine === 'bytedance/seedance-2-5' || engine === 'bytedance/seedance-2-fast' || engine === 'bytedance/seedance-2-mini' || engine === 'bytedance/seedance-2' || (process.env.PREFER_KIE === 'true') || !process.env.ARK_API_KEY;
