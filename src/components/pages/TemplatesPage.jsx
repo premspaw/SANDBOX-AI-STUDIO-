@@ -349,23 +349,27 @@ export default function TemplatesPage() {
     let finalVideoUrl = uploadVideoUrl.trim();
 
     try {
-      // 1. If file selected, upload to Supabase storage
-      if (uploadFile && supabase) {
-        const ext = uploadFile.name.split('.').pop() || 'mp4';
-        const filePath = `templates/template_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('assets')
-          .upload(filePath, uploadFile, { cacheControl: '3600', upsert: true });
+      // 1. If file selected, upload directly to Cloudflare R2 bucket via backend
+      if (uploadFile) {
+        const formData = new FormData();
+        formData.append('file', uploadFile);
 
-        if (uploadError) {
-          console.warn('[Storage upload failed, trying public data URL]:', uploadError);
-          // If storage fails, use preview url as fallback
-          finalVideoUrl = uploadPreview;
-        } else {
-          const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(filePath);
-          finalVideoUrl = publicUrl;
+        const uploadRes = await fetch(getApiUrl('/api/remix/templates/upload'), {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to upload video to Cloudflare R2 bucket.');
         }
+
+        const uploadData = await uploadRes.json();
+        if (!uploadData?.url) {
+          throw new Error('Cloudflare R2 returned an empty URL.');
+        }
+
+        finalVideoUrl = uploadData.url;
       }
 
       if (!finalVideoUrl) {

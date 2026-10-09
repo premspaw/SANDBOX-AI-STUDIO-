@@ -1,6 +1,7 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import multer from 'multer';
 import { createHiggsfieldClient } from '@higgsfield/client/v2';
 import { isValidUuid } from '../utils/validateUuid.js';
 
@@ -39,8 +40,11 @@ export default function createRouter(deps) {
         consumeCredits,
         supabase,
         supabaseAdmin,
-        saveLocalAsset
+        saveLocalAsset,
+        upload
     } = deps;
+
+    const uploadMiddleware = upload || multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
     const getHfClient = (credentials) => {
         return createHiggsfieldClient({
@@ -850,6 +854,54 @@ export default function createRouter(deps) {
     });
 
     // ── 9:16 Remix Video Templates API ────────────────────────────────────────
+    // Cloudflare R2 Video Upload
+    router.post('/templates/upload', uploadMiddleware.single('file'), async (req, res) => {
+        try {
+            let buffer = null;
+            let mimeType = 'video/mp4';
+            let originalName = 'template.mp4';
+
+            if (req.file) {
+                buffer = req.file.buffer;
+                mimeType = req.file.mimetype || 'video/mp4';
+                originalName = req.file.originalname || 'template.mp4';
+            } else if (req.body.data || req.body.file || req.body.image) {
+                const raw = req.body.data || req.body.file || req.body.image;
+                const match = raw.match(/^data:([^;]+);base64,/);
+                if (match) mimeType = match[1];
+                const base64Str = raw.replace(/^data:[^;]+;base64,/, '');
+                buffer = Buffer.from(base64Str, 'base64');
+            }
+
+            if (!buffer || buffer.length === 0) {
+                return res.status(400).json({ error: 'No video file provided for upload' });
+            }
+
+            const ext = originalName.split('.').pop() || 'mp4';
+            const cleanFileName = `templates/template_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+            // Upload directly to Cloudflare R2 bucket (zerolensbucket-cdn)
+            let publicUrl = null;
+            if (storageService && typeof storageService.uploadToGCS === 'function') {
+                publicUrl = await storageService.uploadToGCS(buffer, cleanFileName, mimeType);
+            }
+
+            if (!publicUrl) {
+                throw new Error('Failed to upload video to Cloudflare R2 storage');
+            }
+
+            console.log(`[CLOUDFLARE-R2] ✅ Template video uploaded to R2 bucket: ${publicUrl}`);
+            return res.json({
+                success: true,
+                url: publicUrl,
+                path: cleanFileName
+            });
+        } catch (err) {
+            console.error('[CLOUDFLARE-R2] Error uploading template to R2:', err);
+            return res.status(500).json({ error: err.message || 'Upload to Cloudflare R2 failed' });
+        }
+    });
+
     router.get('/templates', async (req, res) => {
         try {
             let dbTemplates = [];
