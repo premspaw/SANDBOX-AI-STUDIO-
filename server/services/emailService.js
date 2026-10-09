@@ -120,85 +120,144 @@ export async function sendWelcomeEmail({ email, name, shortsBalance = 50 }) {
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Welcome to ZeroLens AI</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #08080a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #ffffff;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #08080a; padding: 40px 15px;">
+<body style="margin: 0; padding: 0; background-color: #060608; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #ffffff; -webkit-font-smoothing: antialiased;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #060608; padding: 40px 15px;">
     <tr>
       <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; background-color: #101014; border: 1px solid #23232b; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.6);">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; background-color: #0c0d12; border: 1px solid #1e2029; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.85);">
           
-          <!-- Header Banner -->
+          <!-- Cyber Accent Top Stripe -->
           <tr>
-            <td style="padding: 35px 35px 25px 35px; border-bottom: 1px solid #1a1a24; text-align: left;">
-              <div style="font-size: 20px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: #ffffff;">
-                ZERO<span style="color: #c8f135;">LENS</span>
-              </div>
-              <p style="margin: 6px 0 0 0; font-size: 11px; font-family: monospace; color: #888899; text-transform: uppercase; letter-spacing: 1px;">
-                Autonomous Cinematic Video & UGC AI Studio
-              </p>
+            <td style="height: 4px; background: linear-gradient(90deg, #c8f135 0%, #00f2fe 50%, #9d4edd 100%);"></td>
+          </tr>
+
+          <!-- Header -->
+          <tr>
+            <td style="padding: 32px 36px 24px 36px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: left;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <div style="font-size: 24px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; color: #ffffff; line-height: 1;">
+                      ZERO<span style="color: #c8f135;">LENS</span>
+                    </div>
+                    <div style="margin-top: 6px; font-size: 10px; font-family: monospace; color: #8e92a4; text-transform: uppercase; letter-spacing: 1.5px;">
+                      Autonomous Cinema & UGC AI Studio
+                    </div>
+                  </td>
+                  <td align="right" valign="top">
+                    <span style="display: inline-block; padding: 4px 10px; background: rgba(200, 241, 53, 0.1); border: 1px solid rgba(200, 241, 53, 0.35); border-radius: 20px; font-size: 9.5px; font-weight: 800; color: #c8f135; font-family: monospace; letter-spacing: 1px;">
+                      ⚡ v2.5 STUDIO
+                    </span>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
-          <!-- Body Content -->
+          <!-- Hero Section -->
           <tr>
-            <td style="padding: 35px;">
-              <h1 style="margin: 0 0 15px 0; font-size: 24px; font-weight: 800; color: #ffffff; line-height: 1.3;">
-                Welcome, ${displayName}! 🚀
+            <td style="padding: 36px 36px 20px 36px; text-align: left;">
+              <div style="display: inline-block; padding: 4px 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-size: 10px; font-weight: 700; color: #c8f135; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px;">
+                ✓ Account Initialized
+              </div>
+              <h1 style="margin: 0 0 14px 0; font-size: 26px; font-weight: 900; color: #ffffff; line-height: 1.25; letter-spacing: -0.5px;">
+                Welcome to the Studio, ${displayName}! 🎬
               </h1>
-              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #bbbbcc;">
-                Your account is ready. We've credited your account with complimentary Shorts to let you test high-speed video rendering, AI influencer creation, and UGC video ads immediately.
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.65; color: #a4a8ba;">
+                Your creative suite is unlocked. To get you creating right away, we've deposited complimentary high-speed rendering credits into your wallet.
               </p>
 
-              <!-- Credit Notification Box -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, rgba(200, 241, 53, 0.08) 0%, rgba(200, 241, 53, 0.02) 100%); border: 1px solid rgba(200, 241, 53, 0.3); border-radius: 14px; margin-bottom: 28px;">
+              <!-- Neon Lime Credit Balance Card -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, rgba(200, 241, 53, 0.12) 0%, rgba(12, 13, 18, 0.8) 100%); border: 1px solid rgba(200, 241, 53, 0.4); border-radius: 16px; margin-bottom: 28px; box-shadow: inset 0 0 30px rgba(200, 241, 53, 0.05);">
                 <tr>
-                  <td style="padding: 20px; text-align: center;">
-                    <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #c8f135; display: block; margin-bottom: 6px;">
-                      ⚡ Starting Balance Credited
+                  <td style="padding: 24px; text-align: center;">
+                    <span style="font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #c8f135; display: block; margin-bottom: 8px;">
+                      ⚡ Welcome Shorts Balance
                     </span>
-                    <span style="font-size: 32px; font-weight: 900; color: #ffffff; font-family: monospace;">
-                      ${shortsBalance} Shorts
-                    </span>
-                    <span style="font-size: 11px; color: #9999aa; display: block; margin-top: 4px;">
-                      Ready to use across Cinema Studio, Seedance, UGC & Avatar Creator
+                    <div style="font-size: 38px; font-weight: 900; color: #ffffff; font-family: -apple-system, monospace; letter-spacing: -1px; line-height: 1;">
+                      ${shortsBalance} <span style="font-size: 18px; color: #c8f135; font-weight: 700;">Shorts</span>
+                    </div>
+                    <span style="font-size: 11px; color: #8e92a4; display: block; margin-top: 8px; font-family: monospace;">
+                      100% Unlocked · Instant Access to All AI Engines
                     </span>
                   </td>
                 </tr>
               </table>
 
-              <h2 style="font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #ffffff; margin: 0 0 12px 0;">
-                Quick Start Features:
-              </h2>
-              <ul style="margin: 0 0 28px 0; padding-left: 20px; font-size: 13px; color: #ccccdd; line-height: 1.8;">
-                <li><strong>🎬 Cinema Studio:</strong> Generate 1080p cinematic scenes with Seedance & Veo 3.1.</li>
-                <li><strong>📱 UGC Studio:</strong> One-click viral UGC scripts, talking head creators, and product ads.</li>
-                <li><strong>👤 Avatar Studio:</strong> Consistent virtual influencers and voice personas.</li>
-                <li><strong>🔄 Motion Remix & Object Swap:</strong> Transform driving footage and swap props seamlessly.</li>
-              </ul>
+              <!-- Capabilities Matrix -->
+              <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #8e92a4; margin-bottom: 14px;">
+                What you can build right now:
+              </div>
 
-              <!-- CTA Button -->
-              <table width="100%" cellpadding="0" cellspacing="0">
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 28px;">
+                <tr>
+                  <td style="padding: 10px 14px; background: #13141c; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; margin-bottom: 8px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td width="28" valign="top" style="font-size: 16px;">🎬</td>
+                        <td>
+                          <div style="font-size: 13px; font-weight: 800; color: #ffffff;">Cinema Studio</div>
+                          <div style="font-size: 11.5px; color: #8e92a4; margin-top: 2px;">Generate cinematic 1080p clips with Seedance 2.5 Pro & Google Veo 3.1.</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr><td height="8"></td></tr>
+                <tr>
+                  <td style="padding: 10px 14px; background: #13141c; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td width="28" valign="top" style="font-size: 16px;">📱</td>
+                        <td>
+                          <div style="font-size: 13px; font-weight: 800; color: #ffffff;">Viral UGC Studio</div>
+                          <div style="font-size: 11.5px; color: #8e92a4; margin-top: 2px;">One-click multi-shot commercials, talking head creators, and product ads.</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr><td height="8"></td></tr>
+                <tr>
+                  <td style="padding: 10px 14px; background: #13141c; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td width="28" valign="top" style="font-size: 16px;">👤</td>
+                        <td>
+                          <div style="font-size: 13px; font-weight: 800; color: #ffffff;">Avatar & Persona Studio</div>
+                          <div style="font-size: 11.5px; color: #8e92a4; margin-top: 2px;">Consistent AI virtual influencers, voice personas, and brand models.</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Primary CTA -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
                 <tr>
                   <td align="center">
-                    <a href="https://zerolens.in" style="display: inline-block; background-color: #c8f135; color: #000000; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; text-decoration: none; padding: 14px 32px; border-radius: 12px; box-shadow: 0 6px 20px rgba(200, 241, 53, 0.35);">
+                    <a href="https://zerolens.in" style="display: block; width: 85%; background: #c8f135; color: #000000; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; text-decoration: none; padding: 16px 24px; border-radius: 14px; text-align: center; box-shadow: 0 10px 30px rgba(200, 241, 53, 0.35);">
                       Launch ZeroLens Studio →
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin: 30px 0 0 0; font-size: 12px; color: #777788; line-height: 1.5;">
-                Need help or custom enterprise quota? Reply directly to this email or reach us anytime at <a href="mailto:support@zerolens.in" style="color: #c8f135; text-decoration: none;">support@zerolens.in</a>.
+              <p style="margin: 0; font-size: 12px; color: #6a6e82; line-height: 1.6; text-align: center;">
+                Need help or custom team seats? Contact our founder team anytime at <a href="mailto:support@zerolens.in" style="color: #c8f135; text-decoration: none; font-weight: 700;">support@zerolens.in</a>.
               </p>
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="padding: 20px 35px; background-color: #0b0b0e; border-top: 1px solid #1a1a24; text-align: center; font-size: 11px; color: #555566;">
-              © ${new Date().getFullYear()} ZeroLens AI Studio. All rights reserved. <br/>
-              Support: <a href="mailto:support@zerolens.in" style="color: #888899; text-decoration: none;">support@zerolens.in</a>
+            <td style="padding: 24px 36px; background-color: #08080b; border-top: 1px solid rgba(255,255,255,0.05); text-align: center; font-size: 11px; color: #525566; line-height: 1.6;">
+              <span style="font-weight: 800; color: #8e92a4;">ZEROLENS AI STUDIO</span> · Bangalore, India<br/>
+              Support: <a href="mailto:support@zerolens.in" style="color: #8e92a4; text-decoration: none;">support@zerolens.in</a> · <a href="https://zerolens.in" style="color: #8e92a4; text-decoration: none;">zerolens.in</a>
             </td>
           </tr>
 
@@ -213,9 +272,6 @@ export async function sendWelcomeEmail({ email, name, shortsBalance = 50 }) {
   return sendEmail({ to: email, subject, html });
 }
 
-/**
- * 2. Payment Confirmation / Receipt Email (Triggered upon Razorpay payment capture)
- */
 export async function sendPaymentSuccessEmail({
   email,
   name,
@@ -233,30 +289,36 @@ export async function sendPaymentSuccessEmail({
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Payment Receipt — ZeroLens AI</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #08080a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #ffffff;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #08080a; padding: 40px 15px;">
+<body style="margin: 0; padding: 0; background-color: #060608; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #ffffff; -webkit-font-smoothing: antialiased;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #060608; padding: 40px 15px;">
     <tr>
       <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; background-color: #101014; border: 1px solid #23232b; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.6);">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; background-color: #0c0d12; border: 1px solid #1e2029; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.85);">
           
-          <!-- Header Banner -->
+          <!-- Cyber Accent Top Stripe -->
           <tr>
-            <td style="padding: 35px 35px 25px 35px; border-bottom: 1px solid #1a1a24; text-align: left;">
+            <td style="height: 4px; background: linear-gradient(90deg, #c8f135 0%, #00f2fe 50%, #9d4edd 100%);"></td>
+          </tr>
+
+          <!-- Header -->
+          <tr>
+            <td style="padding: 32px 36px 24px 36px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: left;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td>
-                    <div style="font-size: 20px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: #ffffff;">
+                    <div style="font-size: 24px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; color: #ffffff; line-height: 1;">
                       ZERO<span style="color: #c8f135;">LENS</span>
                     </div>
-                    <p style="margin: 4px 0 0 0; font-size: 11px; font-family: monospace; color: #888899; text-transform: uppercase;">
-                      Payment Receipt & Credit Confirmation
-                    </p>
+                    <div style="margin-top: 6px; font-size: 10px; font-family: monospace; color: #8e92a4; text-transform: uppercase; letter-spacing: 1.5px;">
+                      Official Payment Receipt
+                    </div>
                   </td>
-                  <td align="right">
-                    <span style="display: inline-block; padding: 5px 12px; background-color: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 20px; font-size: 11px; font-weight: 800; color: #34d399; font-family: monospace;">
-                      PAID ✓
+                  <td align="right" valign="top">
+                    <span style="display: inline-block; padding: 5px 12px; background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.4); border-radius: 20px; font-size: 10px; font-weight: 800; color: #34d399; font-family: monospace; letter-spacing: 1px;">
+                      ✓ PAID
                     </span>
                   </td>
                 </tr>
@@ -266,60 +328,63 @@ export async function sendPaymentSuccessEmail({
 
           <!-- Body Content -->
           <tr>
-            <td style="padding: 35px;">
-              <h1 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 800; color: #ffffff;">
+            <td style="padding: 36px 36px 20px 36px; text-align: left;">
+              <div style="display: inline-block; padding: 4px 10px; background: rgba(200, 241, 53, 0.1); border: 1px solid rgba(200, 241, 53, 0.3); border-radius: 8px; font-size: 10px; font-weight: 700; color: #c8f135; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px;">
+                ⚡ Credits Added Successfully
+              </div>
+              <h1 style="margin: 0 0 12px 0; font-size: 24px; font-weight: 900; color: #ffffff; line-height: 1.3;">
                 Thank you for your purchase, ${displayName}!
               </h1>
-              <p style="margin: 0 0 25px 0; font-size: 13.5px; line-height: 1.6; color: #bbbbcc;">
-                Your payment was received successfully and your Shorts credits have been instantly added to your account.
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #a4a8ba;">
+                Your payment was processed successfully. Your account has been credited with <strong>${Number(creditsAdded).toLocaleString()} Shorts</strong> and your new balance is immediately active.
               </p>
 
-              <!-- Receipt Table -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0b0b0e; border: 1px solid #22222a; border-radius: 14px; margin-bottom: 25px; font-size: 13px;">
+              <!-- Receipt Table Card -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #111219; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; margin-bottom: 28px; overflow: hidden;">
                 <tr>
-                  <td style="padding: 14px 18px; border-bottom: 1px solid #1a1a22; color: #888899;">Plan / Package</td>
-                  <td style="padding: 14px 18px; border-bottom: 1px solid #1a1a22; color: #ffffff; font-weight: 700; text-align: right;">${planName}</td>
+                  <td style="padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #8e92a4; font-size: 12.5px;">Plan / Package</td>
+                  <td style="padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #ffffff; font-weight: 800; text-align: right; font-size: 13px;">${planName}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 14px 18px; border-bottom: 1px solid #1a1a22; color: #888899;">Amount Paid</td>
-                  <td style="padding: 14px 18px; border-bottom: 1px solid #1a1a22; color: #ffffff; font-weight: 700; text-align: right;">₹${Number(amountPaid).toLocaleString()}</td>
+                  <td style="padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #8e92a4; font-size: 12.5px;">Amount Paid</td>
+                  <td style="padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #ffffff; font-weight: 800; text-align: right; font-size: 13px;">₹${Number(amountPaid).toLocaleString()}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 14px 18px; border-bottom: 1px solid #1a1a22; color: #888899;">Shorts Added</td>
-                  <td style="padding: 14px 18px; border-bottom: 1px solid #1a1a22; color: #c8f135; font-weight: 900; font-family: monospace; text-align: right;">+${Number(creditsAdded).toLocaleString()} ⚡</td>
+                  <td style="padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #8e92a4; font-size: 12.5px;">Shorts Credited</td>
+                  <td style="padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #c8f135; font-weight: 900; font-family: monospace; text-align: right; font-size: 15px;">+${Number(creditsAdded).toLocaleString()} ⚡</td>
                 </tr>
                 <tr>
-                  <td style="padding: 14px 18px; border-bottom: 1px solid #1a1a22; color: #888899;">New Total Balance</td>
-                  <td style="padding: 14px 18px; border-bottom: 1px solid #1a1a22; color: #ffffff; font-weight: 800; font-family: monospace; text-align: right;">${Number(newBalance).toLocaleString()} ⚡</td>
+                  <td style="padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #8e92a4; font-size: 12.5px;">Updated Wallet Balance</td>
+                  <td style="padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #ffffff; font-weight: 800; font-family: monospace; text-align: right; font-size: 14px;">${Number(newBalance).toLocaleString()} ⚡</td>
                 </tr>
                 <tr>
-                  <td style="padding: 14px 18px; color: #888899;">Transaction ID</td>
-                  <td style="padding: 14px 18px; color: #777788; font-family: monospace; font-size: 11px; text-align: right;">${transactionId}</td>
+                  <td style="padding: 14px 20px; color: #8e92a4; font-size: 12.5px;">Payment Reference ID</td>
+                  <td style="padding: 14px 20px; color: #72768a; font-family: monospace; font-size: 11px; text-align: right;">${transactionId}</td>
                 </tr>
               </table>
 
-              <!-- CTA Button -->
-              <table width="100%" cellpadding="0" cellspacing="0">
+              <!-- CTA -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
                 <tr>
                   <td align="center">
-                    <a href="https://zerolens.in" style="display: inline-block; background-color: #c8f135; color: #000000; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; text-decoration: none; padding: 14px 32px; border-radius: 12px; box-shadow: 0 6px 20px rgba(200, 241, 53, 0.35);">
-                      Start Generating Now →
+                    <a href="https://zerolens.in" style="display: block; width: 85%; background: #c8f135; color: #000000; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; text-decoration: none; padding: 16px 24px; border-radius: 14px; text-align: center; box-shadow: 0 10px 30px rgba(200, 241, 53, 0.35);">
+                      Open Studio & Generate →
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin: 30px 0 0 0; font-size: 12px; color: #777788; line-height: 1.5;">
-                For invoice assistance or billing queries, contact our support team anytime at <a href="mailto:support@zerolens.in" style="color: #c8f135; text-decoration: none;">support@zerolens.in</a>.
+              <p style="margin: 0; font-size: 12px; color: #6a6e82; line-height: 1.6; text-align: center;">
+                For GST invoice queries or custom tax breakdown, contact our accounts desk anytime at <a href="mailto:support@zerolens.in" style="color: #c8f135; text-decoration: none; font-weight: 700;">support@zerolens.in</a>.
               </p>
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="padding: 20px 35px; background-color: #0b0b0e; border-top: 1px solid #1a1a24; text-align: center; font-size: 11px; color: #555566;">
-              © ${new Date().getFullYear()} ZeroLens AI Studio. All rights reserved. <br/>
-              Support: <a href="mailto:support@zerolens.in" style="color: #888899; text-decoration: none;">support@zerolens.in</a>
+            <td style="padding: 24px 36px; background-color: #08080b; border-top: 1px solid rgba(255,255,255,0.05); text-align: center; font-size: 11px; color: #525566; line-height: 1.6;">
+              <span style="font-weight: 800; color: #8e92a4;">ZEROLENS AI STUDIO</span> · Bangalore, India<br/>
+              Support: <a href="mailto:support@zerolens.in" style="color: #8e92a4; text-decoration: none;">support@zerolens.in</a> · <a href="https://zerolens.in" style="color: #8e92a4; text-decoration: none;">zerolens.in</a>
             </td>
           </tr>
 
