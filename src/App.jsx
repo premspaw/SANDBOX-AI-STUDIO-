@@ -157,6 +157,7 @@ const FULL_HEIGHT_TABS = new Set([
   'yourvoice',
   'mcp-connection',
   'storyboard',
+  'templates',
   'design',
   'remix',
   'object-swap',
@@ -180,7 +181,7 @@ function App() {
   // Guard: If non-admin user is on a restricted tab, bounce to ugc
   useEffect(() => {
     if (!isAdmin) {
-      const allowedForRegular = new Set(['ugc', 'avatar', 'studio', 'pricing', 'settings', 'auth', 'home', 'yourvoice']);
+      const allowedForRegular = new Set(['ugc', 'avatar', 'studio', 'pricing', 'settings', 'auth', 'home', 'yourvoice', 'templates', 'remix']);
       if (activeTab && !allowedForRegular.has(activeTab)) {
         console.log(`[RoleGuard] Redirecting regular user from '${activeTab}' to 'ugc'`);
         setActiveTab('ugc');
