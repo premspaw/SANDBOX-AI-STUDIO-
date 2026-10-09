@@ -31,7 +31,7 @@ import {
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
-import { resolveUrl } from '../../config/apiConfig';
+import { resolveUrl, getApiUrl } from '../../config/apiConfig';
 
 // Curated default 9:16 vertical video templates
 const SEED_TEMPLATES = [
@@ -240,7 +240,7 @@ export default function TemplatesPage() {
     });
   }, []);
 
-  // Fetch templates from Supabase and merge with seeds + localStorage
+  // Fetch templates from API and merge with seeds + localStorage
   const fetchTemplates = async () => {
     setIsLoading(true);
     try {
@@ -253,22 +253,23 @@ export default function TemplatesPage() {
         console.debug('[Templates] local storage read:', e);
       }
 
-      // 2. Fetch from Supabase if table exists
-      let dbTemplates = [];
-      if (supabase) {
-        const { data, error } = await supabase
-          .from('remix_templates')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (!error && Array.isArray(data)) {
-          dbTemplates = data;
+      // 2. Fetch from backend API /api/remix/templates (handles DB fallback seamlessly without 404s)
+      let apiTemplates = [];
+      try {
+        const res = await fetch(getApiUrl('/api/remix/templates'));
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.success && Array.isArray(json.templates)) {
+            apiTemplates = json.templates;
+          }
         }
+      } catch (apiErr) {
+        console.debug('[Templates] API fetch fallback:', apiErr);
       }
 
-      // Merge: DB templates first, then local, then seeds (deduped by ID)
+      // Merge: API/DB templates first, then local, then seeds (deduped by ID)
       const map = new Map();
-      [...dbTemplates, ...localTemplates, ...SEED_TEMPLATES].forEach(item => {
+      [...apiTemplates, ...localTemplates, ...SEED_TEMPLATES].forEach(item => {
         if (item && item.id && !map.has(item.id)) {
           map.set(item.id, item);
         }
@@ -384,13 +385,15 @@ export default function TemplatesPage() {
         created_at: new Date().toISOString()
       };
 
-      // Save to Supabase DB if possible
-      if (supabase) {
-        try {
-          await supabase.from('remix_templates').insert([newTemplate]);
-        } catch (dbErr) {
-          console.warn('[DB insert error]:', dbErr);
-        }
+      // Save to Backend API / Supabase DB
+      try {
+        await fetch(getApiUrl('/api/remix/templates'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newTemplate)
+        });
+      } catch (apiSaveErr) {
+        console.warn('[API template save warning]:', apiSaveErr);
       }
 
       // Save to localStorage for instant local availability

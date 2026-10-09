@@ -1,4 +1,6 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
 import { createHiggsfieldClient } from '@higgsfield/client/v2';
 import { isValidUuid } from '../utils/validateUuid.js';
 
@@ -844,6 +846,178 @@ export default function createRouter(deps) {
                 error: sanitizeServerError(error.message) || 'AI Influencer service temporarily unavailable. Please contact support@zerolens.in.',
                 details: error.toString()
             });
+        }
+    });
+
+    // ── 9:16 Remix Video Templates API ────────────────────────────────────────
+    router.get('/templates', async (req, res) => {
+        try {
+            let dbTemplates = [];
+            const client = supabaseAdmin || supabase;
+
+            // 1. Try fetching from remix_templates table if it exists
+            if (client) {
+                try {
+                    const { data, error } = await client
+                        .from('remix_templates')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    if (!error && Array.isArray(data) && data.length > 0) {
+                        dbTemplates = data;
+                    }
+                } catch (_) {
+                    // Table might not exist yet
+                }
+
+                // 2. Fallback: check assets table for type = 'remix_template'
+                if (dbTemplates.length === 0) {
+                    try {
+                        const { data, error } = await client
+                            .from('assets')
+                            .select('*')
+                            .eq('type', 'remix_template')
+                            .order('created_at', { ascending: false });
+                        if (!error && Array.isArray(data)) {
+                            dbTemplates = data.map(row => {
+                                const meta = (typeof row.metadata === 'object' && row.metadata) ? row.metadata : {};
+                                return {
+                                    id: row.id,
+                                    title: row.name || meta.title || 'Template',
+                                    video_url: row.url,
+                                    thumbnail_url: meta.thumbnail_url || null,
+                                    prompt: meta.prompt || '',
+                                    category: meta.category || 'trending',
+                                    aspect_ratio: meta.aspect_ratio || '9:16',
+                                    duration: meta.duration || '5s',
+                                    remix_count: meta.remix_count || 1,
+                                    created_by: meta.created_by || 'admin',
+                                    created_at: row.created_at
+                                };
+                            });
+                        }
+                    } catch (_) {}
+                }
+            }
+
+            // 3. Fallback: read from local_assets.json
+            const localFile = path.join(process.cwd(), 'local_assets.json');
+            let fileTemplates = [];
+            try {
+                if (fs.existsSync(localFile)) {
+                    const raw = JSON.parse(fs.readFileSync(localFile, 'utf8'));
+                    fileTemplates = raw
+                        .filter(a => a && (a.type === 'remix_template' || a.category === 'remix_template'))
+                        .map(a => ({
+                            id: a.id,
+                            title: a.title || a.name || 'Template',
+                            video_url: a.video_url || a.url,
+                            thumbnail_url: a.thumbnail_url || null,
+                            prompt: a.prompt || '',
+                            category: a.category || 'trending',
+                            aspect_ratio: a.aspect_ratio || '9:16',
+                            duration: a.duration || '5s',
+                            remix_count: a.remix_count || 1,
+                            created_by: a.created_by || 'admin',
+                            created_at: a.created_at || new Date().toISOString()
+                        }));
+                }
+            } catch (_) {}
+
+            // Merge & deduplicate
+            const map = new Map();
+            [...dbTemplates, ...fileTemplates].forEach(item => {
+                if (item && item.id && !map.has(item.id)) {
+                    map.set(item.id, item);
+                }
+            });
+
+            return res.json({
+                success: true,
+                templates: Array.from(map.values())
+            });
+        } catch (err) {
+            console.error('[REMIX] Error fetching templates:', err);
+            return res.json({ success: true, templates: [] });
+        }
+    });
+
+    router.post('/templates', async (req, res) => {
+        try {
+            const { title, video_url, thumbnail_url, prompt, category, aspect_ratio, duration, created_by } = req.body;
+            if (!title || !video_url) {
+                return res.status(400).json({ error: 'title and video_url are required' });
+            }
+
+            const templateData = {
+                id: req.body.id || `tpl_${Date.now()}`,
+                title: title.trim(),
+                video_url: video_url.trim(),
+                thumbnail_url: thumbnail_url || null,
+                prompt: prompt || 'Transform subject with cinematic lighting and flawless motion transfer',
+                category: category || 'trending',
+                aspect_ratio: aspect_ratio || '9:16',
+                duration: duration || '5s',
+                remix_count: 1,
+                created_by: created_by || 'admin',
+                created_at: new Date().toISOString()
+            };
+
+            const client = supabaseAdmin || supabase;
+            let savedToDb = false;
+
+            if (client) {
+                // Try remix_templates table
+                try {
+                    const { error } = await client.from('remix_templates').insert([templateData]);
+                    if (!error) savedToDb = true;
+                } catch (_) {}
+
+                // If not saved, try assets table
+                if (!savedToDb) {
+                    try {
+                        const { error } = await client.from('assets').insert([{
+                            id: templateData.id,
+                            name: templateData.title,
+                            type: 'remix_template',
+                            url: templateData.video_url,
+                            metadata: templateData,
+                            user_id: null
+                        }]);
+                        if (!error) savedToDb = true;
+                    } catch (_) {}
+                }
+            }
+
+            // Always save locally as fallback
+            if (typeof saveLocalAsset === 'function') {
+                saveLocalAsset({
+                    ...templateData,
+                    type: 'remix_template'
+                });
+            }
+
+            return res.json({
+                success: true,
+                template: templateData,
+                savedToDb
+            });
+        } catch (err) {
+            console.error('[REMIX] Error creating template:', err);
+            return res.status(500).json({ error: err.message || 'Failed to save template' });
+        }
+    });
+
+    router.delete('/templates/:id', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const client = supabaseAdmin || supabase;
+            if (client) {
+                try { await client.from('remix_templates').delete().eq('id', id); } catch (_) {}
+                try { await client.from('assets').delete().eq('id', id); } catch (_) {}
+            }
+            return res.json({ success: true, id });
+        } catch (err) {
+            return res.status(500).json({ error: err.message });
         }
     });
 
