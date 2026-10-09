@@ -9,7 +9,37 @@
  * 3. Graceful fallback: Logs formatted email payload to console if credentials are not yet configured.
  */
 
+import nodemailer from 'nodemailer';
+
 const FROM_EMAIL = process.env.SUPPORT_EMAIL || 'ZeroLens AI <support@zerolens.in>';
+
+// Hostinger SMTP Transporter (smtp.hostinger.com:465)
+let smtpTransporter = null;
+
+function getSmtpTransporter() {
+  const host = process.env.SMTP_HOST || 'smtp.hostinger.com';
+  const port = Number(process.env.SMTP_PORT) || 465;
+  const user = process.env.SMTP_USER || 'support@zerolens.in';
+  const pass = process.env.SMTP_PASS || process.env.HOSTINGER_EMAIL_PASS;
+
+  if (!pass) return null;
+
+  if (!smtpTransporter) {
+    smtpTransporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465, // true for 465 SSL, false for 587 TLS
+      auth: {
+        user,
+        pass
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+  }
+  return smtpTransporter;
+}
 
 /**
  * Universal email dispatcher
@@ -20,9 +50,26 @@ async function sendEmail({ to, subject, html, text }) {
     return { success: false, error: 'Recipient missing' };
   }
 
-  const resendApiKey = process.env.RESEND_API_KEY;
+  // 1. Send via Hostinger SMTP if configured
+  const transporter = getSmtpTransporter();
+  if (transporter) {
+    try {
+      const info = await transporter.sendMail({
+        from: FROM_EMAIL,
+        to,
+        subject,
+        html,
+        text: text || subject
+      });
+      console.log(`[EMAIL_SERVICE:Hostinger_SMTP] ✅ Delivered email to ${to} (Subject: "${subject}") — ID: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (err) {
+      console.error('[EMAIL_SERVICE:Hostinger_SMTP] SMTP Error:', err.message);
+    }
+  }
 
-  // 1. Send via Resend API if API Key is configured
+  // 2. Send via Resend API if API Key is configured
+  const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey) {
     try {
       const response = await fetch('https://api.resend.com/emails', {
@@ -54,10 +101,10 @@ async function sendEmail({ to, subject, html, text }) {
     }
   }
 
-  // 2. Fallback / Dev Mode
+  // 3. Fallback / Dev Mode
   console.log(`[EMAIL_SERVICE:Mock] ✉️ [From: ${FROM_EMAIL}] -> [To: ${to}]`);
   console.log(`[EMAIL_SERVICE:Mock] Subject: "${subject}"`);
-  console.log(`[EMAIL_SERVICE:Mock] (Set RESEND_API_KEY or SMTP in .env to deliver live emails to ${to})`);
+  console.log(`[EMAIL_SERVICE:Mock] (Add SMTP_PASS to .env to deliver live emails via smtp.hostinger.com)`);
   return { success: true, mocked: true };
 }
 
