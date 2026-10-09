@@ -1,7 +1,7 @@
 /**
  * ZeroLens — Cinema Studio
  * Gallery-background layout with floating chat input.
- * Engines: Veo 3.1 + Seedance 2.0 Neural Engine
+ * Engines: Veo 3.1 + Seedance 2.0 Generating Engine
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
@@ -475,9 +475,9 @@ function UpwardDropdown({ children, icon, label, badge, accentColor = 'fuchsia' 
 
 const DEFAULT_CINEMA_ASSETS = [];
 
-const cleanErrorMessage = (msg) => {
+const cleanErrorMessage = (msg, engineCtx = 'generation') => {
   if (!msg) return '';
-  return sanitizeUserErrorMessage(msg);
+  return sanitizeUserErrorMessage(msg, engineCtx);
 };
 
 // True Zero-Latency Uncontrolled Native Textarea — 0ms typing lag, 0 React re-renders on keystrokes
@@ -2511,7 +2511,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             setGallery(prev => prev.filter(item => item.id !== tempId));
           }
           setStatus('error');
-          const cleanErr = cleanErrorMessage(json.error || json.message || `${engineLabel} generation failed.`);
+          const cleanErr = cleanErrorMessage(json.error || json.message || `${engineLabel} generation failed.`, engineLabel);
           setErrorMsg(cleanErr);
           setPollMsg('');
           const showToast = useAppStore.getState().showToast;
@@ -2612,7 +2612,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             setGallery(prev => prev.filter(item => item.id !== tempId));
           }
           setStatus('error');
-          const cleanErr = cleanErrorMessage(json.error || json.message || `${engineLabel} generation failed.`);
+          const cleanErr = cleanErrorMessage(json.error || json.message || `${engineLabel} generation failed.`, engineLabel);
           setErrorMsg(cleanErr);
           setPollMsg('');
           const showToast = useAppStore.getState().showToast;
@@ -3184,7 +3184,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           setStatus('error');
           setPollMsg('');
           const label = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Nano Banana 2';
-          const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
+          const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`, label);
           setErrorMsg(cleanErr);
           const showToast = useAppStore.getState().showToast;
           if (showToast) showToast(cleanErr, "error");
@@ -3542,7 +3542,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           setGallery(prev => prev.filter(item => item.id !== tempId));
           setStatus('error');
           const label = ENGINES.find(e => e.id === activeEngine)?.label || 'Seedance';
-          const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
+          const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`, label);
           setErrorMsg(cleanErr);
           const showToast = useAppStore.getState().showToast;
           if (showToast) showToast(cleanErr, "error");

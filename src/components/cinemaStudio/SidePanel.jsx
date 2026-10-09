@@ -2373,7 +2373,7 @@ export const SidePanel = React.memo(({
   const seedanceProviderOptions = useMemo(() => [
     { value: 'auto', label: '⚡ Ultra Smart Routing', desc: 'Auto-Optimized High-Performance Pipeline' },
     { value: 'higgsfield', label: 'Seedance 2.5 Pro Engine', desc: 'Direct High-Fidelity Rendering' },
-    { value: 'kie', label: 'Seedance 2.5 High-Speed', desc: 'Low-Latency Neural Pipeline' }
+    { value: 'kie', label: 'Seedance 2.5 High-Speed', desc: 'Low-Latency Generating Pipeline' }
   ], []);
 
   const userProfile = useAppStore(state => state.userProfile);
@@ -4617,7 +4617,7 @@ export const SidePanel = React.memo(({
                             <span>Kling 3.0 Motion Parameters</span>
                           </span>
                           <span className="text-[8px] font-mono font-bold text-cyan-300 bg-cyan-500/10 px-1.5 py-0.2 rounded border border-cyan-500/20">
-                            Neural High-Speed Engine
+                            ZeroLens Generating Engine
                           </span>
                         </div>
 

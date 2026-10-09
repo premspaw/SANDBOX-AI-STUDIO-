@@ -221,16 +221,23 @@ function StudioGalleryCard({
   }
 
   if (item.status === 'failed' || item.status === 'error') {
-    const isPolicyViolation = item.error?.includes('Responsible AI') || 
-                              item.error?.includes('celebrities') || 
-                              item.error?.includes('policy') ||
-                              item.error?.includes('Policy') ||
-                              item.error?.includes('prohibited') ||
-                              item.error?.includes('prominent individuals') ||
-                              item.error?.includes('recognizable') ||
-                              item.error?.includes('content_blocked') ||
-                              item.error?.includes('Content Safety') ||
-                              item.error?.includes('violates Google');
+    const errLower = (item.error || '').toLowerCase();
+    const isPolicyViolation = errLower.includes('responsible ai') || 
+                              errLower.includes('celebrities') || 
+                              errLower.includes('policy') ||
+                              errLower.includes('prohibited') ||
+                              errLower.includes('prominent individuals') ||
+                              errLower.includes('recognizable') ||
+                              errLower.includes('content_blocked') ||
+                              errLower.includes('content safety') ||
+                              errLower.includes('safety filter') ||
+                              errLower.includes('safety_refusal') ||
+                              errLower.includes('violates google') ||
+                              errLower.includes('moderation') ||
+                              errLower.includes('sensitive content');
+    const isSeedance = (item.engine || item.model || '').toLowerCase().includes('seedance');
+    const engineCtx = isSeedance ? 'seedance' : 'google-omni';
+
     return (
       <div className={cn(
         "w-full rounded-2xl flex flex-col items-center justify-between p-3 sm:p-3.5 relative overflow-hidden shadow-xl group",
@@ -270,7 +277,7 @@ function StudioGalleryCard({
             {isPolicyViolation ? "Content Policy Restriction" : "Generation Interrupted"}
           </span>
           <p className="text-[9.5px] text-white/80 leading-relaxed font-sans max-h-16 overflow-y-auto px-1 custom-scrollbar">
-            {sanitizeUserErrorMessage(item.error)}
+            {sanitizeUserErrorMessage(item.error, engineCtx)}
           </p>
           {isPolicyViolation && (
             <span className="text-[8px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
@@ -281,13 +288,20 @@ function StudioGalleryCard({
         <div className="w-full flex flex-col gap-1 pt-1.5 border-t border-white/5 shrink-0 z-10">
           {isPolicyViolation ? (
             <>
-              <button
-                onClick={(e) => { e.stopPropagation(); onRetry && onRetry(item, 'seedance'); }}
-                className="w-full py-1 rounded-lg bg-gradient-to-r from-amber-400 to-[#c8f135] text-black text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-md hover:brightness-110 flex items-center justify-center gap-1 active:scale-95"
-              >
-                <Sparkles size={10} className="fill-black text-black" />
-                <span>Try with Seedance 2.0</span>
-              </button>
+              {isSeedance ? (
+                <div className="w-full py-1.5 px-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[8.5px] font-semibold text-center leading-snug flex items-center justify-center gap-1.5">
+                  <AlertCircle size={10} className="text-amber-400 shrink-0" />
+                  <span>Try with a different prompt, image, or character</span>
+                </div>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRetry && onRetry(item, 'seedance'); }}
+                  className="w-full py-1 rounded-lg bg-gradient-to-r from-amber-400 to-[#c8f135] text-black text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-md hover:brightness-110 flex items-center justify-center gap-1 active:scale-95"
+                >
+                  <Sparkles size={10} className="fill-black text-black" />
+                  <span>Try with Seedance 2.0</span>
+                </button>
+              )}
               <div className="flex gap-1.5 w-full">
                 <button
                   onClick={(e) => {

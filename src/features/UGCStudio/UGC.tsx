@@ -4282,8 +4282,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       return;
     } catch (e: any) {
       if (!isAdmin && !isGlobalAdmin) refund(spendReason as any, unitCost as any);
-      handleApiError(e, "Video generation");
-      const displayError = sanitizeUserErrorMessage(e, "Video generation");
+      const engineContext = videoGenMode.startsWith('seedance') ? 'seedance' : 'google-omni';
+      handleApiError(e, engineContext);
+      const displayError = sanitizeUserErrorMessage(e, engineContext);
       setVideoError(displayError);
       updateGalleryItem(placeholderVideoId, { loading: false, error: displayError });
     }

@@ -1,17 +1,20 @@
 /**
  * Universal Error Sanitizer for ZeroLens AI Studio
  * 
- * Strict White-Label Rules:
+ * Strict White-Label & Policy Rules:
  * 1. Never expose 3rd-party vendor names (Kie, Kie.ai, XBuild, Higgsfield, Xfield, BytePlus, Ark, Kling, etc.).
- * 2. If it's a safety/policy violation (content safety, prompt refusal, recognizable person, NSFW):
- *    Clearly explain the policy violation and note that credits are refunded.
+ * 2. If it's a safety/policy violation:
+ *    - On Google / Omni / Veo:
+ *      "⚠️ Google Policy Restriction: Google does not support this content due to policy restrictions. 100% of your Shorts credits have been refunded. Please try generating with Seedance."
+ *    - On Seedance (or if Seedance also gets a policy violation):
+ *      "⚠️ Policy Restriction: This content was flagged by safety policies. 100% of your Shorts credits have been refunded. Please try with a different prompt, a different reference image, or a different person/character."
  * 3. If it's a user Shorts balance issue:
- *    Advise user to top up Shorts balance.
+ *    "Insufficient Shorts balance. Please top up your Shorts credits in the top navigation or pricing tab to continue."
  * 4. If it's a server/backend failure, upstream payment/credit failure, timeout, crash, or 500 error:
- *    Display: "High server demand or temporary service interruption. Any deducted Shorts have been refunded. Please try again or contact support at support@zerolens.in."
+ *    "High server demand or temporary service interruption. Any deducted Shorts have been refunded. Please try again or contact support at support@zerolens.in."
  */
 
-export function sanitizeUserErrorMessage(rawMsg, defaultContext = 'Generation') {
+export function sanitizeUserErrorMessage(rawMsg, engineContext = 'generation') {
   if (!rawMsg) {
     return 'High server demand or temporary service interruption. Please try again or contact support at support@zerolens.in.';
   }
@@ -21,8 +24,9 @@ export function sanitizeUserErrorMessage(rawMsg, defaultContext = 'Generation') 
     : (rawMsg?.message || rawMsg?.error?.message || rawMsg?.error || JSON.stringify(rawMsg));
 
   const lower = str.toLowerCase();
+  const ctx = (typeof engineContext === 'string' ? engineContext : '').toLowerCase();
 
-  // 1. Content Policy / Safety Filter Violations (Preserved & clarified per instruction)
+  // 1. Content Policy / Safety Filter Violations
   const isPolicyViolation =
     lower.includes('responsible ai') ||
     lower.includes('content safety') ||
@@ -40,7 +44,23 @@ export function sanitizeUserErrorMessage(rawMsg, defaultContext = 'Generation') 
     lower.includes('sensitive content');
 
   if (isPolicyViolation) {
-    return '⚠️ Content Safety Policy Restriction: Your prompt or reference media was flagged by content safety standards. 100% of your Shorts credits have been refunded. Please refine your prompt or reference media and try again.';
+    const isExplicitSeedance = ctx.includes('seedance');
+    const isExplicitGoogle = ctx.includes('omni') || ctx.includes('veo') || ctx.includes('gemini') || ctx.includes('google');
+
+    if (isExplicitSeedance) {
+      return '⚠️ Policy Restriction: This content was flagged by safety policies. 100% of your Shorts credits have been refunded. Please try with a different prompt, a different reference image, or a different person/character.';
+    }
+
+    if (isExplicitGoogle) {
+      return '⚠️ Google Policy Restriction: Google does not support this content due to policy restrictions. 100% of your Shorts credits have been refunded. Please try generating with Seedance.';
+    }
+
+    // If context is unspecified or general, infer from error content
+    if (lower.includes('google') || lower.includes('gemini') || lower.includes('responsible ai') || lower.includes('violates google') || lower.includes('veo') || lower.includes('omni')) {
+      return '⚠️ Google Policy Restriction: Google does not support this content due to policy restrictions. 100% of your Shorts credits have been refunded. Please try generating with Seedance.';
+    }
+
+    return '⚠️ Policy Restriction: This content was flagged by safety policies. 100% of your Shorts credits have been refunded. Please try with a different prompt, a different reference image, or a different person/character.';
   }
 
   // 2. Client-side input validation errors (keep intact for clear UX guidance)
