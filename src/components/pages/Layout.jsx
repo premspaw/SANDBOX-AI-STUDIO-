@@ -29,6 +29,7 @@ const FULL_BLEED_TABS = new Set([
     'yourvoice',
     'mcp-connection',
     'storyboard',
+    'templates',
     'remix',
     'object-swap',
     'ai-influencer',

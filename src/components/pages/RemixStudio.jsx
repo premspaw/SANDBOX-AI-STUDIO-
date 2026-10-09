@@ -145,6 +145,27 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
 
   const { shorts, spend, refund, canAfford } = useShorts();
   const userProfile = useAppStore(state => state.userProfile);
+  const remixInitialData = useAppStore(state => state.remixInitialData);
+  const clearRemixInitialData = useAppStore(state => state.clearRemixInitialData);
+  const showToast = useAppStore(state => state.showToast);
+
+  // Apply template pre-population data if sent from Templates page
+  useEffect(() => {
+    if (remixInitialData) {
+      if (remixInitialData.videoUrl) {
+        setVideoPreview(remixInitialData.videoUrl);
+        setVideoFile(null);
+      }
+      if (remixInitialData.prompt) {
+        setPrompt(remixInitialData.prompt);
+      }
+      setActiveMode('motion-transfer');
+      if (showToast) {
+        showToast(`Template applied: ${remixInitialData.templateTitle || 'Ready to Remix'}!`, 'success');
+      }
+      clearRemixInitialData();
+    }
+  }, [remixInitialData, clearRemixInitialData, showToast]);
 
   const isSwapMode = activeMode === 'object-swap';
   const isInfluencerMode = activeMode === 'ai-influencer';

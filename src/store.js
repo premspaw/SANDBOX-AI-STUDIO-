@@ -24,6 +24,11 @@ export const useAppStore = create((set, get) => ({
     userShorts: 50,
     userProfile: null,
 
+    // Remix Template Pre-population Data
+    remixInitialData: null,
+    setRemixInitialData: (data) => set({ remixInitialData: data }),
+    clearRemixInitialData: () => set({ remixInitialData: null }),
+
     // Projects
     projects: (() => {
         try {

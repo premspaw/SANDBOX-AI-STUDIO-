@@ -73,6 +73,7 @@ const McpConnectionPage = lazyWithRetry(() => import('./components/pages/McpConn
 const StoryboardStudio = lazyWithRetry(() => import('./components/pages/StoryboardStudio'));
 const RemixStudio = lazyWithRetry(() => import('./components/pages/RemixStudio'));
 const ObjectSwapStudio = lazyWithRetry(() => import('./components/pages/ObjectSwapStudio'));
+const TemplatesPage = lazyWithRetry(() => import('./components/pages/TemplatesPage'));
 
 
 // Beautiful, futuristic stand-by placeholder for the new Avatar Studio
@@ -404,6 +405,8 @@ function App() {
         return <McpConnectionPage />;
       case 'storyboard':
         return <StoryboardStudio />;
+      case 'templates':
+        return <TemplatesPage />;
       case 'remix':
         return <RemixStudio initialMode="motion-transfer" />;
       case 'object-swap':

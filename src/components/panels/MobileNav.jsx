@@ -1,16 +1,16 @@
 import React from 'react';
 import { 
-  VideoCamera, Megaphone, UsersThree, GearSix, FolderOpen, ArrowsClockwise 
+  VideoCamera, Megaphone, UsersThree, GearSix, FolderOpen, ArrowsClockwise, MagicWand 
 } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { motion } from 'framer-motion';
 
 export function MobileNav({ activeTab, setActiveTab }) {
     const mainNavItems = [
+        { id: 'templates', label: 'Templates', icon: MagicWand, color: 'text-[#c8f135]', glow: 'rgba(200,241,53,0.35)' },
+        { id: 'remix', label: 'Remix', icon: ArrowsClockwise, color: 'text-[#D4FF00]', glow: 'rgba(212,255,0,0.35)' },
         { id: 'ugc', label: 'UGC', icon: UsersThree, color: 'text-amber-400', glow: 'rgba(251,191,36,0.15)' },
         { id: 'studio', label: 'Studio', icon: VideoCamera, color: 'text-violet-400', glow: 'rgba(167,139,250,0.25)' },
-        { id: 'remix', label: 'Remix', icon: ArrowsClockwise, color: 'text-[#D4FF00]', glow: 'rgba(212,255,0,0.35)' },
-        { id: 'marketing', label: 'Marketing', icon: Megaphone, color: 'text-rose-400', glow: 'rgba(251,113,133,0.15)' },
         { id: 'settings', label: 'Settings', icon: GearSix, color: 'text-neutral-300', glow: 'rgba(163,163,163,0.2)' },
     ];
 
