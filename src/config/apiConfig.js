@@ -89,7 +89,7 @@ export const resolveUrl = (url, options = {}) => {
 
     // Route videos, explicit CORS/proxy requests, or cdn.zerolens.in on local dev through the backend proxy
     const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const isCdn = url.includes('cdn.zerolens.in') || url.includes('.r2.dev');
+    const isCdn = url.includes('cdn.zerolens.in') || url.includes('.r2.dev') || url.includes('r2.cloudflarestorage.com');
 
     if (
         (isVideo || options?.cors || options?.proxy || (isLocal && isCdn)) &&

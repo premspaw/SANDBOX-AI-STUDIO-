@@ -226,11 +226,10 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReferen
 
 function VideoThumbnail({ url, className }) {
     if (!url) return null;
-    const resolvedUrl = url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:') ? url : resolveUrl(url);
+    const resolvedUrl = resolveUrl(url);
     return (
         <div className={`relative w-full h-full ${className || ''}`}>
             <video
-                crossOrigin="anonymous"
                 src={`${resolvedUrl}#t=0.5`}
                 className="w-full h-full object-cover"
                 preload="metadata"
@@ -393,7 +392,6 @@ function Lightbox({ item, onClose }) {
             <div className="relative max-w-full max-h-full flex flex-col items-center justify-center animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
                 {item.type === 'video' ? (
                     <video 
-                        crossOrigin="anonymous"
                         src={resolvedUrl}
                         controls
                         autoPlay
@@ -1089,7 +1087,6 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                 {item.type === 'video' ? (
                                     <div className="w-full h-full bg-black relative flex items-center justify-center group/video">
                                         <video
-                                            crossOrigin="anonymous"
                                             src={resolveUrl(item.url)}
                                             className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
                                             muted

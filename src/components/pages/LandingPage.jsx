@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { LANDING_ASSETS as INITIAL_ASSETS } from '../../config/landingAssets';
-import { getApiUrl } from '../../config/apiConfig';
+import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import BrandLogo from '../common/BrandLogo';
 import { useAppStore } from '../../store';
 
@@ -88,13 +88,7 @@ function SectionEye({ children }) {
 
 const resolveAsset = (url) => {
   if (!url) return url;
-  // Route all R2 videos through the backend proxy to fix:
-  // 1. ERR_CACHE_OPERATION_NOT_SUPPORTED (Chrome can't range-request R2 directly)
-  // 2. Cloudinary /video/fetch returning 400 for R2 URLs
-  if (url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com')) {
-    return getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}&cors=1`);
-  }
-  return url;
+  return resolveUrl(url);
 };
 
 
@@ -268,7 +262,6 @@ function VCell({ cell, style = {}, onClick, aspectRatio = '3/4' }) {
             <video
               key={cell.src}
               autoPlay muted loop playsInline preload="metadata"
-              crossOrigin="anonymous"
               src={resolveAsset(cell.src)}
               style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 1 }}
             />
@@ -396,7 +389,6 @@ function UGCCard({ card, assets, index }) {
           <video
             key={videoSrc}
             autoPlay muted loop playsInline preload="none"
-            crossOrigin="anonymous"
             src={resolveAsset(videoSrc)}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
@@ -1310,8 +1302,8 @@ export default function LandingPage({ onEnter, onPricing }) {
               }}
             >
               <video
-                src={playingVideo?.src ? (typeof playingVideo.src === 'string' && playingVideo.src.startsWith('/')) ? playingVideo.src : ((typeof playingVideo.src === 'object' && playingVideo.src.default) ? playingVideo.src.default : playingVideo.src) : ''}
-                autoPlay controls playsInline crossOrigin="anonymous"
+                src={playingVideo?.src ? resolveAsset(typeof playingVideo.src === 'string' && playingVideo.src.startsWith('/') ? playingVideo.src : ((typeof playingVideo.src === 'object' && playingVideo.src.default) ? playingVideo.src.default : playingVideo.src)) : ''}
+                autoPlay controls playsInline
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
               <button
@@ -1483,8 +1475,7 @@ function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
             loop
             playsInline
             preload="metadata"
-            crossOrigin="anonymous"
-            src={src}
+            src={resolveAsset(src)}
             style={{ width: '100%', height: '100%', objectFit, objectPosition }}
           />
           <motion.button
