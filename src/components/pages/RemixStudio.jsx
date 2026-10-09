@@ -46,6 +46,7 @@ import { AssetsLibrary } from '../panels/AssetsLibrary';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import { sanitizeUserErrorMessage } from '../../utils/errorSanitizer';
+import { resolveUrl } from '../../config/apiConfig';
 
 // Normalizes image and video preview URLs, ensuring images mistakenly stored with .mp4 or CDN MIME quirks render reliably across mobile Safari & Chrome
 const getMediaPreviewUrl = (url, isImage = false) => {
@@ -54,6 +55,26 @@ const getMediaPreviewUrl = (url, isImage = false) => {
     return `/api/proxy-image?url=${encodeURIComponent(url)}&as=image`;
   }
   return url;
+};
+
+// Probe Video Duration in seconds safely using a detached HTML5 video element
+const probeVideoDuration = (dataUrlOrBlob) => {
+  return new Promise((resolve) => {
+    if (!dataUrlOrBlob) return resolve(5);
+    try {
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      const cleanUrl = resolveUrl ? resolveUrl(dataUrlOrBlob) : dataUrlOrBlob;
+      v.onloadedmetadata = () => {
+        const dur = v.duration && !isNaN(v.duration) ? Math.round(v.duration) : 5;
+        resolve(Math.max(1, dur));
+      };
+      v.onerror = () => resolve(5);
+      v.src = cleanUrl;
+    } catch {
+      resolve(5);
+    }
+  });
 };
 
 export default function RemixStudio({ initialMode = 'motion-transfer' }) {
@@ -155,6 +176,15 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       if (remixInitialData.videoUrl) {
         setVideoPreview(remixInitialData.videoUrl);
         setVideoFile(null);
+        if (remixInitialData.duration) {
+          const parsed = parseInt(remixInitialData.duration, 10);
+          if (!isNaN(parsed) && parsed > 0) {
+            setVideoDuration(parsed);
+          }
+        }
+        probeVideoDuration(remixInitialData.videoUrl).then(dur => {
+          if (dur > 0) setVideoDuration(dur);
+        });
       }
       if (remixInitialData.prompt) {
         setPrompt(remixInitialData.prompt);
@@ -392,28 +422,22 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     });
   };
 
-  // Probe Video Duration in seconds
-  const probeVideoDuration = (dataUrlOrBlob) => {
-    return new Promise((resolve) => {
-      const v = document.createElement('video');
-      v.preload = 'metadata';
-      v.onloadedmetadata = () => {
-        const dur = v.duration && !isNaN(v.duration) ? Math.round(v.duration) : 5;
-        resolve(Math.max(1, dur));
-      };
-      v.onerror = () => resolve(5);
-      v.src = dataUrlOrBlob;
-    });
-  };
-
   const handleVideoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setVideoFile(file);
+      // Instant duration probe via object URL
+      try {
+        const blobUrl = URL.createObjectURL(file);
+        probeVideoDuration(blobUrl).then(dur => {
+          if (dur > 0) setVideoDuration(dur);
+          URL.revokeObjectURL(blobUrl);
+        });
+      } catch (_err) {
+        // Fallback to video element onLoadedMetadata
+      }
       const dataUrl = await fileToDataUrl(file);
       setVideoPreview(dataUrl);
-      const dur = await probeVideoDuration(dataUrl);
-      setVideoDuration(dur);
       setErrorMessage('');
     }
   };
@@ -1227,7 +1251,20 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 >
                   {videoPreview ? (
                     <div className="relative w-full h-28 rounded-xl overflow-hidden bg-black">
-                      <video src={videoPreview} className="w-full h-full object-cover" muted loop autoPlay playsInline />
+                      <video 
+                        src={videoPreview} 
+                        className="w-full h-full object-cover" 
+                        muted 
+                        loop 
+                        autoPlay 
+                        playsInline 
+                        onLoadedMetadata={(e) => {
+                          if (e.currentTarget?.duration && !isNaN(e.currentTarget.duration)) {
+                            const dur = Math.max(1, Math.round(e.currentTarget.duration));
+                            setVideoDuration(dur);
+                          }
+                        }}
+                      />
                       <div className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-black/70 border border-white/20 text-[9px] font-mono font-bold text-[#D4FF00]">
                         {effectiveDuration}s
                       </div>

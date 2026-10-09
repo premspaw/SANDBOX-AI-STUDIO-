@@ -223,6 +223,7 @@ export default function TemplatesPage() {
   const [uploadVideoUrl, setUploadVideoUrl] = useState('');
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadPreview, setUploadPreview] = useState('');
+  const [uploadDuration, setUploadDuration] = useState('5s');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -297,7 +298,8 @@ export default function TemplatesPage() {
       videoUrl: template.video_url,
       prompt: template.prompt || '',
       templateTitle: template.title || 'Template',
-      templateId: template.id
+      templateId: template.id,
+      duration: template.duration || '5s'
     });
 
     if (showToast) {
@@ -326,6 +328,17 @@ export default function TemplatesPage() {
       setUploadFile(file);
       const url = URL.createObjectURL(file);
       setUploadPreview(url);
+
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.onloadedmetadata = () => {
+        if (v.duration && !isNaN(v.duration)) {
+          const sec = Math.max(1, Math.round(v.duration));
+          setUploadDuration(`${sec}s`);
+        }
+      };
+      v.src = url;
+
       if (!uploadTitle) {
         const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
         setUploadTitle(nameWithoutExt.charAt(0).toUpperCase() + nameWithoutExt.slice(1));
@@ -383,7 +396,7 @@ export default function TemplatesPage() {
         video_url: finalVideoUrl,
         prompt: uploadPrompt.trim() || 'Transform subject with cinematic lighting and flawless motion transfer',
         aspect_ratio: '9:16',
-        duration: '5s',
+        duration: uploadDuration || '5s',
         remix_count: 1,
         created_by: userProfile?.email || authUser?.email || 'admin',
         created_at: new Date().toISOString()
@@ -571,7 +584,7 @@ export default function TemplatesPage() {
               <TemplateCard
                 key={template.id}
                 template={template}
-                onRemix={(e) => handleRemix(template, e)}
+                onRemix={(customTemplate, e) => handleRemix(customTemplate || template, e)}
                 onPreview={() => setActivePreview(template)}
               />
             ))}
@@ -621,6 +634,14 @@ export default function TemplatesPage() {
                   loop
                   playsInline
                   muted={previewMuted}
+                  onLoadedMetadata={(e) => {
+                    if (e.currentTarget?.duration && !isNaN(e.currentTarget.duration)) {
+                      const durSec = Math.max(1, Math.round(e.currentTarget.duration));
+                      if (!activePreview.duration || activePreview.duration === '5s') {
+                        setActivePreview(prev => prev ? ({ ...prev, duration: `${durSec}s` }) : null);
+                      }
+                    }
+                  }}
                   className="w-full h-full object-cover"
                 />
 
@@ -893,6 +914,7 @@ export default function TemplatesPage() {
 // ── 9:16 VERTICAL TEMPLATE CARD COMPONENT ──
 function TemplateCard({ template, onRemix, onPreview }) {
   const [isHovered, setIsHovered] = useState(false);
+  const [liveDuration, setLiveDuration] = useState(template.duration || '');
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -923,6 +945,11 @@ function TemplateCard({ template, onRemix, onPreview }) {
           muted
           playsInline
           preload="metadata"
+          onLoadedMetadata={(e) => {
+            if (e.currentTarget?.duration && !isNaN(e.currentTarget.duration)) {
+              setLiveDuration(`${Math.max(1, Math.round(e.currentTarget.duration))}s`);
+            }
+          }}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
 
@@ -943,7 +970,7 @@ function TemplateCard({ template, onRemix, onPreview }) {
 
           <span className="text-[8px] sm:text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-black/60 text-zinc-300 border border-white/10 flex items-center gap-1">
             <Zap size={9} className="text-[#c8f135]" />
-            <span>{template.duration || '5s'}</span>
+            <span>{liveDuration || template.duration || '5s'}</span>
           </span>
         </div>
 
@@ -971,7 +998,7 @@ function TemplateCard({ template, onRemix, onPreview }) {
           {/* Action Button: REMIX */}
           <button
             type="button"
-            onClick={onRemix}
+            onClick={(e) => onRemix({ ...template, duration: liveDuration || template.duration || '5s' }, e)}
             className="w-full py-1.5 sm:py-2 px-2 rounded-lg sm:rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-[10px] sm:text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-[0_0_15px_rgba(200,241,53,0.3)] active:scale-95 transition-all cursor-pointer"
             title="Use this template in Remix Studio"
           >
