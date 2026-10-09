@@ -31,6 +31,7 @@ import {
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
+import { resolveUrl } from '../../config/apiConfig';
 
 // Curated default 9:16 vertical video templates
 const SEED_TEMPLATES = [
@@ -608,7 +609,7 @@ export default function TemplatesPage() {
               {/* 9:16 Video Player Container */}
               <div className="relative aspect-[9/16] max-h-[58vh] bg-black overflow-hidden flex items-center justify-center">
                 <video
-                  src={activePreview.video_url}
+                  src={resolveUrl(activePreview.video_url)}
                   autoPlay
                   loop
                   playsInline
@@ -741,7 +742,7 @@ export default function TemplatesPage() {
                     {uploadPreview ? (
                       <div className="relative aspect-[9/16] max-h-48 mx-auto rounded-xl overflow-hidden bg-black">
                         <video 
-                          src={uploadPreview} 
+                          src={uploadPreview.startsWith('blob:') ? uploadPreview : resolveUrl(uploadPreview)} 
                           autoPlay 
                           loop 
                           muted 
@@ -910,7 +911,7 @@ function TemplateCard({ template, onRemix, onPreview }) {
         {/* Background Video */}
         <video
           ref={videoRef}
-          src={template.video_url}
+          src={resolveUrl(template.video_url)}
           loop
           muted
           playsInline
