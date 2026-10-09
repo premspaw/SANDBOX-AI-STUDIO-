@@ -30,6 +30,8 @@ export default function createRouter(deps) {
     const router = express.Router();
     const { 
         uploadVideoToSupabase, 
+        uploadImageToSupabase,
+        storageService,
         resolveToPublicUrl, 
         requireAuth, 
         consumeCredits,
@@ -597,13 +599,26 @@ export default function createRouter(deps) {
             }
 
             let persistedUrl = outputImageUrl;
-            if (typeof uploadVideoToSupabase === 'function') {
-                try {
-                    const saved = await uploadVideoToSupabase(outputImageUrl, `ai_influencer_${Date.now()}.png`, userId);
-                    if (saved) persistedUrl = saved;
-                } catch (saveErr) {
-                    console.warn('[AI-INFLUENCER] Notice: fallback to direct CDN url:', saveErr.message);
+            try {
+                let imgBuffer = null;
+                if (typeof outputImageUrl === 'string' && (outputImageUrl.startsWith('http://') || outputImageUrl.startsWith('https://'))) {
+                    const imgResp = await fetch(outputImageUrl);
+                    if (imgResp.ok) {
+                        const ab = await imgResp.arrayBuffer();
+                        imgBuffer = Buffer.from(ab);
+                    }
+                } else if (typeof outputImageUrl === 'string' && outputImageUrl.startsWith('data:')) {
+                    imgBuffer = Buffer.from(outputImageUrl.split(',')[1], 'base64');
                 }
+
+                if (imgBuffer && storageService && typeof storageService.uploadToGCS === 'function') {
+                    const filename = `ai_influencer_${Date.now()}.png`;
+                    const key = `users/${userId || 'anon'}/generated/${filename}`;
+                    const saved = await storageService.uploadToGCS(imgBuffer, key, 'image/png');
+                    if (saved) persistedUrl = saved;
+                }
+            } catch (saveErr) {
+                console.warn('[AI-INFLUENCER] Notice: fallback to direct CDN url:', saveErr.message);
             }
 
             // Persist to local asset record

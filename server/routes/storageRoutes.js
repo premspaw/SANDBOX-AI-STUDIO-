@@ -63,8 +63,9 @@ export default function createRouter(deps) {
             const parsedUrl = await validateProxyUrl(url);
             const finalUrl = parsedUrl.toString();
 
-            // Detect video by extension (needs Range + streaming support)
-            const isVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(finalUrl);
+            // Detect video by extension (needs Range + streaming support) unless explicitly requested as image
+            const isImageParam = req.query.as === 'image' || req.query.type === 'image' || req.query.format === 'image';
+            const isVideo = !isImageParam && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(finalUrl);
             const rangeHeader = req.headers['range'];
 
             // Forward Range header to upstream if present
@@ -162,6 +163,21 @@ export default function createRouter(deps) {
                 } else {
                     buffer = Buffer.from(await upstream.arrayBuffer());
                 }
+
+                // Auto-detect image MIME type from binary signature if Content-Type was octet-stream or video/mp4
+                let finalCt = ct;
+                if (buffer.length >= 8) {
+                    if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+                        finalCt = 'image/png';
+                    } else if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+                        finalCt = 'image/jpeg';
+                    } else if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) {
+                        finalCt = 'image/webp';
+                    } else if (isImageParam && !finalCt.startsWith('image/')) {
+                        finalCt = 'image/png';
+                    }
+                }
+                res.setHeader('Content-Type', finalCt);
                 res.setHeader('Cache-Control', 'public, max-age=86400');
                 res.status(upstream.status).send(buffer);
             }

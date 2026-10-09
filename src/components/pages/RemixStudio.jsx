@@ -47,6 +47,15 @@ import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import { sanitizeUserErrorMessage } from '../../utils/errorSanitizer';
 
+// Normalizes image and video preview URLs, ensuring images mistakenly stored with .mp4 or CDN MIME quirks render reliably across mobile Safari & Chrome
+const getMediaPreviewUrl = (url, isImage = false) => {
+  if (!url || typeof url !== 'string') return '';
+  if (isImage && (url.endsWith('.mp4') || url.includes('/veo_ai_influencer_') || url.includes('mode=ai-influencer'))) {
+    return `/api/proxy-image?url=${encodeURIComponent(url)}&as=image`;
+  }
+  return url;
+};
+
 export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   // Mode: 'motion-transfer' | 'object-swap' | 'ai-influencer'
   const [activeMode, setActiveMode] = useState(
@@ -166,8 +175,16 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setHistoryList(parsed);
-          setGeneratedResult(prev => prev || parsed[0]);
+          const sanitized = parsed.map(item => {
+            const isInf = item.mode === 'ai-influencer' || item.type === 'image';
+            return {
+              ...item,
+              type: isInf ? 'image' : (item.type || 'video'),
+              url: getMediaPreviewUrl(item.url, isInf)
+            };
+          });
+          setHistoryList(sanitized);
+          setGeneratedResult(prev => prev || sanitized[0]);
         }
       }
     } catch (err) {
@@ -199,7 +216,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 type: isInf ? 'image' : 'video',
                 prompt: a.metadata?.prompt || a.name || 'Remix Generation',
                 resolution: a.metadata?.resolution || (isInf ? '2K Sheet' : '720p'),
-                url: a.url,
+                url: getMediaPreviewUrl(a.url, isInf),
                 zipUrl: a.metadata?.zipUrl || null,
                 movUrl: a.metadata?.movUrl || null,
                 jsxUrl: a.metadata?.jsxUrl || null,
@@ -1733,9 +1750,14 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
               <div className="relative w-full h-full flex flex-col items-center justify-center p-2">
                 {generatedResult.type === 'image' || generatedResult.mode === 'ai-influencer' ? (
                   <img
-                    src={generatedResult.url}
+                    src={getMediaPreviewUrl(generatedResult.url, true)}
                     alt="Character Sheet"
                     onClick={() => setShowLightbox(true)}
+                    onError={(e) => {
+                      if (!e.currentTarget.src.includes('/api/proxy-image')) {
+                        e.currentTarget.src = `/api/proxy-image?url=${encodeURIComponent(generatedResult.url)}&as=image`;
+                      }
+                    }}
                     className="w-full h-full object-contain max-h-[260px] sm:max-h-[340px] rounded-xl shadow-2xl cursor-zoom-in"
                   />
                 ) : (
@@ -1744,6 +1766,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                     className="w-full h-full object-contain max-h-[260px] sm:max-h-[340px] rounded-xl shadow-2xl"
                     controls
                     autoPlay
+                    playsInline
                     loop
                   />
                 )}
@@ -1871,9 +1894,18 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                   >
                     <div className="w-full h-28 rounded-xl bg-black overflow-hidden relative">
                       {item.type === 'image' || item.mode === 'ai-influencer' ? (
-                        <img src={item.url} alt="Generation" className="w-full h-full object-cover" />
+                        <img
+                          src={getMediaPreviewUrl(item.url, true)}
+                          alt="Generation"
+                          onError={(e) => {
+                            if (!e.currentTarget.src.includes('/api/proxy-image')) {
+                              e.currentTarget.src = `/api/proxy-image?url=${encodeURIComponent(item.url)}&as=image`;
+                            }
+                          }}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
-                        <video src={item.url} className="w-full h-full object-cover" muted />
+                        <video src={item.url} className="w-full h-full object-cover" muted playsInline />
                       )}
                       
                       {/* Play overlay ONLY for videos (Motion Remix / Object Swap), NOT for AI Influencer or images */}
@@ -2020,8 +2052,13 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 </button>
               </div>
               <img
-                src={generatedResult.url}
+                src={getMediaPreviewUrl(generatedResult.url, true)}
                 alt="Character Sheet Lightbox"
+                onError={(e) => {
+                  if (!e.currentTarget.src.includes('/api/proxy-image')) {
+                    e.currentTarget.src = `/api/proxy-image?url=${encodeURIComponent(generatedResult.url)}&as=image`;
+                  }
+                }}
                 className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-white/20"
               />
             </div>
