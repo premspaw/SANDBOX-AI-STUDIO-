@@ -473,19 +473,23 @@ export default function SettingsPage() {
                                         {currentTier} PLAN
                                     </span>
                                     {isAdmin && (
-                                        <span className="text-[9px] sm:text-[10px] font-mono font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40">
+                                        <span className="text-[9px] sm:text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40 flex items-center gap-1 shadow-[0_0_12px_rgba(239,68,68,0.25)]">
+                                            <Shield size={10} className="text-red-400" />
                                             ADMIN
                                         </span>
                                     )}
                                 </div>
                                 <p className="text-[11px] sm:text-xs text-zinc-400 font-mono truncate">{displayEmail}</p>
                                 
-                                <div className="flex items-center gap-2 sm:gap-3 pt-0.5 text-[10px] sm:text-[11px] text-zinc-500 font-mono">
-                                    <span>ID: {(profile?.id || authUser?.id || '').slice(0, 8)}...</span>
+                                <div className="flex items-center gap-2 pt-0.5 text-[10px] sm:text-[11px] text-zinc-400 font-mono">
+                                    <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-md text-zinc-300">
+                                        ID: {(profile?.id || authUser?.id || '').slice(0, 8)}...
+                                    </span>
                                     <button
                                         type="button"
                                         onClick={handleCopyUserId}
-                                        className="text-zinc-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors py-0.5 px-1.5 -ml-1.5 rounded-md active:bg-white/5"
+                                        className="text-zinc-400 hover:text-[#c8f135] flex items-center gap-1 cursor-pointer transition-colors py-0.5 px-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 active:scale-95"
+                                        title="Copy full User ID"
                                     >
                                         {copiedId ? <Check size={11} className="text-[#c8f135]" /> : <Copy size={11} />}
                                         <span>{copiedId ? 'Copied' : 'Copy'}</span>
@@ -525,31 +529,31 @@ export default function SettingsPage() {
                             </div>
 
                             {/* Actions Row */}
-                            <div className="flex items-center gap-2 pt-2 sm:pt-0 sm:border-l sm:border-white/10 sm:pl-3 w-full sm:w-auto">
+                            <div className="flex items-center gap-1.5 sm:gap-2 pt-2 sm:pt-0 sm:border-l sm:border-white/10 sm:pl-3 w-full sm:w-auto flex-wrap sm:flex-nowrap">
                                 {isAdmin && (
                                     <button
                                         type="button"
                                         onClick={() => setShowAuditModal(true)}
-                                        className="px-2.5 py-2.5 rounded-xl bg-gradient-to-r from-red-500/20 to-amber-500/20 hover:from-red-500/30 hover:to-amber-500/30 border border-red-500/40 text-red-300 hover:text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
+                                        className="px-2.5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-red-500/20 to-amber-500/20 hover:from-red-500/30 hover:to-amber-500/30 border border-red-500/40 text-red-300 hover:text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
                                         title="Open User Credit Audit & Dispute Management"
                                     >
                                         <Shield size={13} className="text-red-400" />
-                                        <span className="hidden xs:inline">Audit</span>
+                                        <span>Audit</span>
                                     </button>
                                 )}
                                 <button
                                     type="button"
                                     onClick={handleTopUpRenew}
-                                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.35)] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                                    className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.35)] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                                     title="Top Up Shorts Balance & View Deals"
                                 >
                                     <Zap size={14} className="fill-black text-black" />
-                                    <span>Top Up / Renew</span>
+                                    <span>Top Up / Deals</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('assets')}
-                                    className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                                    className="px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
                                     title="Open Assets & History Vault"
                                 >
                                     <FolderOpen size={13} className="text-[#c8f135]" />
@@ -558,7 +562,7 @@ export default function SettingsPage() {
                                 <button
                                     type="button"
                                     onClick={() => setActiveTabGlobal('pricing')}
-                                    className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center active:scale-95"
+                                    className="px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center active:scale-95"
                                     title="View All Studio Plans"
                                 >
                                     <ExternalLink size={13} />
@@ -607,7 +611,21 @@ export default function SettingsPage() {
                     {activeTab === 'credits' && (
                         <div className="space-y-4 sm:space-y-6">
                             
-                            {/* Current Subscription Card */}
+                            {/* 1. Dynamic Promotional Discount Carousel (Exclusive Flash Deals & Bonus Drops) */}
+                            <div id="topup-carousel" className="space-y-2.5 pt-1">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                                        <Flame className="w-4 h-4 text-[#c8f135] fill-[#c8f135]" />
+                                        <span>Exclusive Flash Deals & Bonus Drops</span>
+                                    </h3>
+                                    <span className="text-[9px] sm:text-[10px] font-mono text-[#c8f135] bg-[#c8f135]/10 border border-[#c8f135]/30 px-2 py-0.5 rounded-full">
+                                        Limited Time Drops
+                                    </span>
+                                </div>
+                                <PromoCarousel onSelectPack={handlePurchasePack} />
+                            </div>
+
+                            {/* 2. Current Subscription Card */}
                             <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/[0.03] to-[#0a0a12] border border-white/[0.08] backdrop-blur-xl space-y-3 sm:space-y-4">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-white/[0.08] pb-3 sm:pb-4">
                                     <div>
@@ -626,7 +644,7 @@ export default function SettingsPage() {
                                         <button
                                             type="button"
                                             onClick={() => setActiveTab('assets')}
-                                            className="px-3 sm:px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-[11px] sm:text-xs font-black uppercase tracking-wider border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
+                                            className="px-3 sm:px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-[11px] sm:text-xs font-black uppercase tracking-wider border border-white/15 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                                         >
                                             <FolderOpen size={12} className="text-[#c8f135]" />
                                             <span>Assets & History</span>
@@ -634,7 +652,7 @@ export default function SettingsPage() {
                                         <button
                                             type="button"
                                             onClick={() => setActiveTabGlobal('pricing')}
-                                            className="px-3.5 sm:px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-[11px] sm:text-xs font-black uppercase tracking-wider border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
+                                            className="px-3.5 sm:px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-[11px] sm:text-xs font-black uppercase tracking-wider border border-white/15 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                                         >
                                             <Sparkles size={12} className="text-[#c8f135]" />
                                             <span>Upgrade Plan</span>
@@ -697,20 +715,6 @@ export default function SettingsPage() {
                                         )}
                                     </AnimatePresence>
                                 </div>
-                            </div>
-
-                            {/* Dynamic Promotional Discount Carousel (16:9 Banner) */}
-                            <div id="topup-carousel" className="space-y-2.5 pt-1">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
-                                        <Flame className="w-4 h-4 text-[#c8f135] fill-[#c8f135]" />
-                                        <span>Exclusive Flash Deals & Bonus Drops</span>
-                                    </h3>
-                                    <span className="text-[9px] sm:text-[10px] font-mono text-[#c8f135] bg-[#c8f135]/10 border border-[#c8f135]/30 px-2 py-0.5 rounded-full">
-                                        16:9 Live Preview
-                                    </span>
-                                </div>
-                                <PromoCarousel onSelectPack={handlePurchasePack} />
                             </div>
 
                             {/* Credit Top-Up Pack Showcase */}

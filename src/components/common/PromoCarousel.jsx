@@ -4,7 +4,7 @@ import { Zap, Sparkles, ChevronLeft, ChevronRight, Flame, ArrowRight, ShieldChec
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store';
 
-export const PROMO_SLIDES = [
+const PROMO_SLIDES = [
     {
         id: 'promo_creator_33',
         tag: '⚡ FLASH SALE · 33% OFF',
@@ -85,6 +85,8 @@ export function PromoCarousel({ className = '', onSelectPack }) {
     const [direction, setDirection] = useState(1);
     const userProfile = useAppStore(state => state.userProfile);
     const timerRef = useRef(null);
+    const touchStartXRef = useRef(0);
+    const touchEndXRef = useRef(0);
 
     const totalSlides = PROMO_SLIDES.length;
 
@@ -107,6 +109,36 @@ export function PromoCarousel({ className = '', onSelectPack }) {
         };
     }, [isPaused, nextSlide]);
 
+    const handleTouchStart = (e) => {
+        setIsPaused(true);
+        if (e.touches && e.touches[0]) {
+            touchStartXRef.current = e.touches[0].clientX;
+            touchEndXRef.current = e.touches[0].clientX;
+        }
+    };
+
+    const handleTouchMove = (e) => {
+        if (e.touches && e.touches[0]) {
+            touchEndXRef.current = e.touches[0].clientX;
+        }
+    };
+
+    const handleTouchEnd = () => {
+        setIsPaused(false);
+        const startX = touchStartXRef.current;
+        const endX = touchEndXRef.current;
+        if (startX && endX) {
+            const diff = startX - endX;
+            if (diff > 40) {
+                nextSlide();
+            } else if (diff < -40) {
+                prevSlide();
+            }
+        }
+        touchStartXRef.current = 0;
+        touchEndXRef.current = 0;
+    };
+
     const currentSlide = PROMO_SLIDES[currentIndex];
 
     const handleCta = (e, slide) => {
@@ -127,7 +159,7 @@ export function PromoCarousel({ className = '', onSelectPack }) {
     // Slide transition variants
     const slideVariants = {
         enter: (dir) => ({
-            x: dir > 0 ? 100 : -100,
+            x: dir > 0 ? 80 : -80,
             opacity: 0
         }),
         center: {
@@ -135,7 +167,7 @@ export function PromoCarousel({ className = '', onSelectPack }) {
             opacity: 1
         },
         exit: (dir) => ({
-            x: dir > 0 ? -100 : 100,
+            x: dir > 0 ? -80 : 80,
             opacity: 0
         })
     };
@@ -149,11 +181,12 @@ export function PromoCarousel({ className = '', onSelectPack }) {
             )}
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
-            onTouchStart={() => setIsPaused(true)}
-            onTouchEnd={() => setIsPaused(false)}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
         >
-            {/* 16:9 Aspect Ratio Container on Mobile & Desktop */}
-            <div className="relative w-full aspect-[16/9] min-h-[220px] max-h-[380px] sm:max-h-[420px] overflow-hidden flex flex-col justify-between">
+            {/* Responsive Container on Mobile & Desktop */}
+            <div className="relative w-full min-h-[300px] xs:min-h-[290px] sm:min-h-[280px] sm:aspect-[16/8] md:aspect-[16/7] lg:aspect-[16/6] overflow-hidden flex flex-col justify-between">
                 
                 {/* Background ambient lighting */}
                 <div 
@@ -173,10 +206,10 @@ export function PromoCarousel({ className = '', onSelectPack }) {
                 />
 
                 {/* Content Overlay */}
-                <div className="relative z-10 w-full h-full p-3.5 sm:p-6 flex flex-col justify-between">
+                <div className="relative z-10 w-full h-full p-3 sm:p-5 md:p-6 flex flex-col justify-between">
                     
                     {/* Top Row: Promo Badge & Timer */}
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-2 px-1">
                         <div className="flex items-center gap-1.5 sm:gap-2">
                             <span className={cn(
                                 "text-[9px] sm:text-[11px] font-black uppercase tracking-wider px-2 sm:px-3 py-1 rounded-full flex items-center gap-1 shrink-0",
@@ -199,7 +232,7 @@ export function PromoCarousel({ className = '', onSelectPack }) {
                         </div>
                     </div>
 
-                    {/* Middle Section: Offer Content with Animated Keying */}
+                    {/* Middle Section: Offer Content with Animated Keying (Inset from side arrows) */}
                     <AnimatePresence mode="wait" custom={direction}>
                         <motion.div
                             key={currentSlide.id}
@@ -209,14 +242,14 @@ export function PromoCarousel({ className = '', onSelectPack }) {
                             animate="center"
                             exit="exit"
                             transition={{ duration: 0.35, ease: 'easeInOut' }}
-                            className="flex flex-col justify-center my-auto py-1 space-y-1 sm:space-y-2"
+                            className="flex flex-col justify-center my-auto py-1 px-4 sm:px-8 md:px-10 space-y-1.5 sm:space-y-2.5"
                         >
-                            <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 sm:gap-4">
-                                <div className="space-y-0.5">
+                            <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1.5 sm:gap-4">
+                                <div className="space-y-0.5 min-w-0">
                                     <h4 className="text-base sm:text-2xl md:text-3xl font-black text-white tracking-tight uppercase line-clamp-1 drop-shadow-md">
                                         {currentSlide.title}
                                     </h4>
-                                    <p className="text-[10px] sm:text-xs text-zinc-300 font-medium line-clamp-1 max-w-xl">
+                                    <p className="text-[10.5px] sm:text-xs text-zinc-300 font-medium line-clamp-1 max-w-xl">
                                         {currentSlide.subtitle}
                                     </p>
                                 </div>
@@ -226,9 +259,11 @@ export function PromoCarousel({ className = '', onSelectPack }) {
                                     <span className="text-xl sm:text-3xl font-black italic text-white tracking-tight">
                                         {currentSlide.price}
                                     </span>
-                                    <span className="text-[11px] sm:text-xs text-zinc-500 line-through font-mono">
-                                        {currentSlide.originalPrice}
-                                    </span>
+                                    {currentSlide.originalPrice && (
+                                        <span className="text-[11px] sm:text-xs text-zinc-500 line-through font-mono">
+                                            {currentSlide.originalPrice}
+                                        </span>
+                                    )}
                                     <span className="text-[8.5px] sm:text-[10px] font-black uppercase text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
                                         {currentSlide.discountBadge}
                                     </span>
@@ -262,7 +297,7 @@ export function PromoCarousel({ className = '', onSelectPack }) {
                     </AnimatePresence>
 
                     {/* Bottom Row: CTA Button + Navigation Dots */}
-                    <div className="flex items-center justify-between gap-3 pt-1 border-t border-white/10">
+                    <div className="flex flex-col xs:flex-row items-center justify-between gap-2.5 sm:gap-3 pt-1.5 sm:pt-2 border-t border-white/10 px-1">
                         
                         {/* Slide Indicators / Dots */}
                         <div className="flex items-center gap-1.5">
@@ -286,11 +321,11 @@ export function PromoCarousel({ className = '', onSelectPack }) {
                         </div>
 
                         {/* Action CTA */}
-                        <div className="flex items-center gap-2">
+                        <div className="w-full xs:w-auto flex items-center justify-end">
                             <button
                                 type="button"
                                 onClick={(e) => handleCta(e, currentSlide)}
-                                className="px-3.5 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_25px_rgba(200,241,53,0.4)] active:scale-95 transition-all cursor-pointer shrink-0"
+                                className="w-full xs:w-auto px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_25px_rgba(200,241,53,0.4)] active:scale-95 transition-all cursor-pointer shrink-0"
                             >
                                 <Zap className="w-3.5 h-3.5 fill-black text-black" />
                                 <span>{currentSlide.ctaText}</span>
