@@ -11,6 +11,7 @@ export function MobileNav({ activeTab, setActiveTab }) {
         { id: 'remix', label: 'Remix', icon: ArrowsClockwise, color: 'text-[#D4FF00]', glow: 'rgba(212,255,0,0.35)' },
         { id: 'ugc', label: 'UGC', icon: UsersThree, color: 'text-amber-400', glow: 'rgba(251,191,36,0.15)' },
         { id: 'studio', label: 'Studio', icon: VideoCamera, color: 'text-violet-400', glow: 'rgba(167,139,250,0.25)' },
+        { id: 'marketing', label: 'Marketing', icon: Megaphone, color: 'text-rose-400', glow: 'rgba(251,113,133,0.25)' },
         { id: 'settings', label: 'Settings', icon: GearSix, color: 'text-neutral-300', glow: 'rgba(163,163,163,0.2)' },
     ];
 

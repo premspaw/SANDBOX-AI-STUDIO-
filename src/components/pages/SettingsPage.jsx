@@ -4,7 +4,7 @@ import {
     User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare,
     Square, Zap, ChevronRight, ChevronDown, ChevronUp, Key, Sparkles, TrendingUp, Clock, Gem, Fingerprint,
     ShieldCheck, BellRing, KeyRound, Copy, Check, Sliders, Cpu, ArrowUpRight,
-    ExternalLink, RefreshCw, Layers, Film, Volume2, Wand2, Eye, EyeOff, AlertCircle, FolderOpen, Flame
+    ExternalLink, RefreshCw, Layers, Film, Volume2, Wand2, Eye, EyeOff, AlertCircle, FolderOpen
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
@@ -442,34 +442,34 @@ export default function SettingsPage() {
 
             <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-24 relative z-10 space-y-4 sm:space-y-6">
                 
-                {/* 1. TOP HERO PROFILE & CREDIT STATUS BANNER */}
-                <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/[0.05] via-[#0b0b12] to-black border border-white/10 p-3.5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
+                {/* 1. TOP HERO PROFILE & CREDIT STATUS BANNER (TWO CLEAN CATEGORIES) */}
+                <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/[0.05] via-[#0b0b12] to-black border border-white/10 p-4 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
                     <div className="absolute top-0 right-0 w-96 h-full bg-gradient-to-l from-[#c8f135]/10 to-transparent pointer-events-none" />
                     
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 relative z-10">
-                        {/* User Identity Info */}
-                        <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 relative z-10">
+                        {/* LEFT CATEGORY: User Identity & Account Info */}
+                        <div className="flex items-center gap-3.5 sm:gap-5 min-w-0">
                             <div className="relative shrink-0">
-                                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#c8f135] via-emerald-500 to-teal-600 p-[2px] shadow-[0_0_25px_rgba(200,241,53,0.3)]">
+                                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#c8f135] via-emerald-500 to-teal-600 p-[2px] shadow-[0_0_20px_rgba(200,241,53,0.25)]">
                                     <div className="w-full h-full rounded-[10px] sm:rounded-[14px] bg-[#0c0c14] flex items-center justify-center overflow-hidden">
                                         {profile?.avatar_url ? (
                                             <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                                         ) : (
-                                            <span className="text-xl sm:text-3xl font-black text-[#c8f135] uppercase">
+                                            <span className="text-xl sm:text-2xl font-black text-[#c8f135] uppercase">
                                                 {firstWord.charAt(0)}
                                             </span>
                                         )}
                                     </div>
                                 </div>
-                                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-[#c8f135] border-2 border-black animate-pulse" />
+                                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#c8f135] border-2 border-black animate-pulse" />
                             </div>
 
-                            <div className="space-y-0.5 sm:space-y-1 min-w-0">
+                            <div className="space-y-1 min-w-0">
                                 <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                                    <h1 className="text-base sm:text-2xl font-black text-white tracking-tight uppercase truncate">
+                                    <h1 className="text-base sm:text-xl font-black text-white tracking-tight uppercase truncate">
                                         {displayName || 'ZeroLens Creator'}
                                     </h1>
-                                    <span className="text-[9px] sm:text-[10px] font-mono font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30">
+                                    <span className="text-[9px] sm:text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30">
                                         {currentTier} PLAN
                                     </span>
                                     {isAdmin && (
@@ -479,11 +479,11 @@ export default function SettingsPage() {
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-[11px] sm:text-xs text-zinc-400 font-mono truncate">{displayEmail}</p>
+                                <p className="text-xs text-zinc-400 font-mono truncate">{displayEmail}</p>
                                 
-                                <div className="flex items-center gap-2 pt-0.5 text-[10px] sm:text-[11px] text-zinc-400 font-mono">
+                                <div className="flex items-center gap-2 pt-0.5 text-[10px] text-zinc-400 font-mono">
                                     <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-md text-zinc-300">
-                                        ID: {(profile?.id || authUser?.id || '').slice(0, 8)}...
+                                        ID: {(profile?.id || authUser?.id || '').slice(0, 10)}...
                                     </span>
                                     <button
                                         type="button"
@@ -498,81 +498,54 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
-                        {/* High-Energy Shorts Wallet & Plan Action */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-gradient-to-br from-zinc-950 via-[#0a1205] to-black border border-[#c8f135]/30 p-3.5 sm:p-4 rounded-2xl shadow-[0_0_30px_rgba(200,241,53,0.12)] shrink-0">
-                            {/* Balance Info */}
-                            <div className="flex items-center justify-between sm:justify-start gap-3 px-1">
-                                <div className="flex items-center gap-2.5 sm:gap-3">
-                                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#c8f135]/15 border border-[#c8f135]/40 flex items-center justify-center text-[#c8f135] shadow-[0_0_18px_rgba(200,241,53,0.3)] shrink-0">
-                                        <Coins className="w-5 h-5 sm:w-5 sm:h-5 text-[#c8f135]" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-zinc-400">
-                                                Shorts Balance
-                                            </span>
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-pulse" />
-                                        </div>
-                                        <div className="flex items-baseline gap-1.5">
-                                            <span className="text-2xl sm:text-3xl font-black text-[#c8f135] tracking-tight">{userCredits}</span>
-                                            <span className="text-[10px] sm:text-xs font-mono font-bold text-zinc-300">⚡ Available</span>
-                                        </div>
-                                    </div>
+                        {/* RIGHT CATEGORY: Shorts Balance & Quick Actions */}
+                        <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 bg-gradient-to-br from-zinc-950 via-[#0a1205] to-black border border-[#c8f135]/30 p-3 sm:p-3.5 rounded-2xl shadow-[0_0_25px_rgba(200,241,53,0.1)] shrink-0">
+                            <div className="flex items-center gap-2.5 sm:gap-3">
+                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#c8f135]/15 border border-[#c8f135]/40 flex items-center justify-center text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.25)] shrink-0">
+                                    <Coins className="w-5 h-5 text-[#c8f135]" />
                                 </div>
-
-                                {/* Mobile quick badge */}
-                                <div className="sm:hidden text-right">
-                                    <span className="text-[9px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30">
-                                        Never Expires
+                                <div>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block">
+                                        Shorts Balance
                                     </span>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-2xl sm:text-3xl font-black text-[#c8f135] tracking-tight">{userCredits}</span>
+                                        <span className="text-[10px] font-mono font-bold text-zinc-300">⚡ Available</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Actions Row */}
-                            <div className="flex items-center gap-1.5 sm:gap-2 pt-2 sm:pt-0 sm:border-l sm:border-white/10 sm:pl-3 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+                            <div className="flex items-center gap-2 border-l border-white/10 pl-3 sm:pl-4">
                                 {isAdmin && (
                                     <button
                                         type="button"
                                         onClick={() => setShowAuditModal(true)}
-                                        className="px-2.5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-red-500/20 to-amber-500/20 hover:from-red-500/30 hover:to-amber-500/30 border border-red-500/40 text-red-300 hover:text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
-                                        title="Open User Credit Audit & Dispute Management"
+                                        className="px-2.5 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 active:scale-95"
+                                        title="User Audit"
                                     >
-                                        <Shield size={13} className="text-red-400" />
+                                        <Shield size={12} />
                                         <span>Audit</span>
                                     </button>
                                 )}
                                 <button
                                     type="button"
                                     onClick={handleTopUpRenew}
-                                    className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.35)] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-                                    title="Top Up Shorts Balance & View Deals"
+                                    className="px-4 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.35)] active:scale-95 cursor-pointer flex items-center gap-1.5"
                                 >
-                                    <Zap size={14} className="fill-black text-black" />
-                                    <span>Top Up / Deals</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab('assets')}
-                                    className="px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
-                                    title="Open Assets & History Vault"
-                                >
-                                    <FolderOpen size={13} className="text-[#c8f135]" />
-                                    <span className="hidden md:inline">Assets</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTabGlobal('pricing')}
-                                    className="px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center active:scale-95"
-                                    title="View All Studio Plans"
-                                >
-                                    <ExternalLink size={13} />
+                                    <Zap size={13} className="fill-black text-black" />
+                                    <span>Top Up ⚡</span>
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 2. NAVIGATION SEGMENTED TABS (Smooth horizontal swipe on mobile) */}
+                {/* 2. IMMEDIATELY AFTER HEADER: MINIMALIST CREATIVE PROMO CAROUSEL */}
+                <div id="topup-carousel" className="space-y-1.5">
+                    <PromoCarousel onSelectPack={handlePurchasePack} />
+                </div>
+
+                {/* 3. NAVIGATION SEGMENTED TABS (Smooth horizontal swipe on mobile) */}
                 <div className="flex items-center overflow-x-auto no-scrollbar gap-1.5 p-1 sm:p-1.5 bg-[#0a0a12]/90 border border-white/[0.08] rounded-xl sm:rounded-2xl shrink-0">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
@@ -604,28 +577,13 @@ export default function SettingsPage() {
                     })}
                 </div>
 
-                {/* 3. ACTIVE TAB CONTENT VIEW */}
+                {/* 4. ACTIVE TAB CONTENT VIEW */}
                 <div className="space-y-4 sm:space-y-6">
 
                     {/* ═════════ TAB 1: SHORTS & SUBSCRIPTION PACKS ═════════ */}
                     {activeTab === 'credits' && (
                         <div className="space-y-4 sm:space-y-6">
-                            
-                            {/* 1. Dynamic Promotional Discount Carousel (Exclusive Flash Deals & Bonus Drops) */}
-                            <div id="topup-carousel" className="space-y-2.5 pt-1">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
-                                        <Flame className="w-4 h-4 text-[#c8f135] fill-[#c8f135]" />
-                                        <span>Exclusive Flash Deals & Bonus Drops</span>
-                                    </h3>
-                                    <span className="text-[9px] sm:text-[10px] font-mono text-[#c8f135] bg-[#c8f135]/10 border border-[#c8f135]/30 px-2 py-0.5 rounded-full">
-                                        Limited Time Drops
-                                    </span>
-                                </div>
-                                <PromoCarousel onSelectPack={handlePurchasePack} />
-                            </div>
-
-                            {/* 2. Current Subscription Card */}
+                            {/* Current Subscription Card */}
                             <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/[0.03] to-[#0a0a12] border border-white/[0.08] backdrop-blur-xl space-y-3 sm:space-y-4">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-white/[0.08] pb-3 sm:pb-4">
                                     <div>
