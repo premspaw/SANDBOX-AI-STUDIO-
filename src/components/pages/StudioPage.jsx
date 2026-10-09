@@ -17,6 +17,7 @@ import { CinematicLightbox } from '../cinemaStudio/CinematicLightbox';
 import { InpaintEditor } from '../common/InpaintEditor';
 import { StoryboardEditor } from '../cinemaStudio/StoryboardEditor';
 import { LazyVideo } from '../cinemaStudio/LazyVideo';
+import { sanitizeUserErrorMessage } from '../../utils/errorSanitizer';
 
 /* ─── URL NORMALIZATION & DEDUPLICATION HELPERS ─────────────────── */
 const getNormalizedPath = (url) => {
@@ -266,10 +267,10 @@ function StudioGalleryCard({
             "text-[10px] font-black uppercase tracking-wider",
             isPolicyViolation ? "text-amber-400" : "text-red-400"
           )}>
-            {isPolicyViolation ? "Google Policy Restriction" : "Generation Failed"}
+            {isPolicyViolation ? "Content Policy Restriction" : "Generation Interrupted"}
           </span>
           <p className="text-[9.5px] text-white/80 leading-relaxed font-sans max-h-16 overflow-y-auto px-1 custom-scrollbar">
-            {item.error || 'Server error or quota depleted'}
+            {sanitizeUserErrorMessage(item.error)}
           </p>
           {isPolicyViolation && (
             <span className="text-[8px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">

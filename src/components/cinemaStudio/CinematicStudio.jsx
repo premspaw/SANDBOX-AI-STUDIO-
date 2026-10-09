@@ -1,7 +1,7 @@
 /**
  * ZeroLens — Cinema Studio
  * Gallery-background layout with floating chat input.
- * Engines: Veo 3.1 (Google) + Seedance 2.0 (Kie.ai)
+ * Engines: Veo 3.1 + Seedance 2.0 Neural Engine
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
@@ -23,6 +23,7 @@ import { ReferencePanel } from './ReferencePanel';
 import { SidePanel } from './SidePanel';
 import { CAMERA_ANGLES, CAMERA_MODELS, ANGLE_NARRATIVES } from './constants';
 import { InpaintEditor } from '../common/InpaintEditor';
+import { sanitizeUserErrorMessage } from '../../utils/errorSanitizer';
 import { compressImageToMax1024 } from '../../services/geminiService';
 import { CinematicLightbox } from './CinematicLightbox';
 import { StoryboardEditor } from './StoryboardEditor';
@@ -475,18 +476,8 @@ function UpwardDropdown({ children, icon, label, badge, accentColor = 'fuchsia' 
 const DEFAULT_CINEMA_ASSETS = [];
 
 const cleanErrorMessage = (msg) => {
-  if (!msg || typeof msg !== 'string') return '';
-  let cleaned = msg;
-  if (cleaned.toLowerCase().includes('pixel count') || cleaned.includes('409600')) {
-    return "Reference Video Resolution Too Low: ByteDance Seedance 2.0 requires reference videos to have a total resolution of at least 409,600 pixels (e.g. at least 640x640, 854x480, or 1280x720). Please upload a higher resolution reference video.";
-  }
-  if (cleaned.toLowerCase().includes('real person') || cleaned.toLowerCase().includes('realperson')) {
-    return "Real-Person Policy Flagged: Volcano/BytePlus Ark safety filters restrict generating video from reference images that resemble real people. Recommendations: 1) Switch to Veo 3.1 or 2) Use a more stylized or cartoonish/drawn reference image.";
-  }
-  if (cleaned.includes('SAFETY_REFUSAL') || cleaned.toLowerCase().includes('safety filter')) {
-    return "Safety Filter Blocked: The prompt or input image triggered the model's safety filters. Please refine your prompt text or try a different reference image.";
-  }
-  return cleaned;
+  if (!msg) return '';
+  return sanitizeUserErrorMessage(msg);
 };
 
 // True Zero-Latency Uncontrolled Native Textarea — 0ms typing lag, 0 React re-renders on keystrokes

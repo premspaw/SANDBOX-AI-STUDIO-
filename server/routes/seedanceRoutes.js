@@ -21,6 +21,36 @@ function normalizeHfAspectRatio(ratio) {
     return '16:9';
 }
 
+function sanitizeServerError(rawMsg) {
+    if (!rawMsg) return 'High server demand or temporary service interruption. Any deducted Shorts have been refunded. Please try again or contact support at support@zerolens.in.';
+    const str = typeof rawMsg === 'string' ? rawMsg : (rawMsg.message || JSON.stringify(rawMsg));
+    const lower = str.toLowerCase();
+
+    // Preserve safety and policy filter notifications
+    const isPolicyViolation = 
+        lower.includes('responsible ai') ||
+        lower.includes('content safety') ||
+        lower.includes('safety') ||
+        lower.includes('policy') ||
+        lower.includes('prohibited') ||
+        lower.includes('nsfw') ||
+        lower.includes('moderation');
+    if (isPolicyViolation) {
+        return '⚠️ Content Safety Policy Restriction: Your prompt or reference media was flagged by content safety filters. Any deducted Shorts credits have been refunded. Please adjust your prompt or media and try again.';
+    }
+
+    if (lower.includes('pixel count') || lower.includes('409600')) {
+        return 'Reference Video Resolution Too Low: Reference videos require a resolution of at least 409,600 pixels (e.g. 640x640, 854x480, or 1280x720). Please upload a higher resolution video.';
+    }
+
+    if (lower.includes('insufficient') && (lower.includes('shorts') || lower.includes('balance'))) {
+        return 'Insufficient Shorts balance. Please top up your Shorts credits to continue.';
+    }
+
+    // Replace any third-party vendor name, upstream credit issue, quota, timeout or crash
+    return 'High server demand or temporary service interruption. Any deducted Shorts have been refunded. Please try again or contact support at support@zerolens.in.';
+}
+
 async function conformImageToAspectRatio(imageSource, targetAspectRatio, targetUserId) {
     if (!imageSource || !targetAspectRatio || targetAspectRatio === 'adaptive') return imageSource;
 
@@ -159,11 +189,11 @@ export default function createRouter(deps) {
 
         const createData = await createResp.json();
         if (createData.code !== 200) {
-            throw new Error(`Kie.ai Error: ${createData.msg || JSON.stringify(createData)}`);
+            throw new Error(`Video generation request failed. Please try again or contact support@zerolens.in.`);
         }
         const taskId = createData.data?.taskId;
         if (!taskId) {
-            throw new Error("Kie.ai task creation succeeded but did not return a taskId.");
+            throw new Error("Video generation request failed. Please try again or contact support@zerolens.in.");
         }
         return taskId;
     };
@@ -580,11 +610,11 @@ export default function createRouter(deps) {
 
                     const createData = await createResp.json();
                     if (createData.code !== 200) {
-                        throw new Error(`Kie.ai Error: ${createData.msg || JSON.stringify(createData)}`);
+                        throw new Error(`Video generation request failed. Please try again or contact support@zerolens.in.`);
                     }
                     const taskId = createData.data?.taskId;
                     if (!taskId) {
-                        throw new Error("Kie.ai task creation succeeded but did not return a taskId.");
+                        throw new Error("Video generation request failed. Please try again or contact support@zerolens.in.");
                     }
 
                     console.log(`[SEEDANCE-2.0-KIE] Task created successfully: ${taskId}`);
@@ -641,11 +671,11 @@ export default function createRouter(deps) {
 
                 const createData = await createResp.json();
                 if (createData.code !== 200) {
-                    throw new Error(`Kie.ai Error: ${createData.msg || JSON.stringify(createData)}`);
+                    throw new Error(`Video generation request failed. Please try again or contact support@zerolens.in.`);
                 }
                 const taskId = createData.data?.taskId;
                 if (!taskId) {
-                    throw new Error("Kie.ai task creation succeeded but did not return a taskId.");
+                    throw new Error("Video generation request failed. Please try again or contact support@zerolens.in.");
                 }
 
                 console.log(`[SEEDANCE-MINI] Task created successfully: ${taskId}`);
@@ -781,13 +811,13 @@ export default function createRouter(deps) {
                                 }
                             });
                         } else if (hfResult.status === 'nsfw') {
-                            throw new Error("Higgsfield Safety / Policy Filter: The generation was flagged by Higgsfield safety policy (status: nsfw). Please adjust prompt or reference images and try again.");
+                            throw new Error("Content Safety Policy Restriction: The generation was flagged by content safety filters (status: nsfw). Please adjust prompt or reference images and try again.");
                         } else if (hfResult.status === 'failed') {
-                            throw new Error(hfResult.error || 'Higgsfield Seedance 2.5 generation returned failed state.');
+                            throw new Error(sanitizeServerError(hfResult.error) || 'Video generation could not be completed.');
                         } else if (hfResult.status === 'canceled') {
-                            throw new Error("Higgsfield generation was canceled.");
+                            throw new Error("Generation was canceled.");
                         } else {
-                            throw new Error(`Higgsfield Seedance 2.5 returned status: ${hfResult.status}`);
+                            throw new Error(`Generation returned status: ${hfResult.status}`);
                         }
                     } catch (hfErr) {
                         console.warn(`[SEEDANCE-2.5-HIGGSFIELD] Request failed: ${hfErr.message}`);
@@ -798,17 +828,17 @@ export default function createRouter(deps) {
                         // If the user explicitly requested Higgsfield / Xfield, but Higgsfield is out of balance, fallback if Kie is ready
                         const isCreditError = hfErr.message.toLowerCase().includes('credit balance') || hfErr.message.toLowerCase().includes('balance is too low') || hfErr.message.toLowerCase().includes('payment required');
                         if (isHiggsfieldRequested && !isCreditError) {
-                            throw new Error(`Higgsfield (Xfield) Seedance 2.5 Error: ${hfErr.message}`);
+                            throw new Error(`Video generation could not be completed. Please try again or contact support@zerolens.in.`);
                         }
-                        console.log(`[SEEDANCE-2.5-FALLBACK] Falling back to Kie.ai provider...`);
+                        console.log(`[SEEDANCE-2.5-FALLBACK] Falling back to high-speed provider...`);
                     }
                 } else if (isHiggsfieldRequested && !activeHfKey) {
-                    throw new Error("Higgsfield credentials (HF_CREDENTIALS / HF_KEY) are not configured on the server.");
+                    throw new Error("Video generation service temporarily unavailable. Please contact support@zerolens.in.");
                 }
 
                 // 2. KIE API Provider (for explicit Kie selection or graceful fallback if configured)
                 if (!activeKieKey) {
-                    throw new Error("Neither Higgsfield credentials nor KIE_API_KEY is available for Seedance 2.5.");
+                    throw new Error("Video generation service temporarily unavailable. Please contact support@zerolens.in.");
                 }
 
                 const seedance25Input = {
@@ -851,11 +881,11 @@ export default function createRouter(deps) {
 
                 const createData = await createResp.json();
                 if (createData.code !== 200) {
-                    throw new Error(`Kie.ai Error: ${createData.msg || JSON.stringify(createData)}`);
+                    throw new Error(`Video generation request failed. Please try again or contact support@zerolens.in.`);
                 }
                 const taskId = createData.data?.taskId;
                 if (!taskId) {
-                    throw new Error("Kie.ai task creation succeeded but did not return a taskId.");
+                    throw new Error("Video generation request failed. Please try again or contact support@zerolens.in.");
                 }
 
                 console.log(`[SEEDANCE-2.5] Task created successfully on Kie.ai: ${taskId}`);
@@ -892,7 +922,7 @@ export default function createRouter(deps) {
                 }
             }
             const statusCode = error.status || (error.message?.includes('Insufficient credits') ? 402 : 500);
-            res.status(statusCode).json({ error: error.message });
+            res.status(statusCode).json({ error: sanitizeServerError(error.message) });
         }
     });
 
@@ -967,16 +997,16 @@ export default function createRouter(deps) {
                     console.log(`[SEEDANCE-STATUS-ARK] ✅ Completed | URL: ${supabaseUrl.substring(0, 80)}...`);
                     return res.json({ status: 'completed', url: supabaseUrl });
                 } else if (state === 'failed') {
-                    return res.json({ status: 'failed', error: pollData.error?.message || 'Generation failed' });
+                    return res.json({ status: 'failed', error: sanitizeServerError(pollData.error?.message || 'Generation failed') });
                 }
 
                 return res.json({ status: 'processing' });
             }
 
-            // 2. Handle Kie.ai engine polling (fault-tolerant with automatic propagation wait)
+            // 2. Handle engine polling (fault-tolerant with automatic propagation wait)
             const apiKey = process.env.KIE_API_KEY;
             if (!apiKey) {
-                return res.status(500).json({ status: 'error', message: "Kie.ai API Key missing on server." });
+                return res.status(500).json({ status: 'error', message: "High server demand or temporary service interruption. Please try again or contact support@zerolens.in." });
             }
 
             const controller = new AbortController();
@@ -1080,13 +1110,13 @@ export default function createRouter(deps) {
                 console.log(`[SEEDANCE-STATUS-KIE] ✅ Completed | URL: ${supabaseUrl.substring(0, 80)}...`);
                 return res.json({ status: 'completed', url: supabaseUrl });
             } else if (state === 'fail' || state === 'failed' || state === 'error') {
-                return res.json({ status: 'failed', error: pollData.data?.failMsg || pollData.data?.failCode || 'Kie.ai generation failed' });
+                return res.json({ status: 'failed', error: sanitizeServerError(pollData.data?.failMsg || pollData.data?.failCode || 'Generation failed') });
             }
 
             return res.json({ status: 'processing' });
         } catch (error) {
             console.error('[SEEDANCE-STATUS-ERR]', error.message, error.stack?.split('\n').slice(0, 3).join(' '));
-            res.status(500).json({ status: 'error', message: error.message });
+            res.status(500).json({ status: 'error', message: sanitizeServerError(error.message) });
         }
     });
 

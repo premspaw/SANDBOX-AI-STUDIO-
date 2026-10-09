@@ -2371,9 +2371,9 @@ export const SidePanel = React.memo(({
   ], []);
 
   const seedanceProviderOptions = useMemo(() => [
-    { value: 'auto', label: '⚡ Auto Fallback (Higgsfield → KIE)', desc: 'Smart Multi-Provider Routing' },
-    { value: 'higgsfield', label: 'Higgsfield (Official API)', desc: 'Direct bytedance/seedance-2.5' },
-    { value: 'kie', label: 'KIE API (Legacy Bridge)', desc: 'Direct bytedance/seedance-2-5' }
+    { value: 'auto', label: '⚡ Ultra Smart Routing', desc: 'Auto-Optimized High-Performance Pipeline' },
+    { value: 'higgsfield', label: 'Seedance 2.5 Pro Engine', desc: 'Direct High-Fidelity Rendering' },
+    { value: 'kie', label: 'Seedance 2.5 High-Speed', desc: 'Low-Latency Neural Pipeline' }
   ], []);
 
   const userProfile = useAppStore(state => state.userProfile);
@@ -4466,7 +4466,7 @@ export const SidePanel = React.memo(({
                         <span className="truncate">
                           {motionEngine === 'easy'
                             ? 'Motion Control Easy · 10s Performance Transfer (Fixed 10s Clip)'
-                            : 'Kling 3.0 Motion Control · High-Dynamic Motion Retargeting (Kie.ai)'}
+                            : 'Kling 3.0 Motion Control · High-Dynamic Motion Retargeting'}
                         </span>
                       </div>
                       <span className={cn("font-mono shrink-0 pl-1 text-[7.5px] font-bold", motionEngine === 'easy' ? "text-[#c8f135]" : "text-cyan-400")}>
@@ -4617,7 +4617,7 @@ export const SidePanel = React.memo(({
                             <span>Kling 3.0 Motion Parameters</span>
                           </span>
                           <span className="text-[8px] font-mono font-bold text-cyan-300 bg-cyan-500/10 px-1.5 py-0.2 rounded border border-cyan-500/20">
-                            Kie.ai Engine
+                            Neural High-Speed Engine
                           </span>
                         </div>
 

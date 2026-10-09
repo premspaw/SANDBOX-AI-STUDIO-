@@ -2,6 +2,30 @@ import express from 'express';
 import { createHiggsfieldClient } from '@higgsfield/client/v2';
 import { isValidUuid } from '../utils/validateUuid.js';
 
+function sanitizeServerError(rawMsg) {
+    if (!rawMsg) return 'High server demand or temporary service interruption. Any deducted Shorts have been refunded. Please try again or contact support at support@zerolens.in.';
+    const str = typeof rawMsg === 'string' ? rawMsg : (rawMsg.message || JSON.stringify(rawMsg));
+    const lower = str.toLowerCase();
+
+    const isPolicyViolation = 
+        lower.includes('responsible ai') ||
+        lower.includes('content safety') ||
+        lower.includes('safety') ||
+        lower.includes('policy') ||
+        lower.includes('prohibited') ||
+        lower.includes('nsfw') ||
+        lower.includes('moderation');
+    if (isPolicyViolation) {
+        return '⚠️ Content Safety Policy Restriction: Your prompt or reference media was flagged by content safety filters. Any deducted Shorts credits have been refunded. Please adjust your prompt or media and try again.';
+    }
+
+    if (lower.includes('insufficient') && (lower.includes('shorts') || lower.includes('balance'))) {
+        return 'Insufficient Shorts balance. Please top up your Shorts credits to continue.';
+    }
+
+    return 'High server demand or temporary service interruption. Any deducted Shorts have been refunded. Please try again or contact support at support@zerolens.in.';
+}
+
 export default function createRouter(deps) {
     const router = express.Router();
     const { 
@@ -87,7 +111,7 @@ export default function createRouter(deps) {
             const activeCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
             if (!activeCredentials) {
                 return res.status(500).json({ 
-                    error: 'HF_CREDENTIALS not configured on the server. Please set HF_CREDENTIALS in .env.local' 
+                    error: 'Motion Transfer service temporarily unavailable. Please contact support@zerolens.in' 
                 });
             }
 
@@ -122,7 +146,7 @@ export default function createRouter(deps) {
 
             if (result.status === 'failed') {
                 return res.status(500).json({
-                    error: result.error || 'Motion Transfer generation failed on Higgsfield engine.',
+                    error: sanitizeServerError(result.error) || 'Motion Transfer generation could not be completed. Any deducted Shorts have been refunded. Please try again or contact support@zerolens.in',
                     requestId: result.request_id
                 });
             }
@@ -130,7 +154,7 @@ export default function createRouter(deps) {
             const outputVideoUrl = result.video?.url;
             if (!outputVideoUrl) {
                 return res.status(500).json({
-                    error: 'Higgsfield did not return a valid video output URL.',
+                    error: 'Motion Transfer could not complete output synthesis. Please try again or contact support@zerolens.in',
                     details: result
                 });
             }
@@ -215,7 +239,7 @@ export default function createRouter(deps) {
         } catch (error) {
             console.error('[REMIX] Error executing motion-transfer:', error);
             return res.status(500).json({
-                error: error.message || 'Internal server error while executing Motion Transfer.',
+                error: sanitizeServerError(error.message) || 'Motion Transfer service temporarily unavailable. Please contact support@zerolens.in.',
                 details: error.toString()
             });
         }
@@ -278,7 +302,7 @@ export default function createRouter(deps) {
             const activeCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
             if (!activeCredentials) {
                 return res.status(500).json({ 
-                    error: 'HF_CREDENTIALS not configured on the server. Please set HF_CREDENTIALS in .env.local' 
+                    error: 'Object Swap service temporarily unavailable. Please contact support@zerolens.in' 
                 });
             }
 
@@ -313,7 +337,7 @@ export default function createRouter(deps) {
 
             if (result.status === 'failed') {
                 return res.status(500).json({
-                    error: result.error || 'Object Swap generation failed on Higgsfield engine.',
+                    error: sanitizeServerError(result.error) || 'Object Swap generation could not be completed. Any deducted Shorts have been refunded. Please try again or contact support@zerolens.in',
                     requestId: result.request_id
                 });
             }
@@ -321,7 +345,7 @@ export default function createRouter(deps) {
             const outputVideoUrl = result.video?.url;
             if (!outputVideoUrl) {
                 return res.status(500).json({
-                    error: 'Higgsfield did not return a valid video output URL.',
+                    error: 'Object Swap could not complete output synthesis. Please try again or contact support@zerolens.in',
                     details: result
                 });
             }
@@ -415,7 +439,7 @@ export default function createRouter(deps) {
         } catch (error) {
             console.error('[OBJECT-SWAP] Error executing object-swap:', error);
             return res.status(500).json({
-                error: error.message || 'Internal server error while executing Object Swap.',
+                error: sanitizeServerError(error.message) || 'Object Swap service temporarily unavailable. Please contact support@zerolens.in.',
                 details: error.toString()
             });
         }
@@ -426,7 +450,7 @@ export default function createRouter(deps) {
         const { requestId } = req.params;
         const activeCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
         if (!activeCredentials) {
-            return res.status(500).json({ error: 'HF_CREDENTIALS not configured on the server.' });
+            return res.status(500).json({ error: 'Service temporarily unavailable. Please contact support@zerolens.in.' });
         }
         try {
             const parts = activeCredentials.trim().split(':');
@@ -449,7 +473,7 @@ export default function createRouter(deps) {
                 raw: data
             });
         } catch (err) {
-            return res.status(500).json({ error: err.message || 'Failed to query Higgsfield status.' });
+            return res.status(500).json({ error: 'Status check temporarily unavailable. Please contact support@zerolens.in.' });
         }
     });
 
@@ -458,13 +482,13 @@ export default function createRouter(deps) {
         try {
             const resp = await fetch('https://api.higgsfield.ai/models/higgsfield/ai-influencer/options');
             if (!resp.ok) {
-                return res.status(resp.status).json({ error: 'Failed to fetch Higgsfield AI Influencer options catalog.' });
+                return res.status(resp.status).json({ error: 'Options catalog temporarily unavailable.' });
             }
             const catalog = await resp.json();
             return res.json({ success: true, catalog });
         } catch (err) {
             console.error('[AI-INFLUENCER] Error fetching options catalog:', err);
-            return res.status(500).json({ error: err.message || 'Error fetching options catalog.' });
+            return res.status(500).json({ error: 'Options catalog temporarily unavailable.' });
         }
     });
 
@@ -514,7 +538,7 @@ export default function createRouter(deps) {
             const activeCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
             if (!activeCredentials) {
                 return res.status(500).json({
-                    error: 'HF_CREDENTIALS not configured on the server. Please set HF_CREDENTIALS in .env.local'
+                    error: 'AI Influencer service temporarily unavailable. Please contact support@zerolens.in'
                 });
             }
 
@@ -559,7 +583,7 @@ export default function createRouter(deps) {
 
             if (result.status === 'failed') {
                 return res.status(500).json({
-                    error: result.error || 'AI Influencer sheet generation failed on Higgsfield engine.',
+                    error: sanitizeServerError(result.error) || 'AI Influencer generation could not be completed. Any deducted Shorts have been refunded. Please try again or contact support@zerolens.in',
                     requestId: result.request_id
                 });
             }
@@ -567,7 +591,7 @@ export default function createRouter(deps) {
             const outputImageUrl = result.images?.[0]?.url;
             if (!outputImageUrl) {
                 return res.status(500).json({
-                    error: 'Higgsfield did not return a valid output image URL for the character sheet.',
+                    error: 'AI Influencer sheet could not complete synthesis. Please try again or contact support@zerolens.in',
                     details: result
                 });
             }
@@ -653,7 +677,7 @@ export default function createRouter(deps) {
         } catch (error) {
             console.error('[AI-INFLUENCER] Error executing ai-influencer:', error);
             return res.status(500).json({
-                error: error.message || 'Internal server error while executing AI Influencer generation.',
+                error: sanitizeServerError(error.message) || 'AI Influencer service temporarily unavailable. Please contact support@zerolens.in.',
                 details: error.toString()
             });
         }

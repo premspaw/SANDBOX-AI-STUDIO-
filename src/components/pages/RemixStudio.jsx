@@ -45,6 +45,7 @@ import { SHORTS_COST } from '../../config/shortsConfig';
 import { AssetsLibrary } from '../panels/AssetsLibrary';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
+import { sanitizeUserErrorMessage } from '../../utils/errorSanitizer';
 
 export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   // Mode: 'motion-transfer' | 'object-swap' | 'ai-influencer'
@@ -662,7 +663,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
             thumbUrl: newItem.url,
             prompt: newItem.prompt,
             name: `AI Influencer: ${newItem.prompt.substring(0, 50)}`,
-            engine: 'Higgsfield AI Influencer',
+            engine: 'AI Influencer Pro',
             resolution: '2K',
             aspectRatio: '16:9',
             folder: 'remix',
@@ -680,7 +681,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
             url: newItem.url,
             name: `AI Influencer: ${newItem.prompt.substring(0, 50)}`,
             metadata: {
-              engine: 'Higgsfield AI Influencer',
+              engine: 'AI Influencer Pro',
               mode: 'ai-influencer',
               tier: aiTier,
               prompt: newItem.prompt,
@@ -698,7 +699,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         console.error('[RemixStudio] AI Influencer error:', err);
         clearInterval(progressInterval);
         setIsGenerating(false);
-        setErrorMessage(err.message || 'Generation failed on engine.');
+        setErrorMessage(sanitizeUserErrorMessage(err, 'AI Influencer'));
         await refund('ai_influencer', 6);
       }
       return;
@@ -805,7 +806,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
           thumbUrl: newItem.url,
           prompt: newItem.prompt,
           name: `${isSwapMode ? 'Object Swap' : 'Motion Remix'}: ${newItem.prompt.substring(0, 50)}`,
-          engine: isSwapMode ? 'Higgsfield Object Swap' : 'Higgsfield Motion Transfer',
+          engine: isSwapMode ? 'Object Swap Pro' : 'Motion Transfer Pro',
           resolution: newItem.resolution,
           aspectRatio: '16:9',
           folder: 'remix',
@@ -823,7 +824,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
           url: newItem.url,
           name: `${isSwapMode ? 'Object Swap' : 'Motion Remix'}: ${newItem.prompt.substring(0, 50)}`,
           metadata: {
-            engine: isSwapMode ? 'Higgsfield Object Swap' : 'Higgsfield Motion Transfer',
+            engine: isSwapMode ? 'Object Swap Pro' : 'Motion Transfer Pro',
             mode: activeMode,
             prompt: newItem.prompt,
             resolution: newItem.resolution,
@@ -844,7 +845,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       console.error(`[RemixStudio] ${isSwapMode ? 'Object Swap' : 'Motion Remix'} error:`, err);
       clearInterval(progressInterval);
       setIsGenerating(false);
-      setErrorMessage(err.message || 'Generation failed on engine.');
+      setErrorMessage(sanitizeUserErrorMessage(err, isSwapMode ? 'Object Swap' : 'Motion Remix'));
       await refund(costKey, costAmount);
     }
   };

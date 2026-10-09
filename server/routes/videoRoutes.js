@@ -8,6 +8,30 @@ import os from 'os';
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
 
+function sanitizeServerError(rawMsg) {
+    if (!rawMsg) return 'High server demand or temporary service interruption. Any deducted Shorts have been refunded. Please try again or contact support at support@zerolens.in.';
+    const str = typeof rawMsg === 'string' ? rawMsg : (rawMsg.message || JSON.stringify(rawMsg));
+    const lower = str.toLowerCase();
+
+    const isPolicyViolation = 
+        lower.includes('responsible ai') ||
+        lower.includes('content safety') ||
+        lower.includes('safety') ||
+        lower.includes('policy') ||
+        lower.includes('prohibited') ||
+        lower.includes('nsfw') ||
+        lower.includes('moderation');
+    if (isPolicyViolation) {
+        return '⚠️ Content Safety Policy Restriction: Your prompt or reference media was flagged by content safety filters. Any deducted Shorts credits have been refunded. Please adjust your prompt or media and try again.';
+    }
+
+    if (lower.includes('insufficient') && (lower.includes('shorts') || lower.includes('balance'))) {
+        return 'Insufficient Shorts balance. Please top up your Shorts credits to continue.';
+    }
+
+    return 'High server demand or temporary service interruption. Any deducted Shorts have been refunded. Please try again or contact support at support@zerolens.in.';
+}
+
 async function stripAudioFromBuffer(inputBuffer) {
     const tempDir = os.tmpdir();
     const inputPath = path.join(tempDir, `veo_in_${Date.now()}_${Math.random().toString(36).substring(7)}.mp4`);
@@ -651,14 +675,14 @@ export default function createRouter(deps) {
             });
 
             const createData = await createResp.json();
-            if (createData.code !== 200) throw new Error(`Kling Task Creation Failed: ${createData.msg || 'Unknown Error'}`);
+            if (createData.code !== 200) throw new Error('Motion control generation request failed. Please try again or contact support@zerolens.in.');
 
-            const taskId = createData.data.taskId;
+            const taskId = createData.data?.taskId;
             console.log(`[KLING-ASYNC] Task Created: ${taskId}`);
             res.json({ success: true, requestId: taskId });
         } catch (error) {
             console.error('[KLING-GEN-ERR]', error);
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ error: sanitizeServerError(error.message) });
         }
     });
 
@@ -669,7 +693,7 @@ export default function createRouter(deps) {
             const { userId, aspectRatio = '16:9' } = req.query;
             const apiKey = process.env.KLING_API_KEY;
 
-            if (!apiKey) throw new Error("Kling API Key missing.");
+            if (!apiKey) throw new Error("Motion control engine temporarily unavailable. Please contact support@zerolens.in.");
 
             const pollResp = await fetch(`https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${requestId}`, {
                 headers: { 'Authorization': `Bearer ${apiKey}` }
@@ -681,7 +705,7 @@ export default function createRouter(deps) {
                     console.log(`[KLING-STATUS] Task ${requestId} not propagated yet. Treating as processing.`);
                     return res.json({ status: 'processing' });
                 }
-                throw new Error(`Kling Polling Failed: ${pollData.msg}`);
+                throw new Error('Motion control polling could not complete. Please try again or contact support@zerolens.in.');
             }
             if (!pollData.data) throw new Error("Kling Polling Success but no data returned.");
 
@@ -720,7 +744,7 @@ export default function createRouter(deps) {
             res.json({ status: 'processing' });
         } catch (error) {
             console.error('[KLING-STATUS-ERR]', error);
-            res.status(500).json({ status: 'error', message: error.message });
+            res.status(500).json({ status: 'error', message: sanitizeServerError(error.message) });
         }
     });
 
@@ -822,7 +846,7 @@ export default function createRouter(deps) {
             res.json({ success: true, requestId: taskId });
         } catch (error) {
             console.error('[KLING-MOTION-ERR]', error);
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ error: sanitizeServerError(error.message) });
         }
     });
 

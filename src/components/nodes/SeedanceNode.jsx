@@ -269,7 +269,7 @@ export const SeedanceNode = memo(({ id, data }) => {
                             <div className="text-[10px] font-black text-[#D4FF00] uppercase tracking-widest leading-none">
                                 Seedance 2.0
                             </div>
-                            <div className="text-[7px] font-mono text-white/25 mt-0.5">bytedance · kie.ai</div>
+                            <div className="text-[7px] font-mono text-white/25 mt-0.5">bytedance · zerolens engine</div>
                         </div>
                     </div>
                     <div className={cn('w-2 h-2 rounded-full transition-all shrink-0',

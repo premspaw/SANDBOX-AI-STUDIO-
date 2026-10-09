@@ -28,6 +28,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import { calculateEngineCredits } from '../../config/shortsConfig';
+import { sanitizeUserErrorMessage } from '../../utils/errorSanitizer';
 import { SHOT_BLUEPRINTS, SCENE_SEQUENCES, buildMultiCutPrompt } from './utils/ugcMultiShot';
 import { buildNicheHookContext } from './constants/hookLibrary';
 // ─── Feature module imports ──────────────────────────────────────────────────
@@ -297,29 +298,12 @@ export default function UGC() {
     };
     console.error(`[${context}] failed →`, errorDetails);
     console.error(`[${context}] error stringified →`, JSON.stringify(e, Object.getOwnPropertyNames(e || {})));
-    const errorMsg = e instanceof Error ? e.message
-      : typeof e === 'string' ? e
-      : e?.message || e?.error?.message || JSON.stringify(e) || 'Unknown error';
 
-    const hasCustomKey = !!localStorage.getItem('GOOGLE_API_KEY');
+    const sanitizedMsg = sanitizeUserErrorMessage(e, context);
+    showToast(sanitizedMsg, 'error');
 
-    if (errorMsg.toLowerCase().includes('insufficient credits') || errorMsg.toLowerCase().includes('insufficient balance') || errorMsg.toLowerCase().includes('insufficient shorts')) {
-      showToast(errorMsg, 'error');
+    if (sanitizedMsg.toLowerCase().includes('insufficient shorts balance')) {
       useAppStore.getState().setActiveTab('pricing');
-    } else if (errorMsg.toLowerCase().includes('prepayment credits') || errorMsg.toLowerCase().includes('depleted')) {
-      showToast("Gemini API Prepayment Credits Depleted. Please top up your billing in Google AI Studio.", 'error');
-    } else if (errorMsg.includes('Quota exceeded') || errorMsg.includes('429')) {
-      if (hasCustomKey) {
-        showToast("Custom API Key Quota Exceeded. Please check your usage/limits in Google AI Studio.", 'error');
-      } else {
-        showToast("API Quota Exceeded. Please try again later or configure your own API key in Settings.", 'error');
-      }
-    } else if (errorMsg.includes('content_blocked') || errorMsg.includes('Responsible AI') || errorMsg.includes('policy') || errorMsg.includes('Policy') || errorMsg.includes('prohibited') || errorMsg.includes('prominent individuals') || errorMsg.includes('recognizable')) {
-      showToast("⚠️ Google Policy Restriction: Content was blocked by Google Responsible AI filter. Your credits have been refunded. Please adjust your prompt or use Seedance 2.0.", 'error');
-    } else if (errorMsg.includes('No API Key')) {
-      showToast(`${context} requires API key. Add it in Settings or it will route through server.`, 'error');
-    } else {
-      showToast(`${context} failed: ${errorMsg.substring(0, 120)}`, 'error');
     }
   };
 
@@ -3963,7 +3947,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setVideoError('');
     setVideoTimedOut(false);
     const initialProgressMsg = videoGenMode === 'seedance-2.5'
-      ? '✨ Initializing Seedance 2.5 Pro (Higgsfield API)...'
+      ? '✨ Initializing Seedance 2.5 Pro Engine...'
       : videoGenMode === 'seedance-fast'
       ? '⚡ Initializing Seedance 2.0 Fast...'
       : '✨ Directing your video scene with Omni Flash 1.1…';
@@ -4191,7 +4175,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       if (isSeedance) {
         setVideoProgressMsg(
           videoGenMode === 'seedance-2.5'
-            ? '✨ Directing cinematic video with Seedance 2.5 Pro (Higgsfield API)...'
+            ? '✨ Directing cinematic video with Seedance 2.5 Pro...'
             : '⚡ Directing video with Seedance 2.0 Fast...'
         );
 
@@ -4299,13 +4283,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     } catch (e: any) {
       if (!isAdmin && !isGlobalAdmin) refund(spendReason as any, unitCost as any);
       handleApiError(e, "Video generation");
-      const errMsg = e.message || JSON.stringify(e);
-      let displayError = errMsg;
-      if (errMsg.includes('Responsible AI') || errMsg.includes('recognizable') || errMsg.includes('policy') || errMsg.includes('prohibited') || errMsg.includes('nsfw')) {
-        displayError = "⚠️ Blocked by AI Safety Policy: Recognizable face or prohibited content detected. 100% of your credits have been automatically refunded. Please use an AI-generated reference photo or adjust your prompt.";
-      } else {
-        displayError = `Error: ${errMsg}`;
-      }
+      const displayError = sanitizeUserErrorMessage(e, "Video generation");
       setVideoError(displayError);
       updateGalleryItem(placeholderVideoId, { loading: false, error: displayError });
     }
