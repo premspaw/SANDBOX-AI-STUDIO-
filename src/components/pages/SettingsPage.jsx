@@ -4,7 +4,7 @@ import {
     User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare,
     Square, Zap, ChevronRight, ChevronDown, ChevronUp, Key, Sparkles, TrendingUp, Clock, Gem, Fingerprint,
     ShieldCheck, BellRing, KeyRound, Copy, Check, Sliders, Cpu, ArrowUpRight,
-    ExternalLink, RefreshCw, Layers, Film, Volume2, Wand2, Eye, EyeOff, AlertCircle, FolderOpen
+    ExternalLink, RefreshCw, Layers, Film, Volume2, Wand2, Eye, EyeOff, AlertCircle, FolderOpen, Flame
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
@@ -12,6 +12,7 @@ import { cn } from '../../lib/utils';
 import { getApiUrl } from '../../config/apiConfig';
 import { UserCreditAuditModal } from '../admin/UserCreditAuditModal';
 import { AssetsLibrary } from '../panels/AssetsLibrary';
+import { PromoCarousel } from '../common/PromoCarousel';
 
 export default function SettingsPage() {
     const profile = useAppStore(state => state.userProfile);
@@ -36,6 +37,28 @@ export default function SettingsPage() {
         setCopiedMcpKey(key);
         if (showToast) showToast('Link copied to clipboard!', 'success');
         setTimeout(() => setCopiedMcpKey(null), 2500);
+    };
+
+    const handleTopUpRenew = () => {
+        if (activeTab !== 'credits') {
+            setActiveTab('credits');
+        }
+        setTimeout(() => {
+            const target = document.getElementById('topup-carousel') || document.getElementById('topup-packs');
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 120);
+    };
+
+    const handlePurchasePack = (pack) => {
+        if (pack?.link) {
+            const userId = profile?.id || authUser?.id;
+            const param = userId ? `?client_id=${userId}` : '';
+            window.open(`${pack.link}${param}`, '_blank');
+        } else {
+            setActiveTabGlobal('pricing');
+        }
     };
 
     // Profile form states
@@ -104,6 +127,7 @@ export default function SettingsPage() {
             savings: 'Save ₹100',
             popular: false,
             badge: 'Quick Boost',
+            link: 'https://rzp.io/rzp/WhaNtMa',
             description: 'Ideal for 4–5 full AI video renders or 250 image concepts.',
             color: 'from-blue-500/20 to-transparent',
             borderColor: 'border-blue-500/30',
@@ -128,6 +152,7 @@ export default function SettingsPage() {
             savings: 'Save ₹500',
             popular: true,
             badge: 'MOST POPULAR',
+            link: 'https://rzp.io/rzp/4U0cJGRV',
             description: 'Best for creators producing daily UGC, Cinema 4K shots & motion drivers.',
             color: 'from-[#c8f135]/20 via-[#c8f135]/10 to-transparent',
             borderColor: 'border-[#c8f135]/60',
@@ -152,6 +177,7 @@ export default function SettingsPage() {
             savings: '29% OFF · +100 BONUS',
             popular: false,
             badge: 'PRO STUDIO · 2,600 SHORTS',
+            link: 'https://rzp.io/rzp/nM3CK28p',
             description: 'Massive capacity with +100 bonus Shorts for production studios, campaigns & workflows.',
             color: 'from-purple-500/20 via-fuchsia-500/10 to-transparent',
             borderColor: 'border-purple-500/40',
@@ -177,6 +203,7 @@ export default function SettingsPage() {
             savings: '29% OFF · +500 BONUS',
             popular: false,
             badge: 'BEST VALUE · +500 BONUS',
+            link: 'https://rzp.io/rzp/bcCR05bt',
             description: 'High-volume power pack with +500 bonus Shorts, multi-seat capacity and priority queues.',
             color: 'from-cyan-500/20 via-blue-500/10 to-transparent',
             borderColor: 'border-cyan-500/40',
@@ -202,6 +229,7 @@ export default function SettingsPage() {
             savings: '33% OFF · +1,000 BONUS',
             popular: false,
             badge: 'MAX VOLUME · +1,000 BONUS',
+            link: 'https://rzp.io/rzp/fLdtNkEx',
             description: 'Maximum agency horsepower with +1,000 bonus Shorts, dedicated GPU lanes and VIP rendering.',
             color: 'from-amber-500/20 via-orange-500/10 to-transparent',
             borderColor: 'border-amber-500/40',
@@ -467,55 +495,70 @@ export default function SettingsPage() {
                         </div>
 
                         {/* High-Energy Shorts Wallet & Plan Action */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 bg-black/60 border border-white/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-inner shrink-0">
-                            <div className="flex items-center gap-3 px-1 sm:px-2">
-                                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#c8f135]/15 border border-[#c8f135]/40 flex items-center justify-center text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.25)] shrink-0">
-                                    <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
-                                </div>
-                                <div className="flex-1">
-                                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
-                                        Shorts Balance
-                                    </span>
-                                    <div className="flex items-baseline gap-1.5">
-                                        <span className="text-xl sm:text-2xl font-black text-[#c8f135] tracking-tight">{userCredits}</span>
-                                        <span className="text-[9px] sm:text-[10px] font-mono font-bold text-zinc-400">⚡ Available</span>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-gradient-to-br from-zinc-950 via-[#0a1205] to-black border border-[#c8f135]/30 p-3.5 sm:p-4 rounded-2xl shadow-[0_0_30px_rgba(200,241,53,0.12)] shrink-0">
+                            {/* Balance Info */}
+                            <div className="flex items-center justify-between sm:justify-start gap-3 px-1">
+                                <div className="flex items-center gap-2.5 sm:gap-3">
+                                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#c8f135]/15 border border-[#c8f135]/40 flex items-center justify-center text-[#c8f135] shadow-[0_0_18px_rgba(200,241,53,0.3)] shrink-0">
+                                        <Coins className="w-5 h-5 sm:w-5 sm:h-5 text-[#c8f135]" />
                                     </div>
+                                    <div>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                                                Shorts Balance
+                                            </span>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-pulse" />
+                                        </div>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-2xl sm:text-3xl font-black text-[#c8f135] tracking-tight">{userCredits}</span>
+                                            <span className="text-[10px] sm:text-xs font-mono font-bold text-zinc-300">⚡ Available</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Mobile quick badge */}
+                                <div className="sm:hidden text-right">
+                                    <span className="text-[9px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30">
+                                        Never Expires
+                                    </span>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2 pt-1.5 sm:pt-0 sm:border-l sm:border-white/10 sm:pl-3">
+                            {/* Actions Row */}
+                            <div className="flex items-center gap-2 pt-2 sm:pt-0 sm:border-l sm:border-white/10 sm:pl-3 w-full sm:w-auto">
                                 {isAdmin && (
                                     <button
                                         type="button"
                                         onClick={() => setShowAuditModal(true)}
-                                        className="px-3 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-red-500/20 to-amber-500/20 hover:from-red-500/30 hover:to-amber-500/30 border border-red-500/40 text-red-300 hover:text-white text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+                                        className="px-2.5 py-2.5 rounded-xl bg-gradient-to-r from-red-500/20 to-amber-500/20 hover:from-red-500/30 hover:to-amber-500/30 border border-red-500/40 text-red-300 hover:text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
                                         title="Open User Credit Audit & Dispute Management"
                                     >
                                         <Shield size={13} className="text-red-400" />
-                                        <span>User Audit</span>
+                                        <span className="hidden xs:inline">Audit</span>
                                     </button>
                                 )}
                                 <button
                                     type="button"
-                                    onClick={() => setActiveTab('credits')}
-                                    className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-[11px] sm:text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.3)] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                                    onClick={handleTopUpRenew}
+                                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.35)] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                                    title="Top Up Shorts Balance & View Deals"
                                 >
-                                    <Zap size={13} className="fill-black" />
+                                    <Zap size={14} className="fill-black text-black" />
                                     <span>Top Up / Renew</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('assets')}
-                                    className="px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-[11px] sm:text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                    className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
                                     title="Open Assets & History Vault"
                                 >
                                     <FolderOpen size={13} className="text-[#c8f135]" />
-                                    <span className="hidden sm:inline">Assets</span>
+                                    <span className="hidden md:inline">Assets</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setActiveTabGlobal('pricing')}
-                                    className="px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-[11px] sm:text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center"
+                                    className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center active:scale-95"
                                     title="View All Studio Plans"
                                 >
                                     <ExternalLink size={13} />
@@ -656,8 +699,22 @@ export default function SettingsPage() {
                                 </div>
                             </div>
 
+                            {/* Dynamic Promotional Discount Carousel (16:9 Banner) */}
+                            <div id="topup-carousel" className="space-y-2.5 pt-1">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                                        <Flame className="w-4 h-4 text-[#c8f135] fill-[#c8f135]" />
+                                        <span>Exclusive Flash Deals & Bonus Drops</span>
+                                    </h3>
+                                    <span className="text-[9px] sm:text-[10px] font-mono text-[#c8f135] bg-[#c8f135]/10 border border-[#c8f135]/30 px-2 py-0.5 rounded-full">
+                                        16:9 Live Preview
+                                    </span>
+                                </div>
+                                <PromoCarousel onSelectPack={handlePurchasePack} />
+                            </div>
+
                             {/* Credit Top-Up Pack Showcase */}
-                            <div className="space-y-3">
+                            <div id="topup-packs" className="space-y-3 pt-2">
                                 <div>
                                     <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                                         <Coins className="w-4 h-4 text-[#c8f135]" />
@@ -797,7 +854,7 @@ export default function SettingsPage() {
                                             <div className="pt-3">
                                                 <button
                                                     type="button"
-                                                    onClick={() => setActiveTabGlobal('pricing')}
+                                                    onClick={() => handlePurchasePack(pack)}
                                                     className={cn(
                                                         "w-full py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95",
                                                         pack.buttonClass
