@@ -39,7 +39,7 @@ import {
   User,
   Check
 } from '@phosphor-icons/react';
-import { useAppStore } from '../../store';
+import { useAppStore, inferStudioFolder } from '../../store';
 import { useShorts } from '../../hooks/useShorts';
 import { SHORTS_COST } from '../../config/shortsConfig';
 import { AssetsLibrary } from '../panels/AssetsLibrary';
@@ -200,7 +200,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   const isSwapMode = activeMode === 'object-swap';
   const isInfluencerMode = activeMode === 'ai-influencer';
 
-  const ratePerSec = resolution === '480p' ? 18 : resolution === '1080p' ? 89 : 44;
+  const ratePerSec = resolution === '480p' ? 36 : resolution === '1080p' ? 90 : 63;
   const effectiveDuration = Math.max(1, Math.round(videoDuration || 5));
   
   // Cost: AI Influencer = 6 Shorts (₹6 / $0.065)
@@ -220,9 +220,19 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Instant local restore
+    // Helper to get deleted assets set
+    const getDeletedSet = () => {
+      try {
+        return new Set(JSON.parse(localStorage.getItem('zerolens_deleted_assets_v1') || '[]'));
+      } catch (_) {
+        return new Set();
+      }
+    };
+
+    // 1. Instant local restore (filtering out any deleted items)
     try {
       const saved = localStorage.getItem('remix_studio_history_v1');
+      const deletedSet = getDeletedSet();
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -232,6 +242,8 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
             if (!item) return;
             const key = item.id ? String(item.id) : (item.url || '');
             if (seen.has(key)) return;
+            if (deletedSet.has(item.url) || deletedSet.has(String(item.id))) return; // Exclude deleted
+            if (inferStudioFolder(item) !== 'remix') return; // Strict studio isolation
             seen.add(key);
             const isInf = item.mode === 'ai-influencer' || item.type === 'image';
             sanitized.push({
@@ -260,7 +272,11 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
             .limit(60);
 
           if (!error && Array.isArray(data) && isMounted) {
+            const deletedSet = getDeletedSet();
             const dbItems = data.filter(a => {
+              if (a.is_deleted || a.metadata?.is_deleted || a.metadata?.deleted_by_user) return false;
+              if (deletedSet.has(a.url) || deletedSet.has(String(a.id))) return false;
+              if (inferStudioFolder(a) !== 'remix') return false;
               const mode = a.metadata?.mode;
               const nameLower = (a.name || '').toLowerCase();
               return mode === 'ai-influencer' || mode === 'object-swap' || mode === 'motion-transfer' ||
@@ -306,6 +322,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 // Add dbItems first, then prev without duplicating ID or URL
                 [...dbItems, ...prev].forEach(item => {
                   if (!item) return;
+                  if (deletedSet.has(item.url) || deletedSet.has(String(item.id))) return;
                   const idKey = item.id ? String(item.id) : null;
                   const urlKey = normalizeUrl(item.url);
 
@@ -351,25 +368,74 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     });
   };
 
-  const handleDeleteHistoryItem = (id, e) => {
+  const handleDeleteHistoryItem = (itemOrId, e) => {
     if (e) e.stopPropagation();
+    const item = (typeof itemOrId === 'object' && itemOrId !== null)
+      ? itemOrId
+      : historyList.find(h => h.id === itemOrId) || { id: itemOrId };
+
+    const targetId = item.id;
+    const targetUrl = item.url;
+    const idStr = targetId ? String(targetId) : '';
+
+    // 1. Instantly remove from local React state
     setHistoryList(prev => {
-      const updated = prev.filter(item => item.id !== id);
+      const updated = prev.filter(h => {
+        if (targetId && h.id === targetId) return false;
+        if (targetUrl && h.url === targetUrl) return false;
+        return true;
+      });
       try {
         localStorage.setItem('remix_studio_history_v1', JSON.stringify(updated));
       } catch (err) {
         console.warn('[RemixStudio] Failed to update localStorage history on delete:', err);
       }
-      if (generatedResult?.id === id) {
+      if (generatedResult && (generatedResult.id === targetId || generatedResult.url === targetUrl)) {
         setGeneratedResult(updated[0] || null);
       }
       return updated;
     });
 
-    if (supabase && id && typeof id === 'string' && !id.startsWith('influencer-') && !id.startsWith('swap-') && !id.startsWith('remix-')) {
-      supabase.from('assets').delete().eq('id', id).catch(err => {
-        console.warn('[RemixStudio] DB delete warning:', err);
-      });
+    // 2. Track globally in persistent deleted storage so it NEVER reloads on refresh
+    try {
+      const deletedList = JSON.parse(localStorage.getItem('zerolens_deleted_assets_v1') || '[]');
+      if (targetUrl && !deletedList.includes(targetUrl)) deletedList.push(targetUrl);
+      if (idStr && !deletedList.includes(idStr)) deletedList.push(idStr);
+      localStorage.setItem('zerolens_deleted_assets_v1', JSON.stringify(deletedList.slice(-500)));
+    } catch (_) {
+      void 0;
+    }
+
+    // 3. Remove from unified gallery store & vault
+    try {
+      useAppStore.getState().removeUnifiedAsset(idStr, targetUrl);
+    } catch (_) {
+      void 0;
+    }
+
+    // 4. Notify backend delete-asset API (soft deletes in DB & local fallback)
+    try {
+      fetch(`/api/delete-asset/${encodeURIComponent(idStr || 'item')}?url=${encodeURIComponent(targetUrl || '')}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: idStr, url: targetUrl })
+      }).catch(err => console.warn('[RemixStudio] API delete notice:', err.message));
+    } catch (_) {
+      void 0;
+    }
+
+    // 5. Direct Supabase update: preserve audit logs while hiding from gallery
+    if (supabase && userProfile?.id) {
+      if (targetId && !isNaN(Number(targetId))) {
+        supabase.from('assets').update({
+          metadata: { is_deleted: true, deleted_by_user: true, deleted_at: new Date().toISOString() }
+        }).eq('id', Number(targetId)).catch(() => {});
+      }
+      if (targetUrl) {
+        supabase.from('assets').update({
+          metadata: { is_deleted: true, deleted_by_user: true, deleted_at: new Date().toISOString() }
+        }).eq('url', targetUrl).eq('user_id', userProfile.id).catch(() => {});
+      }
     }
   };
 
@@ -1523,9 +1589,9 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                       onChange={(e) => setResolution(e.target.value)}
                       className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-medium focus:outline-none focus:border-[#D4FF00]/80 cursor-pointer transition-colors"
                     >
-                      <option value="480p" className="bg-zinc-900 text-white">480p SD · Fast (18 Shorts/s)</option>
-                      <option value="720p" className="bg-zinc-900 text-white">720p HD · Standard (44 Shorts/s)</option>
-                      <option value="1080p" className="bg-zinc-900 text-white">1080p Full HD · Master (89 Shorts/s)</option>
+                      <option value="480p" className="bg-zinc-900 text-white">480p SD · Fast Preview (36 Shorts/s)</option>
+                      <option value="720p" className="bg-zinc-900 text-white">720p HD · Standard (63 Shorts/s)</option>
+                      <option value="1080p" className="bg-zinc-900 text-white">1080p Full HD · Pro Master (90 Shorts/s)</option>
                     </select>
                     <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
                       <CaretDown size={14} weight="bold" />
@@ -2041,6 +2107,16 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 </div>
               </div>
 
+              {/* 90-Day Retention Notice */}
+              <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[11px] mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                  <span>
+                    <strong className="text-amber-200">Storage Retention Notice:</strong> Generated videos and images are retained in studio for <strong>90 days</strong> before automatic cleanup. Please download your creations to your device. (Reminders appear 15 days before expiration).
+                  </span>
+                </div>
+              </div>
+
               {/* Horizontal Swipeable Carousel (Scroll to Right) */}
               <div 
                 ref={galleryScrollRef}
@@ -2069,7 +2145,20 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <video src={item.url} className="w-full h-full object-cover" muted playsInline />
+                        <video 
+                          src={item.url ? (item.url.includes('#') ? item.url : `${item.url}#t=0.001`) : ''} 
+                          className="w-full h-full object-cover" 
+                          muted 
+                          playsInline 
+                          preload="metadata"
+                          onLoadedMetadata={(e) => {
+                            try {
+                              if (e.currentTarget.currentTime === 0) e.currentTarget.currentTime = 0.001;
+                            } catch (_) {
+                              /* ignore seek error */
+                            }
+                          }}
+                        />
                       )}
                       
                       {/* Play overlay ONLY for videos (Motion Remix / Object Swap), NOT for AI Influencer or images */}
@@ -2112,7 +2201,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                         </button>
                         <button
                           type="button"
-                          onClick={(e) => handleDeleteHistoryItem(item.id, e)}
+                          onClick={(e) => handleDeleteHistoryItem(item, e)}
                           className="p-1 rounded bg-red-500/80 hover:bg-red-500 text-white transition-colors cursor-pointer"
                           title="Delete from studio gallery"
                         >

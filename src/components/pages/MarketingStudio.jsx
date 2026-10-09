@@ -1,16 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Image as ImageIcon, Upload, Wand2, Code, X, Building, Utensils, Stethoscope, Briefcase, ChevronRight, ChevronLeft, Loader2, Play, Plus, Check, Link, Trash2, ZoomIn, ExternalLink, HardDrive, Pencil, Layers, Sparkles, Video, Expand, LayoutGrid, ChevronUp, Clock, Zap, Sliders } from 'lucide-react';
+import { Image as ImageIcon, Upload, Wand2, Code, X, Building, Utensils, Stethoscope, Briefcase, ChevronRight, ChevronLeft, Loader2, Play, Plus, Check, Link, Trash2, ZoomIn, ExternalLink, HardDrive, Pencil, Layers, Sparkles, Video, Expand, LayoutGrid, ChevronUp, ChevronDown, Clock, Zap, Sliders } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { cn } from '../../lib/utils';
 import { useShorts } from '../../hooks/useShorts';
-import { useAppStore } from '../../store';
+import { useAppStore, inferStudioFolder } from '../../store';
 import { InpaintEditor } from '../common/InpaintEditor';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import { buildSeedanceContentArray } from '../cinemaStudio/SeedanceEngine';
 import { AddTemplateModal } from './AddTemplateModal';
-import { SidePanel } from '../cinemaStudio/SidePanel';
 
 const ENGINES = [
   { id: 'omni-flash',                    label: 'Omni Flash 1.1',  icon: '✨', desc: 'Google Gemini Omni Flash 1.1 — Multimodal Camera & Voice (5⚡/s)', cost: 5 },
@@ -25,6 +24,49 @@ const IMAGE_ENGINES = [
   { id: 'nano-banana-2',          label: 'Nano Banana 2',    icon: '🎨', desc: 'Google highest-fidelity photo gen — 1⚡ flat rate',          cost: 1 },
   { id: 'nano-banana-pro',        label: 'Nano Banana Pro',  icon: '💎', desc: 'Google maximum fidelity image engine — 3⚡ flat rate',       cost: 3 },
   { id: 'gpt-image-2',            label: 'GPT Image Pro',    icon: '🤖', desc: 'OpenAI layout & text design — 2⚡ flat rate',                 cost: 2 },
+];
+
+const MARKETING_CAMPAIGN_TYPES = [
+  {
+    id: 'carousel',
+    label: 'Instagram Carousel (Viral)',
+    icon: '🎠',
+    badge: 'Viral Hook',
+    desc: 'Trending Instagram carousel slide, hooks viewers, high conversion & saves',
+    systemPrompt: 'Think like you are a biggest carousel, trending Instagram carousel maker, and which goes viral. Create a high-converting, visually arresting, scroll-stopping Instagram carousel slide designed to drive viral engagement, high saves, and shares. Ensure clean negative space for typography, modern editorial layout, dynamic visual hierarchy, and stunning commercial aesthetics.',
+  },
+  {
+    id: 'offer',
+    label: 'Special Offer / Flash Promo',
+    icon: '🏷️',
+    badge: 'High Conversion',
+    desc: 'High-converting discount, promotional sale, seasonal offer campaign',
+    systemPrompt: 'Think like an elite commercial advertising director. Create a high-converting promotional offer marketing visual for a special promotional sale or discount. Include bold commercial visual impact, clear focal space for discount text and call-to-action badges, vibrant promotional energy, and premium brand aesthetics.',
+  },
+  {
+    id: 'product',
+    label: 'Hero Product Showcase',
+    icon: '📦',
+    badge: 'Studio Commercial',
+    desc: 'Commercial product photography with premium lighting and studio background',
+    systemPrompt: 'Think like a master commercial product photographer and brand advertising specialist. Showcase this product as a hero commercial subject with luxury studio lighting, crisp textures, elegant reflections, volumetric depth, and billboard-grade commercial aesthetics.',
+  },
+  {
+    id: 'brand_story',
+    label: 'Brand Story / Social Ad',
+    icon: '🚀',
+    badge: 'Lifestyle Branding',
+    desc: 'Engaging brand lifestyle visual for social feeds and digital ads',
+    systemPrompt: 'Think like a creative brand strategist and viral social media marketer. Produce an aspirational, authentic brand lifestyle visual that tells a powerful story, evokes emotion, and positions the brand as premium and culturally relevant.',
+  },
+  {
+    id: 'custom',
+    label: 'General Marketing Visual',
+    icon: '✨',
+    badge: 'Universal',
+    desc: 'Standard commercial visual based strictly on your prompt description',
+    systemPrompt: 'Think like a professional commercial marketing designer. Create a high-impact, professional advertising visual with refined composition, high contrast, balanced color harmony, and commercial marketing aesthetics.',
+  },
 ];
 
 const DURATION_OPTIONS = [
@@ -54,9 +96,9 @@ const OMNI_DURATION_OPTIONS = [
 ];
 
 const SIZE_OPTIONS = [
-  { value: '1024x1024', label: 'Square',    desc: '1:1 social post', w: 12, h: 12, ratio: '1:1' },
-  { value: '1792x1024', label: 'Landscape', desc: '16:9 widescreen', w: 16, h: 9, ratio: '16:9' },
-  { value: '1024x1792', label: 'Story',     desc: '9:16 vertical video/story', w: 9, h: 16, ratio: '9:16' },
+  { value: '1024x1024', label: '1:1 Square (Feed)',    desc: '1:1 social post & carousel', ratio: '1:1' },
+  { value: '1024x1792', label: '9:16 Story / Reel',     desc: '9:16 vertical video & story', ratio: '9:16' },
+  { value: '1792x1024', label: '16:9 Landscape', desc: '16:9 widescreen & website', ratio: '16:9' },
 ];
 
 
@@ -66,121 +108,252 @@ const QUALITY_OPTIONS = [
   { value: 'high',   label: 'Max',  desc: 'Maximum quality, premium finish' },
 ];
 
-function UpwardDropdown({ children, icon, label, badge, accentColor = 'fuchsia' }) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState({ bottom: 0, left: 0 });
+function DropUpSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  accentColor = "lime",
+  className = "",
+  minMenuWidth = 220,
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [pos, setPos] = useState({ bottom: '0px', left: '0px', width: 'auto', maxHeight: '280px' });
   const triggerRef = useRef(null);
-  const panelRef = useRef(null);
+  const menuRef = useRef(null);
 
-  const openDropdown = () => {
-    if (!open && triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      let left = r.left + r.width / 2;
-      const width = 260; // min-w of panel
-      const margin = 10;
-      const halfWidth = width / 2;
-      if (left - halfWidth < margin) {
-        left = halfWidth + margin;
-      } else if (left + halfWidth > window.innerWidth - margin) {
-        left = window.innerWidth - halfWidth - margin;
-      }
-      setPos({
-        bottom: window.innerHeight - r.top + 8,
-        left: left,
-      });
+  // Normalize options to a standard shape
+  const normalizedOptions = options.map(opt => {
+    if (typeof opt === 'object' && opt !== null) {
+      return {
+        value: opt.id !== undefined ? opt.id : opt.value,
+        label: opt.label !== undefined ? opt.label : (opt.name !== undefined ? opt.name : String(opt.id || opt.value)),
+        icon: opt.icon || null,
+        badge: opt.badge || null,
+        cost: opt.cost !== undefined ? opt.cost : null,
+        desc: opt.desc || null,
+      };
     }
-    setOpen(v => !v);
+    return {
+      value: opt,
+      label: String(opt),
+      icon: null,
+      badge: null,
+      cost: null,
+      desc: null,
+    };
+  });
+
+  const selected = normalizedOptions.find(o => o.value === value) || normalizedOptions[0];
+
+  const updatePosition = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const menuWidth = Math.max(minMenuWidth, rect.width);
+    const finalWidth = Math.min(menuWidth, window.innerWidth - 20);
+    
+    let left = rect.left;
+    if (left + finalWidth > window.innerWidth - 10) {
+      left = Math.max(10, window.innerWidth - finalWidth - 10);
+    }
+    if (left < 10) left = 10;
+
+    const availableHeight = rect.top - 16;
+    const maxHeight = Math.max(140, Math.min(300, availableHeight));
+
+    setPos({
+      bottom: `${Math.max(10, window.innerHeight - rect.top + 6)}px`,
+      left: `${left}px`,
+      width: `${finalWidth}px`,
+      maxHeight: `${maxHeight}px`,
+    });
+  };
+
+  const toggleDropdown = () => {
+    if (!isOpen) {
+      updatePosition();
+    }
+    setIsOpen(prev => !prev);
   };
 
   useEffect(() => {
-    if (!open) return;
-    const handler = (e) => {
+    if (!isOpen) return;
+
+    const handleOutsideClick = (e) => {
       if (
         triggerRef.current && !triggerRef.current.contains(e.target) &&
-        panelRef.current && !panelRef.current.contains(e.target)
+        menuRef.current && !menuRef.current.contains(e.target)
       ) {
-        setOpen(false);
+        setIsOpen(false);
       }
     };
-    
-    const handleResize = () => {
-      setOpen(false);
+
+    const handleScrollOrResize = () => {
+      setIsOpen(false);
     };
 
-    document.addEventListener('mousedown', handler);
-    window.addEventListener('resize', handleResize, { passive: true });
+    document.addEventListener('mousedown', handleOutsideClick);
+    window.addEventListener('scroll', handleScrollOrResize, { capture: true, passive: true });
+    window.addEventListener('resize', handleScrollOrResize, { passive: true });
 
     return () => {
-      document.removeEventListener('mousedown', handler);
-      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('mousedown', handleOutsideClick);
+      window.removeEventListener('scroll', handleScrollOrResize, { capture: true });
+      window.removeEventListener('resize', handleScrollOrResize);
     };
-  }, [open]);
+  }, [isOpen]);
 
-  const colorMap = {
-    fuchsia: { bg: 'bg-fuchsia-500/10', border: 'border-fuchsia-500/25', text: 'text-fuchsia-400', hoverBorder: 'hover:border-fuchsia-500/30', ring: 'shadow-fuchsia-500/10' },
-    lime:    { bg: 'bg-[#c8f135]/10',    border: 'border-[#c8f135]/25',   text: 'text-[#c8f135]',   hoverBorder: 'hover:border-[#c8f135]/30', ring: 'shadow-[#c8f135]/10' },
-    cyan:    { bg: 'bg-cyan-500/10',     border: 'border-cyan-500/25',    text: 'text-cyan-400',    hoverBorder: 'hover:border-cyan-500/30', ring: 'shadow-cyan-500/10' },
-    violet:  { bg: 'bg-violet-500/10',   border: 'border-violet-500/25',  text: 'text-violet-400',  hoverBorder: 'hover:border-violet-500/30', ring: 'shadow-violet-500/10' },
+  const colorStyles = {
+    lime: {
+      activeBorder: 'border-lime-400/60',
+      activeText: 'text-lime-400',
+      activeBg: 'bg-lime-400/10',
+      badge: 'bg-lime-400/15 text-lime-400 border-lime-400/30',
+      ring: 'shadow-lime-400/10',
+      check: 'text-lime-400',
+    },
+    fuchsia: {
+      activeBorder: 'border-fuchsia-500/60',
+      activeText: 'text-fuchsia-400',
+      activeBg: 'bg-fuchsia-500/10',
+      badge: 'bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/30',
+      ring: 'shadow-fuchsia-500/10',
+      check: 'text-fuchsia-400',
+    },
+    pink: {
+      activeBorder: 'border-pink-500/60',
+      activeText: 'text-pink-400',
+      activeBg: 'bg-pink-500/10',
+      badge: 'bg-pink-500/15 text-pink-400 border-pink-500/30',
+      ring: 'shadow-pink-500/10',
+      check: 'text-pink-400',
+    },
+    cyan: {
+      activeBorder: 'border-cyan-400/60',
+      activeText: 'text-cyan-400',
+      activeBg: 'bg-cyan-400/10',
+      badge: 'bg-cyan-400/15 text-cyan-400 border-cyan-400/30',
+      ring: 'shadow-cyan-400/10',
+      check: 'text-cyan-400',
+    },
+    blue: {
+      activeBorder: 'border-blue-500/60',
+      activeText: 'text-blue-400',
+      activeBg: 'bg-blue-500/10',
+      badge: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+      ring: 'shadow-blue-500/10',
+      check: 'text-blue-400',
+    },
   };
-  const c = colorMap[accentColor] || colorMap.fuchsia;
+  const theme = colorStyles[accentColor] || colorStyles.lime;
 
   return (
-    <>
-      <motion.button
+    <div className={cn("relative w-full", className)}>
+      <button
         ref={triggerRef}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-        onClick={openDropdown}
         type="button"
+        onClick={toggleDropdown}
         className={cn(
-          "flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border backdrop-blur-xl transition-colors shrink-0 origin-bottom",
-          open
-            ? `${c.bg} ${c.border} ${c.text}`
-            : "bg-black/60 border-white/10 text-gray-500 hover:text-white"
+          "w-full bg-[#141419] border rounded-xl px-2.5 py-2 text-xs font-bold transition-all flex items-center justify-between gap-1.5 cursor-pointer text-left select-none",
+          isOpen ? `${theme.activeBorder} ${theme.activeBg} text-white shadow-lg` : "border-white/15 hover:border-white/30 text-white/90"
         )}
       >
-        {icon}
-        <span className="whitespace-nowrap">{label}</span>
-        {badge && <span className={cn("text-[6px] px-1 py-0.5 rounded border ml-0.5", open ? `${c.border} ${c.text}` : "border-white/5 text-gray-600")}>{badge}</span>}
-        <motion.span
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          className="ml-0.5"
-        >
-          <ChevronUp size={7} />
-        </motion.span>
-      </motion.button>
-
-      {createPortal(
-        <AnimatePresence>
-          {open && (
-            <motion.div
-              ref={panelRef}
-              initial={{ opacity: 0, y: 12, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-              style={{
-                position: 'fixed',
-                bottom: pos.bottom,
-                left: pos.left,
-                transform: 'translateX(-50%)',
-                zIndex: 9999,
-              }}
-              className={cn(
-                "min-w-[260px] max-w-[320px] max-h-[340px] overflow-y-auto custom-scrollbar",
-                "bg-[#0a0a0a]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl",
-                `shadow-lg ${c.ring}`
-              )}
-            >
-              {typeof children === 'function' ? children(() => setOpen(false)) : children}
-            </motion.div>
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 truncate">
+          {selected?.icon && <span className="text-xs shrink-0">{selected.icon}</span>}
+          <span className="truncate text-xs font-bold">{selected?.label || placeholder}</span>
+          {selected?.badge && (
+            <span className={cn("text-[7.5px] font-black px-1.5 py-0.5 rounded border uppercase shrink-0", theme.badge)}>
+              {selected.badge}
+            </span>
           )}
-        </AnimatePresence>,
+          {selected?.cost !== undefined && selected?.cost !== null && (
+            <span className="text-[8.5px] font-mono px-1 py-0.2 rounded bg-white/5 border border-white/10 text-white/70 shrink-0">
+              ⚡{selected.cost}
+            </span>
+          )}
+        </div>
+        <ChevronDown
+          size={14}
+          className={cn(
+            "text-white/40 transition-transform duration-200 shrink-0",
+            isOpen ? "rotate-180 text-white" : ""
+          )}
+        />
+      </button>
+
+      {isOpen && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-[9998]"
+            onClick={() => setIsOpen(false)}
+          />
+          <div
+            ref={menuRef}
+            style={{
+              position: 'fixed',
+              bottom: pos.bottom,
+              left: pos.left,
+              width: pos.width,
+            }}
+            className={cn(
+              "z-[9999] bg-[#0c0c10]/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden ring-1 ring-white/10 p-1.5 animate-in fade-in zoom-in-95 duration-150",
+              theme.ring
+            )}
+          >
+            <div
+              style={{ maxHeight: pos.maxHeight }}
+              className="overflow-y-auto custom-scrollbar space-y-1"
+            >
+              {normalizedOptions.map((opt) => {
+                const isSelected = opt.value === value;
+                return (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    onClick={() => {
+                      onChange(opt.value);
+                      setIsOpen(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer group",
+                      isSelected
+                        ? `${theme.activeBg} ${theme.activeText} font-bold border border-white/10`
+                        : "hover:bg-white/[0.06] text-white/75 hover:text-white"
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        {opt.icon && <span className="text-sm shrink-0">{opt.icon}</span>}
+                        <span className="text-xs truncate">{opt.label}</span>
+                        {opt.badge && (
+                          <span className={cn("text-[7.5px] font-black px-1.5 py-0.5 rounded border uppercase shrink-0", theme.badge)}>
+                            {opt.badge}
+                          </span>
+                        )}
+                        {opt.cost !== undefined && opt.cost !== null && (
+                          <span className="text-[8px] font-mono px-1 py-0.5 rounded bg-white/5 border border-white/10 text-white/60 shrink-0">
+                            ⚡{opt.cost}
+                          </span>
+                        )}
+                      </div>
+                      {opt.desc && (
+                        <p className="text-[8px] text-white/35 font-mono truncate mt-0.5 pl-0.5">
+                          {opt.desc}
+                        </p>
+                      )}
+                    </div>
+                    {isSelected && (
+                      <Check size={13} className={cn("shrink-0", theme.check)} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>,
         document.body
       )}
-    </>
+    </div>
   );
 }
 
@@ -336,20 +509,9 @@ export default function MarketingStudio() {
     const [zoomedIndex, setZoomedIndex] = useState(null);
     const [inpaintOpen, setInpaintOpen] = useState(false);
     const [upscalingItems, setUpscalingItems] = useState({});
-    const [showTemplatePanel, setShowTemplatePanel] = useState(true);
-
-    // Auto-close template panel when studio side panel opens, and vice-versa
-    useEffect(() => {
-        if (showSidePanel) {
-            setShowTemplatePanel(false);
-        }
-    }, [showSidePanel]);
-
-    useEffect(() => {
-        if (showTemplatePanel) {
-            setShowSidePanel(false);
-        }
-    }, [showTemplatePanel]);
+    const [marketingCampaignType, setMarketingCampaignType] = useState('carousel');
+    const [showGeneratorPanel, setShowGeneratorPanel] = useState(true);
+    const [showTemplatePanel, setShowTemplatePanel] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1280 : false);
     const [customTemplates, setCustomTemplates] = useState({ food: [], restaurant: [], realestate: [], medical: [], other: [] });
     const [showAddModal, setShowAddModal] = useState(false);
     const [templatesLoading, setTemplatesLoading] = useState(true);
@@ -399,9 +561,26 @@ export default function MarketingStudio() {
         if (!currentUserId) return [];
         try {
             const saved = localStorage.getItem(`marketing_generation_history_${currentUserId}`);
-            return saved ? JSON.parse(saved) : [];
+            const parsed = saved ? JSON.parse(saved) : [];
+            return (Array.isArray(parsed) ? parsed : []).filter(item => inferStudioFolder(item) === 'marketing');
         } catch { return []; }
     });
+
+    // Hydrate and sync marketing assets from unified gallery so server-persisted marketing assets show
+    useEffect(() => {
+        if (!currentUserId) return;
+        const unified = useAppStore.getState().unifiedGallery || [];
+        const mktItems = unified.filter(item => inferStudioFolder(item) === 'marketing');
+        if (mktItems.length > 0) {
+            setGenerationHistory(prev => {
+                const existingUrls = new Set(prev.map(i => i.url));
+                const missing = mktItems.filter(m => !existingUrls.has(m.url));
+                if (missing.length === 0) return prev;
+                const combined = [...prev, ...missing].sort((a, b) => (b.ts || b.timestamp || 0) - (a.ts || a.timestamp || 0));
+                return combined.slice(0, 50);
+            });
+        }
+    }, [currentUserId]);
     const [gallerySearch, setGallerySearch] = useState('');
     const [activeTag, setActiveTag] = useState(null);
     const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
@@ -554,13 +733,27 @@ export default function MarketingStudio() {
     const getAvailableSizes = () => {
         if (generateMode === 'image' && imageEngine === 'gpt-image-2') {
             return [
-                { value: '1024x1024', label: 'Square',    desc: '1:1 social post', w: 12, h: 12, ratio: '1:1' },
-                { value: '2048x1152', label: 'Landscape', desc: '16:9 widescreen', w: 16, h: 9, ratio: '16:9' },
-                { value: '2160x3840', label: 'Story',     desc: '9:16 vertical video/story', w: 9, h: 16, ratio: '9:16' }
+                { value: '1024x1024', label: '1:1 Square (Feed)',    desc: '1:1 social post & carousel', ratio: '1:1' },
+                { value: '2048x1152', label: '16:9 Landscape', desc: '16:9 widescreen & web', ratio: '16:9' },
+                { value: '2160x3840', label: '9:16 Story / Reel',     desc: '9:16 vertical video & story', ratio: '9:16' }
             ];
         }
         return SIZE_OPTIONS;
     };
+
+    const activeDurationOptions = (() => {
+        const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash' || videoEngine === 'omni-flash-1.1' || videoEngine === 'gemini-omni-1.1-flash' || videoEngine === 'gemini-omni-1.1-flash-preview';
+        const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace' || videoEngine === 'seedance-2.5';
+        const isVeo3 = videoEngine.startsWith('veo-3.1');
+        if (isOmni) return OMNI_DURATION_OPTIONS;
+        if (isVeo3) return VEO_DURATION_OPTIONS;
+        if (isSeed) return [
+            { value: 5, label: '5 Seconds', desc: 'Quick cut — fast social hook' },
+            { value: 10, label: '10 Seconds', desc: 'Standard narrative flow' },
+            { value: 15, label: '15 Seconds', desc: 'Maximum full commercial' },
+        ];
+        return DURATION_OPTIONS;
+    })();
     // Load persisted custom templates — DB first, localStorage fallback
     useEffect(() => {
         // Load from localStorage immediately so UI isn't blank
@@ -853,9 +1046,10 @@ Any written text, characters, letters, numbers, and labels inside the image must
             setPromptText(template.prompt);
         }
         setGeneratedImage(null);
-        // On mobile, automatically close the template panel once a template is selected
+        // On mobile, automatically close the template panel and reveal generator
         if (window.innerWidth < 768) {
             setShowTemplatePanel(false);
+            setShowGeneratorPanel(true);
         }
     };
 
@@ -1570,9 +1764,14 @@ Any written text, characters, letters, numbers, and labels inside the image must
             const secondImageToSend = (imageToSend && logoImage && referenceImages.length > 0)
                 ? logoImage
                 : undefined;
+            // Enrich prompt with chosen marketing campaign format (Carousel, Offer, etc.)
+            const activeCampaign = MARKETING_CAMPAIGN_TYPES.find(c => c.id === marketingCampaignType) || MARKETING_CAMPAIGN_TYPES[0];
+            const campaignSystemPrompt = activeCampaign.systemPrompt || '';
+            const enrichedPrompt = `${campaignSystemPrompt} ${textPrompt}`.trim();
+
             const payload = {
                 model: imageEngine,
-                prompt: textPrompt,
+                prompt: enrichedPrompt,
                 quality,
                 size: imageSize,
                 userId: currentUserId,
@@ -1580,6 +1779,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 secondImage: secondImageToSend,
                 referenceImages: payloadReferenceImages,
                 folder: 'marketing',
+                campaignType: marketingCampaignType,
                 ...(imageEngine === 'gpt-image-2' ? {
                     format: imageFormat,
                     output_compression: imageCompression,
@@ -1610,7 +1810,8 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 aspect: getGeminiAspectRatio(imageSize),
                 type: 'image',
                 folder: 'marketing',
-                prompt: textPrompt
+                prompt: enrichedPrompt,
+                campaignType: marketingCampaignType
             };
             useAppStore.getState().addUnifiedAsset(imgAsset);
             setGenerationHistory(prev => {
@@ -1618,6 +1819,11 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                 return next;
             });
+            
+            // On mobile, automatically show the gallery so user sees their new image
+            if (window.innerWidth < 768) {
+                setShowGeneratorPanel(false);
+            }
             
             refreshShorts();
         } catch (error) {
@@ -1642,91 +1848,567 @@ Any written text, characters, letters, numbers, and labels inside the image must
         <input type="file" ref={lastFrameRef} className="hidden" accept="image/*"
             onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = async ev => { const norm = await normalizeImageForOpenAI(ev.target.result); setLastFrame(norm); }; r.readAsDataURL(f); }} />
         <div className="h-full flex flex-col bg-[#0a0a0a] text-white overflow-hidden relative font-sans">
-            {/* Header */}
-            <div className="flex-none py-2 px-4 border-b border-white/10 flex items-center gap-3 z-10 bg-black/40 backdrop-blur-md">
-                <div className="flex items-baseline gap-2 flex-shrink-0">
-                    <h1 className="text-base font-black italic uppercase tracking-tighter bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent whitespace-nowrap">
-                        Marketing Studio
-                    </h1>
-                </div>
-                <div className="w-px h-5 bg-white/10 flex-shrink-0" />
-                {/* Filter Tabs */}
-                <div className="flex gap-1.5 overflow-x-auto no-scrollbar flex-1">
-                    {/* Templates toggle button on mobile */}
-                    <button
-                        onClick={() => setShowTemplatePanel(v => !v)}
-                        className={cn(
-                            "md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all flex-shrink-0 border",
-                            showTemplatePanel
-                                ? "bg-orange-500/20 text-orange-300 border-orange-500/30"
-                                : "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.75)] animate-pulse"
-                        )}
-                    >
-                        <LayoutGrid className="w-2.5 h-2.5" />
-                        <span>Templates</span>
-                    </button>
+            {/* Mobile 3-Section Segmented View Switcher */}
+            <div className="md:hidden flex items-center bg-black/95 border-b border-white/10 p-1.5 gap-1.5 z-20">
+                {/* 1. Marketing (First) */}
+                <button
+                    type="button"
+                    onClick={() => { setShowGeneratorPanel(true); setShowTemplatePanel(false); }}
+                    className={cn(
+                        "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                        showGeneratorPanel ? "bg-[#c8f135] text-black font-black shadow-[0_0_15px_rgba(200,241,53,0.6)]" : "text-[#c8f135] bg-[#c8f135]/10 border border-[#c8f135]/30"
+                    )}
+                >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Marketing ⚡</span>
+                </button>
 
-                    {CATEGORIES.map(cat => (
-                        <button
-                            key={cat.id}
-                            onClick={() => setActiveCategory(cat.id)}
-                            className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-full whitespace-nowrap text-[10px] font-black uppercase tracking-wider transition-all flex-shrink-0",
-                                activeCategory === cat.id
-                                    ? "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.15)]"
-                                    : "text-white/40 hover:text-white/80 hover:bg-white/5 border border-white/10"
-                            )}
-                        >
-                            <cat.icon className={cn("w-2.5 h-2.5", activeCategory === cat.id ? "text-black" : cat.color)} />
-                            {cat.label}
-                        </button>
-                    ))}
-                </div>
+                {/* 2. Gallery (Middle) */}
+                <button
+                    type="button"
+                    onClick={() => { setShowTemplatePanel(false); setShowGeneratorPanel(false); }}
+                    className={cn(
+                        "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                        !showTemplatePanel && !showGeneratorPanel ? "bg-white/20 text-white border border-white/30" : "text-white/40 hover:text-white bg-white/5 border border-white/5"
+                    )}
+                >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Gallery ({generationHistory.length})</span>
+                </button>
+
+                {/* 3. Templates (Last) */}
+                <button
+                    type="button"
+                    onClick={() => { setShowTemplatePanel(true); setShowGeneratorPanel(false); }}
+                    className={cn(
+                        "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                        showTemplatePanel ? "bg-orange-500/25 text-orange-300 border border-orange-500/40" : "text-white/40 hover:text-white bg-white/5 border border-white/5"
+                    )}
+                >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Templates</span>
+                </button>
             </div>
 
             <div className="flex-1 flex overflow-hidden relative">
-                {/* Left Panel: Categories & Templates */}
+                {/* ── SECTION 1: Marketing Studio Generator Sidebar (Left) ── */}
                 <div className={cn(
-                    "border-white/10 flex flex-col bg-[#0a0a0a] transition-all duration-300 flex-shrink-0 relative",
-                    showTemplatePanel 
-                        ? "w-full absolute inset-y-0 left-0 z-20 border-r md:relative md:w-1/3 md:min-w-[280px] md:max-w-[400px]" 
-                        : "w-0 min-w-0 border-r-0 absolute md:relative"
+                    "border-r border-white/10 bg-[#0c0c10] flex-col h-full transition-all duration-300 relative shrink-0",
+                    showGeneratorPanel
+                        ? "flex w-full md:w-[360px] lg:w-[390px] xl:w-[410px]"
+                        : "hidden"
                 )}>
-                    {/* Floating Pull Tab attached directly to the right border of the Template Panel */}
-                    <motion.button
-                        type="button"
-                        onClick={() => setShowTemplatePanel(v => !v)}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className={cn(
-                            "absolute top-[38%] -translate-y-1/2 left-full z-30 py-5 px-2.5 rounded-r-2xl border-r border-y border-white/20 shadow-2xl flex flex-col items-center gap-2 cursor-pointer transition-all backdrop-blur-2xl whitespace-nowrap",
-                            showTemplatePanel
-                                ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.85)] max-md:hidden"
-                                : "bg-[#0b0b12]/95 border-fuchsia-500/40 text-fuchsia-300 hover:bg-fuchsia-600/30 hover:text-white"
-                        )}
-                        title={showTemplatePanel ? 'Hide Templates' : 'Show Templates'}
-                    >
-                        <LayoutGrid size={14} className={showTemplatePanel ? "text-black" : "text-fuchsia-400"} />
-                        <span
-                            style={{ writingMode: 'vertical-lr' }}
-                            className={cn("text-[9px] font-black uppercase tracking-widest select-none", showTemplatePanel ? "text-black" : "text-fuchsia-200")}
-                        >
-                            Templates
-                        </span>
-                    </motion.button>
 
-                    {/* Mobile Header with close button */}
-                    <div className="md:hidden flex items-center justify-between p-3.5 border-b border-white/10 bg-black/40">
-                        <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">Templates</span>
-                        <button
-                            onClick={() => setShowTemplatePanel(false)}
-                            className="flex items-center justify-center p-1 rounded-lg hover:bg-white/5 text-white/60 hover:text-white"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
+                    {/* Header */}
+                    <div className="p-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/60 backdrop-blur-md">
+                        <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-[#c8f135]/15 border border-[#c8f135]/30 flex items-center justify-center">
+                                <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" />
+                            </div>
+                            <div>
+                                <h2 className="text-xs font-black uppercase tracking-wider text-white">Marketing Studio</h2>
+                                <p className="text-[8px] text-white/40 font-mono">Viral Marketing Engine</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-300 text-[10px] font-mono font-bold">
+                                <Zap className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                <span>{userCredits}⚡</span>
+                            </div>
+
+                        </div>
                     </div>
 
+                    {/* Image / Video Mode Switcher */}
+                    <div className="p-2 border-b border-white/5 bg-black/30 shrink-0">
+                        <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/5 border border-white/8">
+                            <button
+                                type="button"
+                                onClick={() => setGenerateMode("image")}
+                                className={cn(
+                                    "flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                                    generateMode === "image"
+                                        ? "bg-white text-black shadow-md font-black"
+                                        : "text-white/50 hover:text-white"
+                                )}
+                            >
+                                <ImageIcon className="w-3.5 h-3.5" />
+                                <span>Image & Carousels</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setGenerateMode("video")}
+                                className={cn(
+                                    "flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                                    generateMode === "video"
+                                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md font-black"
+                                        : "text-white/50 hover:text-white"
+                                )}
+                            >
+                                <Video className="w-3.5 h-3.5" />
+                                <span>Video Studio</span>
+                            </button>
+                        </div>
+                    </div>
 
+                    {/* Scrollable Form Body */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 space-y-3.5">
+                        {generateMode === "image" ? (
+                            <>
+                                {/* 1. TOP: Placeholders & Media Uploads */}
+                                <div className="space-y-3 p-3 rounded-2xl bg-white/[0.02] border border-white/8">
+                                    {/* Product / Reference Photos Slot */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-black uppercase tracking-wider text-white/70 flex items-center gap-1.5">
+                                                <span>📸</span>
+                                                <span>Product & Reference Photos ({referenceImages.length}/9)</span>
+                                            </label>
+                                            {referenceImages.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setReferenceImages([])}
+                                                    className="text-[8px] font-bold text-red-400 hover:text-red-300 uppercase tracking-wider"
+                                                >
+                                                    Clear All
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {referenceImages.map((img, index) => (
+                                                <div key={img.id || index} className="relative group aspect-square rounded-xl overflow-hidden border border-lime-500/40 bg-black/60 shadow-md">
+                                                    <img src={resolveUrl(img.url)} alt={`ref-${index}`} className="w-full h-full object-cover" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setReferenceImages(prev => prev.filter((_, i) => i !== index))}
+                                                        className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                                                    >
+                                                        <X className="w-4 h-4 text-white" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {referenceImages.length < 9 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="aspect-square rounded-xl border-2 border-dashed border-white/20 hover:border-lime-400/60 bg-white/[0.02] hover:bg-lime-500/5 flex flex-col items-center justify-center gap-1 text-white/40 hover:text-white transition-all cursor-pointer group"
+                                                >
+                                                    <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                                    <span className="text-[8px] font-bold uppercase tracking-wider">Add Photo</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Brand Logo Placeholder Slot */}
+                                    <div className="space-y-1.5 pt-2 border-t border-white/5">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-black uppercase tracking-wider text-white/70 flex items-center gap-1.5">
+                                                <span>🏷️</span>
+                                                <span>Brand Logo Placeholder (PNG)</span>
+                                            </label>
+                                            {logoImage && (
+                                                <span className="text-[8px] font-bold text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20">
+                                                    Active Watermark
+                                                </span>
+                                            )}
+                                        </div>
+                                        {logoImage ? (
+                                            <div className="relative p-2 rounded-xl border border-orange-500/40 bg-orange-500/5 flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div className="w-10 h-10 rounded-lg bg-black/80 border border-white/10 p-1 flex items-center justify-center shrink-0">
+                                                        <img src={logoImage} alt="Brand Logo" className="w-full h-full object-contain" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] font-black text-white truncate">Logo Watermark Loaded</p>
+                                                        <p className="text-[8px] text-white/40 font-mono">Will be embedded into campaign layout</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLogoImage(null)}
+                                                    className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-500/30 transition-colors shrink-0"
+                                                    title="Remove Logo"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => logoInputRef.current?.click()}
+                                                className="w-full py-2.5 px-3 rounded-xl border border-dashed border-white/20 hover:border-orange-400/60 bg-white/[0.02] hover:bg-orange-500/5 flex items-center justify-center gap-2 text-white/50 hover:text-white transition-all cursor-pointer group"
+                                            >
+                                                <Upload className="w-3.5 h-3.5 text-white/40 group-hover:text-orange-400 transition-colors" />
+                                                <span className="text-[10px] font-bold">Upload Brand Logo (Transparent PNG)</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* 2. MIDDLE: Marketing Campaign Objective & Prompt */}
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-black uppercase tracking-wider text-lime-400 flex items-center gap-1.5">
+                                            <span>🎯</span>
+                                            <span>Marketing Objective & Format</span>
+                                        </label>
+                                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-lime-400/10 text-lime-400 border border-lime-400/30 uppercase">
+                                            {MARKETING_CAMPAIGN_TYPES.find(t => t.id === marketingCampaignType)?.badge || "Viral"}
+                                        </span>
+                                    </div>
+                                    <DropUpSelect
+                                        value={marketingCampaignType}
+                                        onChange={val => setMarketingCampaignType(val)}
+                                        options={MARKETING_CAMPAIGN_TYPES}
+                                        accentColor="lime"
+                                        minMenuWidth={280}
+                                    />
+                                    <p className="text-[8.5px] text-white/40 leading-relaxed font-mono px-1">
+                                        {MARKETING_CAMPAIGN_TYPES.find(t => t.id === marketingCampaignType)?.desc}
+                                    </p>
+                                </div>
+
+                                {/* Campaign Prompt Box */}
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-black uppercase tracking-wider text-white/60">
+                                            Campaign Prompt & Headline
+                                        </label>
+                                        {selectedTemplate && (
+                                            <span className="text-[8px] text-lime-400 truncate max-w-[140px] font-mono">
+                                                Tpl: {selectedTemplate.name}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <textarea
+                                        value={promptText}
+                                        onChange={e => setPromptText(e.target.value)}
+                                        placeholder="Describe your marketing visual, offer text, headline, style, lighting..."
+                                        rows={3}
+                                        className="w-full bg-[#141419] border border-white/15 focus:border-[#c8f135] rounded-xl p-3 text-xs text-white placeholder:text-white/25 outline-none resize-none leading-relaxed transition-all"
+                                    />
+                                    {/* Preset Quick Tags */}
+                                    <div className="flex flex-wrap gap-1 pt-0.5">
+                                        {[
+                                            "🔥 Viral Hook Slide",
+                                            "⚡ 50% Off Flash Promo",
+                                            "💎 Luxury Minimalist",
+                                            "🌟 Limited Edition",
+                                            "🚀 New Arrival",
+                                        ].map(tag => (
+                                            <button
+                                                key={tag}
+                                                type="button"
+                                                onClick={() => setPromptText(p => p ? `${p}, ${tag}` : tag)}
+                                                className="text-[8px] px-2 py-0.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-white/60 hover:text-white transition-all"
+                                            >
+                                                {tag}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Real Estate property details if applicable */}
+                                {activeCategory === "realestate" && (
+                                    <div className="bg-[#141419] border border-blue-500/30 rounded-xl overflow-hidden p-3 space-y-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPropertyDetails(p => !p)}
+                                            className="w-full flex items-center justify-between text-[10px] font-black text-blue-400 uppercase tracking-wider"
+                                        >
+                                            <span className="flex items-center gap-1.5">
+                                                <Building className="w-3.5 h-3.5" /> Property Details
+                                            </span>
+                                            <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", showPropertyDetails ? "rotate-90" : "")} />
+                                        </button>
+                                        {showPropertyDetails && (
+                                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
+                                                <input
+                                                    value={realEstateData.property_name}
+                                                    onChange={e => setRealEstateData(p => ({ ...p, property_name: e.target.value }))}
+                                                    placeholder="Property name"
+                                                    className="col-span-2 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-blue-400"
+                                                />
+                                                <input
+                                                    value={realEstateData.location}
+                                                    onChange={e => setRealEstateData(p => ({ ...p, location: e.target.value }))}
+                                                    placeholder="Location"
+                                                    className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-blue-400"
+                                                />
+                                                <input
+                                                    value={realEstateData.price}
+                                                    onChange={e => setRealEstateData(p => ({ ...p, price: e.target.value }))}
+                                                    placeholder="Price (e.g. ₹45L)"
+                                                    className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-blue-400"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* 3. BOTTOM: AI Image Engine & Canvas Aspect Ratio in ONE ROW */}
+                                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
+                                    <div className="space-y-1 min-w-0">
+                                        <label className="text-[10px] font-black uppercase tracking-wider text-lime-400 block truncate">
+                                            AI Engine
+                                        </label>
+                                        <DropUpSelect
+                                            value={imageEngine}
+                                            onChange={val => setImageEngine(val)}
+                                            options={IMAGE_ENGINES}
+                                            accentColor="lime"
+                                            minMenuWidth={240}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1 min-w-0">
+                                        <label className="text-[10px] font-black uppercase tracking-wider text-fuchsia-400 block truncate">
+                                            Canvas Ratio
+                                        </label>
+                                        <DropUpSelect
+                                            value={imageSize}
+                                            onChange={val => setImageSize(val)}
+                                            options={getAvailableSizes()}
+                                            accentColor="fuchsia"
+                                            minMenuWidth={220}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            /* Video Mode Controls */
+                            <>
+                                {/* 1. TOP: First / Last Frame Slots */}
+                                <div className="space-y-2 p-3 rounded-2xl bg-white/[0.02] border border-white/8">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-white/70 block">
+                                        Starting & Ending Frame Reference
+                                    </span>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <span className="text-[8.5px] font-black uppercase tracking-wider text-white/40">First Frame</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => firstFrameRef.current?.click()}
+                                                className={cn(
+                                                    "w-full aspect-video rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all",
+                                                    firstFrame ? "border-blue-400 bg-black/60 shadow-md" : "border-white/15 bg-white/[0.02] hover:border-white/30"
+                                                )}
+                                            >
+                                                {firstFrame ? (
+                                                    <img src={resolveUrl(firstFrame)} alt="first frame" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-[9px] text-white/40 font-bold">+ Start Frame</span>
+                                                )}
+                                            </button>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[8.5px] font-black uppercase tracking-wider text-white/40">Last Frame</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => lastFrameRef.current?.click()}
+                                                className={cn(
+                                                    "w-full aspect-video rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all",
+                                                    lastFrame ? "border-blue-400 bg-black/60 shadow-md" : "border-white/15 bg-white/[0.02] hover:border-white/30"
+                                                )}
+                                            >
+                                                {lastFrame ? (
+                                                    <img src={resolveUrl(lastFrame)} alt="last frame" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-[9px] text-white/40 font-bold">+ End Frame</span>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 2. MIDDLE: Video Prompt Box */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-wider text-white/60">
+                                        Video Motion Prompt
+                                    </label>
+                                    <textarea
+                                        value={promptText}
+                                        onChange={e => setPromptText(e.target.value)}
+                                        placeholder="Describe the cinematic camera motion, subject movement, lighting dynamics..."
+                                        rows={3}
+                                        className="w-full bg-[#141419] border border-white/15 focus:border-pink-500 rounded-xl p-3 text-xs text-white placeholder:text-white/25 outline-none resize-none leading-relaxed transition-all"
+                                    />
+                                </div>
+
+                                {/* 3. BOTTOM: Video Engine & Duration/Audio in ONE ROW */}
+                                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
+                                    <div className="space-y-1 min-w-0">
+                                        <label className="text-[10px] font-black uppercase tracking-wider text-pink-400 block truncate">
+                                            Video Engine
+                                        </label>
+                                        <DropUpSelect
+                                            value={videoEngine}
+                                            onChange={val => setVideoEngine(val)}
+                                            options={ENGINES.map(eng => ({
+                                                ...eng,
+                                                badge: `${eng.cost}⚡/s`,
+                                            }))}
+                                            accentColor="pink"
+                                            minMenuWidth={260}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block truncate">
+                                                Duration
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setGenerateAudio(!generateAudio)}
+                                                className={cn(
+                                                    "text-[8px] font-bold px-1.5 py-0.5 rounded border transition-colors",
+                                                    generateAudio ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40" : "bg-white/5 text-gray-500 border-white/10"
+                                                )}
+                                                title="Toggle Video Audio Track"
+                                            >
+                                                🎵 {generateAudio ? "ON" : "OFF"}
+                                            </button>
+                                        </div>
+                                        <DropUpSelect
+                                            value={videoDuration}
+                                            onChange={val => setVideoDuration(Number(val))}
+                                            options={activeDurationOptions}
+                                            accentColor="cyan"
+                                            minMenuWidth={200}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Bottom Fixed Sticky Generate Action — always visible above navigation */}
+                    <div className="p-2.5 pb-2 md:pb-2 border-t border-white/10 bg-[#0c0c10]/95 backdrop-blur-xl shrink-0 z-20 shadow-2xl">
+                        <button
+                            type="button"
+                            onClick={handleGenerate}
+                            disabled={isGenerating}
+                            className={cn(
+                                "w-full py-3.5 px-4 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl transition-all cursor-pointer active:scale-95",
+                                isGenerating
+                                    ? "bg-white/10 text-white/30 cursor-not-allowed"
+                                    : generateMode === "video"
+                                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:scale-[1.02] shadow-pink-900/30"
+                                        : "bg-gradient-to-r from-lime-400 to-emerald-500 text-black hover:scale-[1.02] shadow-[0_0_20px_rgba(200,241,53,0.35)]"
+                            )}
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Rendering {generateMode === "video" ? "Video" : "Asset"}…</span>
+                                </>
+                            ) : (
+                                <>
+                                    {generateMode === "video" ? <Video className="w-4 h-4" /> : <Wand2 className="w-4 h-4" />}
+                                    <span>Generate {generateMode === "video" ? "Video" : "Image"}</span>
+                                    <span className="opacity-40">|</span>
+                                    <span className="font-mono text-xs">{getRequiredCredits(generateMode === "image" ? imageEngine : videoEngine)}⚡</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+
+{/* ── SECTION 2: Center Gallery / Assets Vault ── */}
+                <div className={cn(
+                    "flex-1 flex flex-col bg-[#0a0a0a] min-w-0 h-full relative overflow-hidden transition-all duration-300",
+                    (showTemplatePanel || showGeneratorPanel) ? "hidden md:flex" : "flex"
+                )}>
+                    {/* Vault Header Bar */}
+                    <div className="h-11 border-b border-white/10 px-4 flex items-center justify-between shrink-0 bg-black/50 backdrop-blur-md">
+                        <div className="flex items-center gap-2">
+                            <Layers className="w-4 h-4 text-lime-400" />
+                            <span className="text-[11px] font-black uppercase tracking-wider text-white">Asset Vault</span>
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/10 text-white/60 font-mono">
+                                {generationHistory.length} creations
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {/* Mobile button to open Studio */}
+                            <button
+                                type="button"
+                                onClick={() => setShowGeneratorPanel(true)}
+                                className="md:hidden flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#c8f135] text-black font-black text-[10px] uppercase tracking-wider shadow-lg"
+                            >
+                                <Wand2 className="w-3.5 h-3.5" />
+                                <span>Create ⚡</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ── UGC-STYLE FIXED GRID ── */}
+                    <div className="flex-1 overflow-y-auto bg-[#0a0a0a] custom-scrollbar p-3 sm:p-4" style={{ minHeight: 0 }}>
+                                {isGenerating && generationHistory.length === 0 ? (
+                                    <div className="w-full h-full flex flex-col items-center justify-center gap-4 min-h-[300px]">
+                                        <div className="relative w-16 h-16">
+                                            <div className="absolute inset-0 rounded-full border-4 border-white/5" />
+                                            <div className="absolute inset-0 rounded-full border-4 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+                                            <Wand2 className="absolute inset-0 m-auto w-6 h-6 text-[#c8f135]" />
+                                        </div>
+                                        <CyclingLoadingText messages={activeCategory === 'realestate' ? LOADING_MESSAGES_REALESTATE : LOADING_MESSAGES_DEFAULT} />
+                                    </div>
+                                ) : generationHistory.length > 0 ? (
+                                    <div className="p-4 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 items-start">
+                                        {/* Generating spinner tile */}
+                                        {isGenerating && (
+                                            <div className="w-full rounded-lg border border-[#c8f135]/20 bg-[#0d0d0d] flex flex-col items-center justify-center gap-2 relative overflow-hidden" 
+                                                style={{aspectRatio: (Object.keys(upscalingItems).length > 0 && generationHistory.find(i => upscalingItems[i.url])) ? getAspectRatio(generationHistory.find(i => upscalingItems[i.url])?.size) : getAspectRatio(imageSize)}}>
+                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" style={{animation:'shimmer 1.8s infinite', transform:'translateX(-100%)'}} />
+                                                <div className="relative w-8 h-8">
+                                                    <div className="absolute inset-0 rounded-full border-2 border-[#c8f135]/20" />
+                                                    <div className="absolute inset-0 rounded-full border-2 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+                                                    <Wand2 className="absolute inset-0 m-auto w-3.5 h-3.5 text-[#c8f135]" />
+                                                </div>
+                                                <span className="text-[7px] text-[#c8f135] font-bold uppercase tracking-widest animate-pulse">Generating…</span>
+                                            </div>
+                                        )}
+                                        {generationHistory.map((item, idx) => (
+                                            <motion.div key={item.ts}
+                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                transition={{ duration: 0.3 }}
+                                                className="relative rounded-lg overflow-hidden w-full bg-black/60 flex items-center justify-center border border-white/10"
+                                                style={{ aspectRatio: getAspectRatio(item.size) }}
+                                                onClick={() => openZoom(item.url)}
+                                            >
+                                                {item.type === 'video'
+                                                    ? <video src={item.url} className="w-full h-full object-cover" autoPlay loop playsInline muted />
+                                                    : <img src={item.url} alt={`gen-${idx}`} className="w-full h-full object-cover" />
+                                                }
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center gap-3 select-none min-h-[300px]">
+                                        <div className="w-14 h-14 rounded-2xl bg-white/3 border border-white/8 flex items-center justify-center">
+                                            <ImageIcon className="w-7 h-7 text-white/15" />
+                                        </div>
+                                        <p className="text-[10px] text-white/20 font-black uppercase tracking-widest">Generated assets appear here</p>
+                                        <p className="text-[8px] text-white/10 font-mono">
+                                            {selectedTemplate ? `${selectedTemplate.name} · ` : ''}write a prompt or choose a template to start
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                </div>
+
+                {/* ── SECTION 3: Templates Panel (Right) ── */}
+                <div className={cn(
+                    "border-l border-white/10 flex-col bg-[#0a0a0a] transition-all duration-300 flex-shrink-0 relative h-full",
+                    showTemplatePanel 
+                        ? "flex w-full md:w-[300px] xl:w-[330px] border-r" 
+                        : "hidden"
+                )}>
                     {/* Image / Video tab switcher */}
                     <div className="flex gap-1 p-2 border-b border-white/8 bg-black/20">
                         <button
@@ -1798,9 +2480,9 @@ Any written text, characters, letters, numbers, and labels inside the image must
                             </>
                         ) : (
                         <>
-                        {/* Gallery header */}
-                        <div className="flex items-center justify-between mb-3 px-1">
-                            <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Templates Gallery</h3>
+                        {/* Gallery header & Category Chips */}
+                        <div className="flex items-center justify-between mb-2 px-1">
+                            <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Templates Category</h3>
                             {isAdmin && (
                             <button
                                 onClick={() => setShowAddModal(true)}
@@ -1809,6 +2491,25 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                 <Plus className="w-3 h-3" /> Add
                             </button>
                             )}
+                        </div>
+
+                        {/* Image Category Filter Chips */}
+                        <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-3 pb-1">
+                            {CATEGORIES.map(cat => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => { setActiveCategory(cat.id); setActiveTag(null); }}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full whitespace-nowrap text-[9px] font-black uppercase tracking-wider transition-all shrink-0",
+                                        activeCategory === cat.id
+                                            ? "bg-white text-black shadow-md font-black"
+                                            : "text-white/40 hover:text-white/80 bg-white/5 border border-white/10 hover:bg-white/10"
+                                    )}
+                                >
+                                    <cat.icon className={cn("w-2.5 h-2.5", activeCategory === cat.id ? "text-black" : cat.color)} />
+                                    <span>{cat.label}</span>
+                                </button>
+                            ))}
                         </div>
 
                         {/* Search bar */}
@@ -1909,709 +2610,10 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                 </motion.div>
                             ))}
                         </div>
+
                         </>
                         )}
                     </div>
-                </div>
-
-                {/* Right Panel: ChatGPT-style Asset Configuration */}
-                <div className="flex-1 flex flex-col bg-[#0f0f11] relative">
-                    <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-
-                        {/* Floating Right-Edge Side Drawer Pull Tab (Desktop/Tablet only) */}
-                        <motion.button
-                            type="button"
-                            onClick={() => setShowSidePanel(prev => !prev)}
-                            whileHover={{ scale: 1.05, x: -3 }}
-                            whileTap={{ scale: 0.95 }}
-                            animate={{ right: showSidePanel ? '36rem' : '0rem' }}
-                            transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-                            className={cn(
-                                "hidden md:flex fixed top-1/2 -translate-y-1/2 z-[130] py-6 px-2.5 rounded-l-2xl border-l border-y shadow-2xl flex-col items-center gap-2 cursor-pointer transition-colors backdrop-blur-2xl",
-                                showSidePanel
-                                    ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.85)]"
-                                    : "bg-[#0b0b12]/95 border-violet-500/40 text-violet-300 hover:bg-violet-600/30 hover:text-white"
-                            )}
-                            title="Toggle Studio Side Panel"
-                        >
-                            <Sliders size={14} className={showSidePanel ? "text-black" : "text-violet-400"} />
-                            <span
-                                style={{ writingMode: 'vertical-lr' }}
-                                className={cn("text-[9px] font-black uppercase tracking-widest select-none", showSidePanel ? "text-black" : "text-violet-200")}
-                            >
-                                Studio
-                            </span>
-                        </motion.button>
-
-                            {/* ── UGC-STYLE FIXED GRID ── */}
-                            <div className="flex-1 overflow-y-auto bg-[#0a0a0a] custom-scrollbar" style={{paddingBottom:'80px', minHeight:0}}>
-                                {isGenerating && generationHistory.length === 0 ? (
-                                    <div className="w-full h-full flex flex-col items-center justify-center gap-4 min-h-[300px]">
-                                        <div className="relative w-16 h-16">
-                                            <div className="absolute inset-0 rounded-full border-4 border-white/5" />
-                                            <div className="absolute inset-0 rounded-full border-4 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-                                            <Wand2 className="absolute inset-0 m-auto w-6 h-6 text-[#c8f135]" />
-                                        </div>
-                                        <CyclingLoadingText messages={activeCategory === 'realestate' ? LOADING_MESSAGES_REALESTATE : LOADING_MESSAGES_DEFAULT} />
-                                    </div>
-                                ) : generationHistory.length > 0 ? (
-                                    <div className="p-4 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 items-start">
-                                        {/* Generating spinner tile */}
-                                        {isGenerating && (
-                                            <div className="w-full rounded-lg border border-[#c8f135]/20 bg-[#0d0d0d] flex flex-col items-center justify-center gap-2 relative overflow-hidden" 
-                                                style={{aspectRatio: (Object.keys(upscalingItems).length > 0 && generationHistory.find(i => upscalingItems[i.url])) ? getAspectRatio(generationHistory.find(i => upscalingItems[i.url])?.size) : getAspectRatio(imageSize)}}>
-                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" style={{animation:'shimmer 1.8s infinite', transform:'translateX(-100%)'}} />
-                                                <div className="relative w-8 h-8">
-                                                    <div className="absolute inset-0 rounded-full border-2 border-[#c8f135]/20" />
-                                                    <div className="absolute inset-0 rounded-full border-2 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-                                                    <Wand2 className="absolute inset-0 m-auto w-3.5 h-3.5 text-[#c8f135]" />
-                                                </div>
-                                                <span className="text-[7px] text-[#c8f135] font-bold uppercase tracking-widest animate-pulse">Generating…</span>
-                                            </div>
-                                        )}
-                                        {generationHistory.map((item, idx) => (
-                                            <motion.div key={item.ts}
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                transition={{ duration: 0.3 }}
-                                                className="relative rounded-lg overflow-hidden w-full bg-black/60 flex items-center justify-center border border-white/10"
-                                                style={{ aspectRatio: getAspectRatio(item.size) }}
-                                                onClick={() => openZoom(item.url)}
-                                            >
-                                                {item.type === 'video'
-                                                    ? <video src={item.url} className="w-full h-full object-cover" autoPlay loop playsInline muted />
-                                                    : <img src={item.url} alt={`gen-${idx}`} className="w-full h-full object-cover" />
-                                                }
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="w-full h-full flex flex-col items-center justify-center gap-3 select-none min-h-[300px]">
-                                        <div className="w-14 h-14 rounded-2xl bg-white/3 border border-white/8 flex items-center justify-center">
-                                            <ImageIcon className="w-7 h-7 text-white/15" />
-                                        </div>
-                                        <p className="text-[10px] text-white/20 font-black uppercase tracking-widest">Generated assets appear here</p>
-                                        <p className="text-[8px] text-white/10 font-mono">
-                                            {selectedTemplate ? `${selectedTemplate.name} · ` : ''}write a prompt or choose a template to start
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* ── BOTTOM: HigsFields-style floating input bar ── */}
-                            <div className={cn(
-                                "absolute bottom-0 left-0 right-0 z-10 flex flex-col items-center pb-4 pt-10 bg-gradient-to-t from-black/75 via-black/30 to-transparent pointer-events-none transition-all duration-300 ease-in-out",
-                                showSidePanel ? "pr-0 lg:pr-[37rem]" : "pr-0"
-                            )}>
-                            <div className="pointer-events-auto w-full max-w-4xl px-4">
-
-                                {/* Real Estate property details panel (collapsible, above bar) */}
-                                {activeCategory === 'realestate' && (
-                                    <div className="mb-2 bg-[#1a1a1e]/95 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden shadow-2xl" style={{marginLeft:'calc(2.5rem + 8px)'}}>
-                                        <button onClick={() => setShowPropertyDetails(p => !p)}
-                                            className="w-full px-3 py-1.5 flex items-center justify-between text-[9px] font-black text-blue-400/60 uppercase tracking-widest hover:text-blue-300/80 transition-colors">
-                                            <span className="flex items-center gap-1"><Building className="w-3 h-3" /> Property Details</span>
-                                            <ChevronRight className={cn("w-3 h-3 transition-transform", showPropertyDetails ? "rotate-90" : "")} />
-                                        </button>
-                                        {showPropertyDetails && <div className="px-3 pb-3 grid grid-cols-2 gap-2 border-t border-white/8 pt-2">
-                                            <input value={realEstateData.property_name} onChange={e => setRealEstateData(p => ({...p, property_name: e.target.value}))}
-                                                placeholder="Property name" className="col-span-2 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/80 placeholder:text-white/20 outline-none focus:border-blue-400/40" />
-                                            <select value={realEstateData.property_type} onChange={e => setRealEstateData(p => ({...p, property_type: e.target.value}))}
-                                                className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/60 outline-none focus:border-blue-400/40">
-                                                <option value="apartment">Apartment</option>
-                                                <option value="villa">Villa</option>
-                                                <option value="plot">Plot / Land</option>
-                                                <option value="commercial">Commercial</option>
-                                                <option value="penthouse">Penthouse</option>
-                                                <option value="bungalow">Bungalow</option>
-                                            </select>
-                                            <input value={realEstateData.location} onChange={e => setRealEstateData(p => ({...p, location: e.target.value}))}
-                                                placeholder="Location / Area" className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/80 placeholder:text-white/20 outline-none focus:border-blue-400/40" />
-                                            <input value={realEstateData.price} onChange={e => setRealEstateData(p => ({...p, price: e.target.value}))}
-                                                placeholder="Price (e.g. ₹45L)" className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/80 placeholder:text-white/20 outline-none focus:border-blue-400/40" />
-                                            <input value={realEstateData.bedrooms} onChange={e => setRealEstateData(p => ({...p, bedrooms: e.target.value}))}
-                                                placeholder="BHK (e.g. 3)" className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/80 placeholder:text-white/20 outline-none focus:border-blue-400/40" />
-                                            <input value={realEstateData.area} onChange={e => setRealEstateData(p => ({...p, area: e.target.value}))}
-                                                placeholder="Area (e.g. 1200 sqft)" className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/80 placeholder:text-white/20 outline-none focus:border-blue-400/40" />
-                                            <input value={realEstateData.features} onChange={e => setRealEstateData(p => ({...p, features: e.target.value}))}
-                                                placeholder="Features (pool, gym…)" className="col-span-2 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/80 placeholder:text-white/20 outline-none focus:border-blue-400/40" />
-                                            <input value={realEstateData.tagline} onChange={e => setRealEstateData(p => ({...p, tagline: e.target.value}))}
-                                                placeholder='Tagline' className="col-span-2 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/80 placeholder:text-white/20 outline-none focus:border-blue-400/40" />
-                                            <input value={realEstateData.agent_name} onChange={e => setRealEstateData(p => ({...p, agent_name: e.target.value}))}
-                                                placeholder="Agent / Developer name" className="col-span-2 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/80 placeholder:text-white/20 outline-none focus:border-blue-400/40" />
-                                        </div>}
-                                    </div>
-                                )}
-
-                                {/* ── Bottom row: tabs LEFT + input pill RIGHT ── */}
-                                <div className="flex items-stretch gap-2">
-                                    {/* Image / Video vertical tabs on left — full height of pill */}
-                                    <div className="flex-none flex flex-col rounded-xl border border-white/10 overflow-hidden">
-                                        <button onClick={() => setGenerateMode('image')}
-                                            className={cn("flex-1 flex flex-col items-center justify-center gap-0.5 px-2.5 text-[9px] font-black transition-all",
-                                                generateMode === 'image' ? "bg-white text-black" : "bg-[#1c1c21]/95 text-white/40 hover:text-white/70 hover:bg-white/10")}>
-                                            <ImageIcon className="w-3.5 h-3.5" />
-                                            Image
-                                        </button>
-                                        <button onClick={() => setGenerateMode('video')}
-                                            className={cn("flex-1 flex flex-col items-center justify-center gap-0.5 px-2.5 text-[9px] font-black transition-all border-t border-white/10",
-                                                generateMode === 'video' ? "bg-pink-500 text-white" : "bg-[#1c1c21]/95 text-white/40 hover:text-white/70 hover:bg-white/10")}>
-                                            <Video className="w-3.5 h-3.5" />
-                                            Video
-                                        </button>
-                                    </div>
-
-                                {/* ── Main bar ── */}
-                                <div className="flex-1 bg-[#1c1c21]/95 backdrop-blur-xl border border-white/12 rounded-2xl shadow-2xl overflow-hidden">
-                                    
-
-
-                                    {/* First / Last frame uploads — video mode only */}
-                                    {generateMode === 'video' && (
-                                        <div className="flex items-center gap-2 px-3 pt-2.5">
-                                            {/* First frame */}
-                                            <div className="flex flex-col items-center gap-1">
-                                                <span className="text-[7px] text-white/30 font-black uppercase tracking-widest">First</span>
-                                                <button onClick={() => firstFrameRef.current?.click()}
-                                                    className={cn("w-10 h-10 rounded-lg border-2 border-dashed flex items-center justify-center transition-all overflow-hidden",
-                                                        firstFrame ? "border-blue-400/60" : "border-white/15 hover:border-white/30")}>
-                                                    {firstFrame
-                                                        ? <img src={resolveUrl(firstFrame)} className="w-full h-full object-cover rounded" alt="first" />
-                                                        : <span className="text-white/25 text-lg font-black">+</span>}
-                                                </button>
-                                            </div>
-                                            {/* Last frame */}
-                                            <div className="flex flex-col items-center gap-1">
-                                                <span className="text-[7px] text-white/30 font-black uppercase tracking-widest">Last</span>
-                                                <button onClick={() => lastFrameRef.current?.click()}
-                                                    className={cn("w-10 h-10 rounded-lg border-2 border-dashed flex items-center justify-center transition-all overflow-hidden",
-                                                        lastFrame ? "border-blue-400/60" : "border-white/15 hover:border-white/30")}>
-                                                    {lastFrame
-                                                        ? <img src={resolveUrl(lastFrame)} className="w-full h-full object-cover rounded" alt="last" />
-                                                        : <span className="text-white/25 text-lg font-black">+</span>}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {/* Uploaded thumbnails row (only when images present) */}
-                                    {(referenceImages.length > 0 || logoImage) && (
-                                        <div className="flex items-center gap-2 px-3 pt-2.5 flex-wrap">
-                                            {referenceImages.map((img, index) => (
-                                                <div key={img.id || index} className="relative group w-9 h-9 rounded-lg overflow-hidden border border-lime-500/40 flex-shrink-0">
-                                                    <img src={resolveUrl(img.url)} className="w-full h-full object-cover" alt={`ref-${index}`} />
-                                                    <button onClick={() => setReferenceImages(prev => prev.filter((_, i) => i !== index))}
-                                                        className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                        <X className="w-3 h-3 text-white" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {logoImage && (
-                                                <div className="relative group w-9 h-9 rounded-lg overflow-hidden border border-orange-500/40 bg-white/5 flex-shrink-0">
-                                                    <img src={logoImage} className="w-full h-full object-contain p-0.5" alt="logo" />
-                                                    <button onClick={() => setLogoImage(null)}
-                                                        className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                        <X className="w-3 h-3 text-white" />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Textarea */}
-                                    <textarea
-                                        value={promptText}
-                                        onChange={e => setPromptText(e.target.value)}
-                                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !isGenerating) { e.preventDefault(); handleGenerate(); } }}
-                                        placeholder={activeCategory === 'realestate' ? "Describe the property visual… (Shift+Enter for new line)" : referenceImages.length > 0 ? "Add extra instructions… or just hit Generate" : "Describe what you want to create… (Shift+Enter for new line)"}
-                                        rows={2}
-                                        className="w-full bg-transparent text-[16px] md:text-sm text-white/80 placeholder:text-white/25 outline-none resize-none px-4 pt-3 pb-1 leading-relaxed"
-                                    />
-
-                                 {/* Bottom toolbar row */}
-                                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 pb-2 pt-1">
-                                     {/* Pills container */}
-                                     <div className="flex items-center gap-1.5 px-3 overflow-x-auto no-scrollbar flex-nowrap flex-1 min-w-0">
-                                        {/* Upload photo */}
-                                        <button onClick={() => fileInputRef.current?.click()}
-                                            className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
-                                                referenceImages.length > 0 ? "text-lime-400 bg-lime-500/10 border border-lime-500/30" : "text-white/30 hover:text-white/60 hover:bg-white/5 border border-transparent")}>
-                                            <Upload className="w-3 h-3" />
-                                            {referenceImages.length > 0 ? `Photo (${referenceImages.length})` : 'Photo'}
-                                        </button>
-
-                                        {/* Size */}
-                                         <UpwardDropdown
-                                             icon={<LayoutGrid size={8} />}
-                                             label={getAvailableSizes().find(s => s.value === imageSize)?.ratio || 'Auto'}
-                                             accentColor="fuchsia"
-                                         >
-                                             {(close) => (
-                                                 <div className="space-y-0.5">
-                                                     {getAvailableSizes().map((opt, i) => (
-                                                         <motion.button
-                                                             key={opt.value}
-                                                             initial={{ opacity: 0, y: 8 }}
-                                                             animate={{ opacity: 1, y: 0 }}
-                                                             transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
-                                                             onClick={() => { setImageSize(opt.value); close(); }}
-                                                             className={cn(
-                                                                 "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
-                                                                 imageSize === opt.value
-                                                                     ? "bg-fuchsia-500/10 border border-fuchsia-500/25"
-                                                                     : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                                                             )}
-                                                         >
-                                                             {/* Aspect visual */}
-                                                             <div className={cn(
-                                                                 "rounded border flex items-center justify-center shrink-0 transition-all",
-                                                                 imageSize === opt.value ? "border-fuchsia-500 bg-fuchsia-500/10" : "border-gray-700 bg-white/5"
-                                                             )}
-                                                                 style={{ width: `${opt.w * 1.5}px`, height: `${opt.h * 1.5}px` }}
-                                                             >
-                                                                 <span className={cn(
-                                                                     "text-[5px] font-black scale-90",
-                                                                     imageSize === opt.value ? "text-fuchsia-400" : "text-gray-500"
-                                                                 )}>{opt.ratio}</span>
-                                                             </div>
-                                                             <div className="flex-1 min-w-0">
-                                                                 <p className={cn(
-                                                                     "text-[10px] font-black uppercase tracking-wider truncate",
-                                                                     imageSize === opt.value ? "text-fuchsia-400" : "text-white/70"
-                                                                 )}>{opt.label}</p>
-                                                                 <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
-                                                             </div>
-                                                             {imageSize === opt.value && (
-                                                                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-fuchsia-400 flex items-center justify-center shrink-0">
-                                                                     <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                                                 </motion.div>
-                                                             )}
-                                                         </motion.button>
-                                                     ))}
-                                                 </div>
-                                             )}
-                                         </UpwardDropdown>
-
-                                         {/* Quality (only in image mode) */}
-                                         {generateMode === 'image' && (
-                                             <UpwardDropdown
-                                                 icon={<Sparkles size={8} />}
-                                                 label={QUALITY_OPTIONS.find(q => q.value === quality)?.label || 'HD'}
-                                                 accentColor="violet"
-                                             >
-                                                 {(close) => (
-                                                     <div className="space-y-0.5">
-                                                         {QUALITY_OPTIONS.map((opt, i) => (
-                                                             <motion.button
-                                                                 key={opt.value}
-                                                                 initial={{ opacity: 0, y: 8 }}
-                                                                 animate={{ opacity: 1, y: 0 }}
-                                                                 transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
-                                                                 onClick={() => { setQuality(opt.value); close(); }}
-                                                                 className={cn(
-                                                                     "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
-                                                                     quality === opt.value
-                                                                         ? "bg-violet-500/10 border border-violet-500/25"
-                                                                         : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                                                                 )}
-                                                             >
-                                                                 <div className={cn(
-                                                                     "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
-                                                                     quality === opt.value ? "bg-violet-500/20 text-violet-400" : "bg-white/5 text-gray-500"
-                                                                 )}>
-                                                                     <Sparkles size={10} />
-                                                                 </div>
-                                                                 <div className="flex-1 min-w-0">
-                                                                     <p className={cn(
-                                                                         "text-[10px] font-black uppercase tracking-wider truncate",
-                                                                         quality === opt.value ? "text-violet-400" : "text-white/70"
-                                                                     )}>{opt.label}</p>
-                                                                     <p className="text-[7.5px] text-gray-600 truncate">
-                                                                         {opt.desc}
-                                                                     </p>
-                                                                 </div>
-                                                                 {quality === opt.value && (
-                                                                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
-                                                                         <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                                                     </motion.div>
-                                                                 )}
-                                                             </motion.button>
-                                                         ))}
-                                                     </div>
-                                                 )}
-                                             </UpwardDropdown>
-                                         )}
-
-                                          {/* GPT-2 Custom Output Settings (only when imageEngine === 'gpt-image-2' in image mode) */}
-                                          {generateMode === 'image' && imageEngine === 'gpt-image-2' && (
-                                              <UpwardDropdown
-                                                  icon={<Sliders size={8} />}
-                                                  label={imageFormat.toUpperCase()}
-                                                  accentColor="cyan"
-                                              >
-                                                  {(close) => (
-                                                      <div className="space-y-4 p-2 text-white">
-                                                          <div>
-                                                              <h4 className="text-[10px] font-black text-white/50 uppercase tracking-wider mb-2">GPT-2 Output Settings</h4>
-                                                          </div>
-                                                          
-                                                          {/* Format Selection */}
-                                                          <div className="space-y-1.5">
-                                                              <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Format</label>
-                                                              <div className="grid grid-cols-3 gap-1 bg-white/5 p-0.5 rounded-lg border border-white/5">
-                                                                  {['png', 'jpeg', 'webp'].map(fmt => (
-                                                                      <button
-                                                                          key={fmt}
-                                                                          type="button"
-                                                                          onClick={() => setImageFormat(fmt)}
-                                                                          className={cn("py-1 text-[9px] font-black uppercase tracking-wider rounded-md transition-all",
-                                                                              imageFormat === fmt ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/10" : "text-white/40 hover:text-white/80")}
-                                                                      >
-                                                                          {fmt}
-                                                                      </button>
-                                                                  ))}
-                                                              </div>
-                                                          </div>
-
-                                                          {/* Background Selection */}
-                                                          <div className="space-y-1.5">
-                                                              <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Background</label>
-                                                              <div className="grid grid-cols-2 gap-1 bg-white/5 p-0.5 rounded-lg border border-white/5">
-                                                                  {['auto', 'opaque'].map(bg => (
-                                                                      <button
-                                                                          key={bg}
-                                                                          type="button"
-                                                                          onClick={() => setImageBackground(bg)}
-                                                                          className={cn("py-1 text-[9px] font-black uppercase tracking-wider rounded-md transition-all",
-                                                                              imageBackground === bg ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/10" : "text-white/40 hover:text-white/80")}
-                                                                      >
-                                                                          {bg}
-                                                                      </button>
-                                                                  ))}
-                                                              </div>
-                                                          </div>
-
-                                                          {/* Compression Selection (only if jpeg or webp) */}
-                                                          {(imageFormat === 'jpeg' || imageFormat === 'webp') && (
-                                                              <div className="space-y-1.5">
-                                                                  <div className="flex justify-between items-baseline">
-                                                                      <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Compression</label>
-                                                                      <span className="text-[9px] font-bold text-cyan-400">{imageCompression}%</span>
-                                                                  </div>
-                                                                  <input
-                                                                      type="range"
-                                                                      min="0"
-                                                                      max="100"
-                                                                      value={imageCompression}
-                                                                      onChange={e => setImageCompression(Number(e.target.value))}
-                                                                      className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500 outline-none"
-                                                                  />
-                                                              </div>
-                                                          )}
-
-                                                          {/* Close Button */}
-                                                          <button
-                                                              type="button"
-                                                              onClick={close}
-                                                              className="w-full py-1.5 mt-2 text-[9px] font-black uppercase tracking-widest bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all text-white/60 hover:text-white"
-                                                          >
-                                                              Done
-                                                          </button>
-                                                      </div>
-                                                  )}
-                                              </UpwardDropdown>
-                                          )}
-
-                                          {/* OMNI TASK DROPDOWN (Video only, Omni engine only) */}
-                                          {generateMode === 'video' && (videoEngine === 'omni' || videoEngine === 'omni-flash') && (
-                                              <UpwardDropdown
-                                                  icon={<Sparkles size={8} />}
-                                                  label={(() => {
-                                                      const taskLabels = {
-                                                          auto: 'Auto',
-                                                          image_to_video: 'I2V'
-                                                      };
-                                                      return taskLabels[omniTask] || 'Task';
-                                                  })()}
-                                                  accentColor="violet"
-                                              >
-                                                  {(close) => (
-                                                      <div className="space-y-0.5">
-                                                          {[
-                                                              { id: 'auto', label: 'Multimodal', icon: '✨', desc: 'Default multimodal generation' },
-                                                              { id: 'image_to_video', label: 'First Frame to Video', icon: '🖼️', desc: 'Animate a starting frame image', disabled: !firstFrame },
-                                                          ].map((opt, i) => (
-                                                              <motion.button
-                                                                  key={opt.id}
-                                                                  disabled={opt.disabled}
-                                                                  initial={{ opacity: 0, y: 8 }}
-                                                                  animate={{ opacity: 1, y: 0 }}
-                                                                  transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
-                                                                  onClick={() => { if (!opt.disabled) { setOmniTask(opt.id); close(); } }}
-                                                                  className={cn(
-                                                                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
-                                                                      opt.disabled
-                                                                          ? "opacity-30 cursor-not-allowed"
-                                                                          : omniTask === opt.id
-                                                                          ? "bg-violet-500/10 border border-violet-500/25"
-                                                                          : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                                                                  )}
-                                                              >
-                                                                  <div className={cn(
-                                                                      "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
-                                                                      opt.disabled
-                                                                          ? "bg-white/5 text-gray-700"
-                                                                          : omniTask === opt.id
-                                                                          ? "bg-violet-500/20 text-violet-400"
-                                                                          : "bg-white/5 text-gray-500"
-                                                                  )}>
-                                                                      <span className="text-[10px]">{opt.icon}</span>
-                                                                  </div>
-                                                                  <div className="flex-1 min-w-0">
-                                                                      <p className={cn(
-                                                                          "text-[10px] font-black uppercase tracking-wider truncate",
-                                                                          opt.disabled
-                                                                              ? "text-white/30"
-                                                                              : omniTask === opt.id ? "text-violet-400" : "text-white/70"
-                                                                      )}>{opt.label}</p>
-                                                                      <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
-                                                                  </div>
-                                                                  {!opt.disabled && omniTask === opt.id && (
-                                                                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
-                                                                          <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                                                      </motion.div>
-                                                                  )}
-                                                              </motion.button>
-                                                          ))}
-                                                      </div>
-                                                  )}
-                                              </UpwardDropdown>
-                                          )}
-
-                                         {/* Engine */}
-                                         <UpwardDropdown
-                                             icon={<Zap size={8} />}
-                                             label={generateMode === 'image' 
-                                                 ? (imageEngine === 'nano-banana-2' ? 'NB2' : imageEngine === 'gpt-image-2' ? 'GPT2' : imageEngine === 'nano-banana-pro' ? 'NB Pro' : 'GPT Pro')
-                                                 : (videoEngine === 'veo-3.1-generate-preview' ? 'Veo Std' : videoEngine === 'veo-3.1-fast-generate-preview' ? 'Veo Fast' : videoEngine === 'veo-3.1-lite-generate-preview' ? 'Veo Lite' : videoEngine === 'seedance-fast' ? 'Seed Fast' : videoEngine === 'seedace' ? 'Seed 2.0' : 'Veo Fast')}
-                                             accentColor="lime"
-                                         >
-                                             {(close) => (
-                                                 <div className="space-y-0.5">
-                                                     {generateMode === 'image' ? (
-                                                         IMAGE_ENGINES.map((eng, i) => (
-                                                             <motion.button
-                                                                 key={eng.id}
-                                                                 initial={{ opacity: 0, x: -10 }}
-                                                                 animate={{ opacity: 1, x: 0 }}
-                                                                 transition={{ delay: i * 0.03, type: 'spring', stiffness: 400, damping: 25 }}
-                                                                 onClick={() => { setImageEngine(eng.id); close(); }}
-                                                                 className={cn(
-                                                                     "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
-                                                                     imageEngine === eng.id
-                                                                         ? "bg-lime-500/10 border border-lime-500/25"
-                                                                         : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                                                                 )}
-                                                             >
-                                                                 <div className={cn(
-                                                                     "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
-                                                                     imageEngine === eng.id ? "bg-lime-500/20 text-[#c8f135]" : "bg-white/5 text-gray-500"
-                                                                 )}>
-                                                                     <span className="text-[10px]">{eng.icon}</span>
-                                                                 </div>
-                                                                 <div className="flex-1 min-w-0">
-                                                                     <p className={cn(
-                                                                         "text-[10px] font-black uppercase tracking-wider truncate",
-                                                                         imageEngine === eng.id ? "text-[#c8f135]" : "text-white/70"
-                                                                     )}>{eng.label}</p>
-                                                                     <p className="text-[7.5px] text-gray-600 truncate">{eng.desc}</p>
-                                                                 </div>
-                                                                 <div className="flex items-center gap-1.5 shrink-0">
-                                                                     <span className={cn(
-                                                                         "text-[7px] font-black px-1.5 py-0.5 rounded-md border",
-                                                                         imageEngine === eng.id
-                                                                             ? "bg-[#c8f135]/10 border-[#c8f135]/20 text-[#c8f135]"
-                                                                             : "bg-white/5 border-white/5 text-gray-600"
-                                                                     )}>
-                                                                         {getRequiredCredits(eng.id)} ⚡
-                                                                     </span>
-                                                                     {imageEngine === eng.id && (
-                                                                         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
-                                                                             <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                                                         </motion.div>
-                                                                     )}
-                                                                 </div>
-                                                             </motion.button>
-                                                         ))
-                                                     ) : (
-                                                         ENGINES.map((eng, i) => (
-                                                             <motion.button
-                                                                 key={eng.id}
-                                                                 initial={{ opacity: 0, x: -10 }}
-                                                                 animate={{ opacity: 1, x: 0 }}
-                                                                 transition={{ delay: i * 0.03, type: 'spring', stiffness: 400, damping: 25 }}
-                                                                 onClick={() => { setVideoEngine(eng.id); close(); }}
-                                                                 className={cn(
-                                                                     "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
-                                                                     videoEngine === eng.id
-                                                                         ? "bg-lime-500/10 border border-lime-500/25"
-                                                                         : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                                                                 )}
-                                                             >
-                                                                 <div className={cn(
-                                                                     "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
-                                                                     videoEngine === eng.id ? "bg-lime-500/20 text-[#c8f135]" : "bg-white/5 text-gray-500"
-                                                                 )}>
-                                                                     <span className="text-[10px]">{eng.icon}</span>
-                                                                 </div>
-                                                                 <div className="flex-1 min-w-0">
-                                                                     <p className={cn(
-                                                                         "text-[10px] font-black uppercase tracking-wider truncate",
-                                                                         videoEngine === eng.id ? "text-[#c8f135]" : "text-white/70"
-                                                                     )}>{eng.label}</p>
-                                                                     <p className="text-[7.5px] text-gray-600 truncate">{eng.desc}</p>
-                                                                 </div>
-                                                                 <div className="flex items-center gap-1.5 shrink-0">
-                                                                     <span className={cn(
-                                                                         "text-[7px] font-black px-1.5 py-0.5 rounded-md border",
-                                                                         videoEngine === eng.id
-                                                                             ? "bg-[#c8f135]/10 border-[#c8f135]/20 text-[#c8f135]"
-                                                                             : "bg-white/5 border-white/5 text-gray-600"
-                                                                     )}>
-                                                                         {getRequiredCredits(eng.id)} ⚡
-                                                                     </span>
-                                                                     {videoEngine === eng.id && (
-                                                                         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
-                                                                             <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                                                         </motion.div>
-                                                                     )}
-                                                                 </div>
-                                                             </motion.button>
-                                                         ))
-                                                     )}
-                                                 </div>
-                                             )}
-                                         </UpwardDropdown>
-
-                                         {/* Duration/Time (only in video mode) */}
-                                         {generateMode === 'video' && (
-                                             <UpwardDropdown
-                                                 icon={<Clock size={8} />}
-                                                 label={`${videoDuration}s`}
-                                                 accentColor="cyan"
-                                             >
-                                                 {(close) => {
-                                                     const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash';
-                                                     const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace';
-                                                     const isVeo3 = videoEngine.startsWith('veo-3.1') || videoEngine === 'veo3';
-                                                     const opts = isOmni 
-                                                         ? OMNI_DURATION_OPTIONS 
-                                                         : isVeo3 
-                                                             ? VEO_DURATION_OPTIONS 
-                                                             : isSeed 
-                                                                 ? SEEDANCE_DURATION_OPTIONS 
-                                                                 : DURATION_OPTIONS;
-                                                     const maxOptValue = Math.max(...opts.map(o => o.value));
-                                                     
-                                                     return (
-                                                         <div className="space-y-0.5">
-                                                             {opts.map((opt, i) => (
-                                                                 <motion.button
-                                                                     key={opt.value}
-                                                                     initial={{ opacity: 0, y: 8 }}
-                                                                     animate={{ opacity: 1, y: 0 }}
-                                                                     transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
-                                                                     onClick={() => { setVideoDuration(opt.value); close(); }}
-                                                                     className={cn(
-                                                                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
-                                                                         videoDuration === opt.value
-                                                                             ? "bg-cyan-500/10 border border-cyan-500/25"
-                                                                             : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                                                                     )}
-                                                                 >
-                                                                     {/* Duration bar visual */}
-                                                                     <div className="w-10 h-2 bg-white/5 rounded-full overflow-hidden shrink-0">
-                                                                         <motion.div
-                                                                             className="h-full rounded-full"
-                                                                             style={{ background: videoDuration === opt.value ? '#22d3ee' : '#333' }}
-                                                                             initial={{ width: 0 }}
-                                                                             animate={{ width: `${(opt.value / maxOptValue) * 100}%` }}
-                                                                             transition={{ type: 'spring', stiffness: 200, damping: 20, delay: i * 0.05 }}
-                                                                         />
-                                                                     </div>
-                                                                     <div className="flex-1 min-w-0">
-                                                                         <p className={cn(
-                                                                             "text-[10px] font-black uppercase tracking-wider truncate",
-                                                                             videoDuration === opt.value ? "text-cyan-400" : "text-white/70"
-                                                                         )}>{opt.label}</p>
-                                                                         <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
-                                                                     </div>
-                                                                     <div className="flex items-center gap-1.5 shrink-0">
-                                                                         <span className={cn(
-                                                                             "text-[7px] font-black px-1.5 py-0.5 rounded-md border",
-                                                                             videoDuration === opt.value
-                                                                                 ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400"
-                                                                                 : "bg-white/5 border-white/5 text-gray-600"
-                                                                         )}>
-                                                                             {getRequiredCredits(videoEngine, opt.value)} ⚡
-                                                                         </span>
-                                                                         {videoDuration === opt.value && (
-                                                                             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-cyan-400 flex items-center justify-center shrink-0">
-                                                                                 <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                                                             </motion.div>
-                                                                         )}
-                                                                     </div>
-                                                                 </motion.button>
-                                                             ))}
-                                                         </div>
-                                                     );
-                                                 }}
-                                             </UpwardDropdown>
-                                         )}
-                                         {/* Audio toggle (only in video mode) */}
-                                         {generateMode === 'video' && (
-                                             <motion.button
-                                                 type="button"
-                                                 whileHover={{ scale: 1.05 }}
-                                                 whileTap={{ scale: 0.95 }}
-                                                 onClick={() => setGenerateAudio(!generateAudio)}
-                                                 className={cn(
-                                                     "flex items-center justify-center w-8 h-8 rounded-full text-[12px] font-black uppercase tracking-wider border transition-colors shrink-0",
-                                                     generateAudio
-                                                         ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-400"
-                                                         : "bg-black/60 border-white/10 text-gray-500 hover:text-white"
-                                                 )}
-                                                 title={generateAudio ? "Audio: ON" : "Audio: OFF"}
-                                             >
-                                                 <span>🎵</span>
-                                             </motion.button>
-                                         )}
-                                        </div>
-
-                                         {/* Generate Button Row */}
-                                          <div className="px-3 md:px-0 md:pr-3 flex w-full md:w-auto flex-shrink-0">
-                                        {/* Generate */}
-                                        <button onClick={handleGenerate} disabled={isGenerating}
-                                            className={cn(
-                                                "w-full md:w-auto md:ml-auto flex items-center justify-center gap-1.5 px-3.5 py-1 rounded-full font-black text-[9px] uppercase tracking-wider transition-all mt-2 md:mt-0",
-                                                isGenerating ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-gradient-to-r from-lime-400 to-emerald-500 text-black hover:scale-105 shadow-[0_0_16px_rgba(132,204,22,0.3)]"
-                                            )}>
-                                            {isGenerating
-                                                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating…</>
-                                                : <>{generateMode === 'video' ? <Video className="w-3.5 h-3.5" /> : <Wand2 className="w-3.5 h-3.5" />}
-                                                   {generateMode === 'video' ? 'Make Video' : 'Generate'}
-                                                   <span className="opacity-40 ml-1">|</span>
-                                                   <span className="font-mono text-[9px] ml-1">{getRequiredCredits(generateMode === 'image' ? imageEngine : videoEngine)}⚡</span>
-                                                </>
-                                            }
-                                        </button>
-                                        </div>
-                                    </div>
-                                </div>{/* end main bar */}
-                                </div>{/* end bottom row */}
-                            </div>{/* end pointer-events-auto */}
-                            </div>{/* end floating gradient wrapper */}
-
-                        </div>
                 </div>
             </div>
         </div>
@@ -2842,41 +2844,6 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 onSave={handleAddTemplate}
             />
         )}
-
-        {/* Side Panel Drawer for Marketing Studio */}
-        <SidePanel
-            isOpen={showSidePanel}
-            onClose={() => setShowSidePanel(false)}
-            activeEngine={videoEngine}
-            setActiveEngine={setVideoEngine}
-            activeTab={generateMode}
-            setActiveTab={setGenerateMode}
-            panelTab={panelTab}
-            setPanelTab={setPanelTab}
-            firstFrameImage={firstFrame?.file || null}
-            firstFramePreview={firstFrame?.preview || null}
-            lastFrameImage={lastFrame?.file || null}
-            lastFramePreview={lastFrame?.preview || null}
-            setFirstFrameImage={(img) => setFirstFrame(prev => ({ ...prev, file: img }))}
-            setFirstFramePreview={(prev) => setFirstFrame(p => ({ ...p, preview: prev }))}
-            setLastFrameImage={(img) => setLastFrame(prev => ({ ...prev, file: img }))}
-            setLastFramePreview={(prev) => setLastFrame(p => ({ ...p, preview: prev }))}
-            duration={videoDuration}
-            setDuration={setVideoDuration}
-            aspectRatio={imageSize}
-            setAspectRatio={setImageSize}
-            generateAudio={generateAudio}
-            setGenerateAudio={setGenerateAudio}
-            omniTask={omniTask}
-            setOmniTask={setOmniTask}
-            promptText={promptText}
-            setPromptText={setPromptText}
-            handleGenerate={handleGenerate}
-            isBusy={isGenerating}
-            userCredits={userCredits}
-            requiredCredits={getRequiredCredits(generateMode === 'image' ? imageEngine : videoEngine)}
-            canGenerate={!isGenerating && !!promptText.trim()}
-        />
         </>
     );
 }

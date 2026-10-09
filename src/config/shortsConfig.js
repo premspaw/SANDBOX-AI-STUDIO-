@@ -25,12 +25,12 @@ export const SHORTS_COST = {
     kling_motion_pro: 9,
     video_upscale_per_second: 5,
 
-    // Seedance 2.5 Pro (Higgsfield API Wholesale + 15% margin @ ₹95/USD)
+    // Seedance 2.5 Pro (Higgsfield API Wholesale + 15% margin @ ₹96/USD, 720p exact middle)
     seedance_25_480p: 16,
-    seedance_25_720p: 33,
-    seedance_25_1080p: 87,
+    seedance_25_720p: 52,
+    seedance_25_1080p: 88,
     seedance_25_multiref_480p: 19,
-    seedance_25_multiref_720p: 42,
+    seedance_25_multiref_720p: 62,
     seedance_25_multiref_1080p: 105,
 
     // Seedance 2.0 Fast (Kie / BytePlus Ark)
@@ -54,15 +54,15 @@ export const SHORTS_COST = {
     // AI Refinement
     refine_prompt: 1,
 
-    // Remix Studio (Higgsfield Genjutsu Motion Transfer - 15% margin over wholesale)
-    remix_motion_transfer_480p: 18,
-    remix_motion_transfer_720p: 44,
-    remix_motion_transfer_1080p: 89,
+    // Remix Studio (Higgsfield Genjutsu Motion Transfer - 15% margin over wholesale @ ₹96/USD, 720p exact middle)
+    remix_motion_transfer_480p: 36,
+    remix_motion_transfer_720p: 63,
+    remix_motion_transfer_1080p: 90,
 
-    // Object Swap Studio (Higgsfield Genjutsu Object Swap - 15% margin over wholesale)
-    object_swap_480p: 18,
-    object_swap_720p: 44,
-    object_swap_1080p: 89,
+    // Object Swap Studio (Higgsfield Genjutsu Object Swap - 15% margin over wholesale @ ₹96/USD, 720p exact middle)
+    object_swap_480p: 36,
+    object_swap_720p: 63,
+    object_swap_1080p: 90,
 
     // AI Influencer (Higgsfield AI Influencer - $0.05 wholesale + 30% margin = ₹6 / 6 Shorts)
     ai_influencer: 6,
@@ -168,7 +168,7 @@ export function calculateEngineCredits(engineId, options = {}) {
             return remixDur * 5;
         }
         const remixDur = Math.max(1, Math.round(Number(motionRefVideoDuration) || dur || 5));
-        const costPerSec = resLower === '1080p' ? 89 : (resLower === '480p' ? 18 : 44);
+        const costPerSec = resLower === '1080p' ? 90 : (resLower === '480p' ? 36 : 63);
         return costPerSec * remixDur;
     }
 
@@ -224,12 +224,12 @@ export function calculateEngineCredits(engineId, options = {}) {
                 options.multiReferenceMode ||
                 options.mode === 'multi-ref'
             );
-            // Higgsfield API Wholesale + 15% margin (@ ₹95/USD):
-            // Multi-ref: 480p=19 ⚡/s, 720p=42 ⚡/s, 1080p=105 ⚡/s
-            // Standard:  480p=16 ⚡/s, 720p=33 ⚡/s, 1080p=87 ⚡/s
+            // Higgsfield API Wholesale + 15% margin (@ ₹96/USD, 720p exact middle):
+            // Multi-ref: 480p=19 ⚡/s, 720p=62 ⚡/s, 1080p=105 ⚡/s
+            // Standard:  480p=16 ⚡/s, 720p=52 ⚡/s, 1080p=88 ⚡/s
             const costPerSec = isMultiRef
-                ? (resLower === '1080p' ? 105 : (resLower === '480p' ? 19 : 42))
-                : (resLower === '1080p' ? 87 : (resLower === '480p' ? 16 : 33));
+                ? (resLower === '1080p' ? 105 : (resLower === '480p' ? 19 : 62))
+                : (resLower === '1080p' ? 88 : (resLower === '480p' ? 16 : 52));
             return Math.ceil(costPerSec * dur);
         }
         // Seedance 2.0 Fast (no video: 720p=14/s, 480p=7/s | with video: 720p=8.5/s, 480p=4/s)

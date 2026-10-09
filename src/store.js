@@ -7,6 +7,39 @@ const _profileCache = {};
 const _profileCacheAt = {};
 const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Categorizes an asset strictly into its originating studio domain:
+ * 'cinema' | 'ugc' | 'marketing' | 'remix' | 'avatar'
+ */
+export const inferStudioFolder = (asset) => {
+    if (!asset) return 'cinema';
+    const folder = String(asset.folder || asset.metadata?.folder || asset.category || '').toLowerCase();
+    if (folder === 'marketing') return 'marketing';
+    if (folder === 'ugc') return 'ugc';
+    if (folder === 'remix' || folder === 'swap' || folder === 'influencer') return 'remix';
+    if (folder === 'avatar' || folder === 'character') return 'avatar';
+    if (folder === 'cinema' || folder === 'studio') return 'cinema';
+
+    const url = String(asset.url || asset.image || asset.output_url || '').toLowerCase();
+    if (url.includes('/marketing/') || url.includes('marketing-asset') || url.includes('marketing_')) return 'marketing';
+    if (url.includes('/ugc/') || url.includes('ugc-') || url.includes('/ugc_assets/')) return 'ugc';
+    if (url.includes('/remix/') || url.includes('/influencer/') || url.includes('object-swap') || url.includes('motion-transfer') || url.includes('motion_transfer')) return 'remix';
+    if (url.includes('/avatar/') || asset.type === 'character' || asset.isAvatarStudio || asset.isCharacter) return 'avatar';
+
+    const mode = String(asset.metadata?.mode || asset.mode || '').toLowerCase();
+    if (mode === 'ai-influencer' || mode === 'object-swap' || mode === 'motion-transfer' || mode === 'remix') return 'remix';
+
+    const prompt = String(asset.prompt || asset.name || '').toLowerCase();
+    if (prompt.includes('marketing') || prompt.includes('campaign')) return 'marketing';
+    if (prompt.includes('ugc ') || prompt.includes('ugc script')) return 'ugc';
+    if (prompt.includes('motion remix') || prompt.includes('object swap') || prompt.includes('ai influencer')) return 'remix';
+
+    const engine = String(asset.engine || '').toLowerCase();
+    if (engine.includes('influencer') || engine.includes('object swap') || engine.includes('motion transfer')) return 'remix';
+
+    return 'cinema';
+};
+
 export const useAppStore = create((set, get) => ({
     // Character Info
     name: 'UNNAMED_CONSTRUCT',
@@ -155,6 +188,7 @@ export const useAppStore = create((set, get) => ({
     // Universal Unified Gallery across all Studios, Pages, and Folders
     unifiedGallery: (() => {
         try {
+            const cachedUnified = JSON.parse(localStorage.getItem('zerolens_unified_gallery') || '[]');
             const studioG = JSON.parse(localStorage.getItem('cs_studio_gallery') || '[]');
             const csG = JSON.parse(localStorage.getItem('cs_gallery') || '[]');
             const ugcG = JSON.parse(localStorage.getItem('ugc_video_gallery') || '[]');
@@ -162,12 +196,13 @@ export const useAppStore = create((set, get) => ({
             const vaultAssetsObj = JSON.parse(localStorage.getItem('project_vault_assets') || '{}');
             const vaultList = Array.isArray(vaultAssetsObj) ? vaultAssetsObj : Object.values(vaultAssetsObj).flat();
 
-            const all = [...studioG, ...csG, ...ugcG, ...marketingG, ...vaultList];
+            const all = [...cachedUnified, ...studioG, ...csG, ...ugcG, ...marketingG, ...vaultList];
             const map = new Map();
             all.forEach(item => {
                 if (!item || !item.url) return;
                 const key = item.url;
                 if (!map.has(key)) {
+                    const studioFolder = inferStudioFolder(item);
                     map.set(key, {
                         id: item.id || `asset_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
                         type: item.type || (item.url.includes('.mp4') ? 'video' : 'image'),
@@ -181,8 +216,9 @@ export const useAppStore = create((set, get) => ({
                         resolution: item.resolution || '720p',
                         duration: item.duration || 4,
                         timestamp: item.timestamp || item.createdAt || Date.now(),
-                        folder: item.folder || (item.url.includes('/marketing/') ? 'marketing' : item.url.includes('/ugc/') ? 'ugc' : 'studio'),
-                        category: item.category || 'generation',
+                        folder: studioFolder,
+                        studio: studioFolder,
+                        category: item.category || studioFolder,
                         projectId: item.projectId || 'default',
                         status: item.status || 'completed'
                     });
@@ -215,17 +251,15 @@ export const useAppStore = create((set, get) => ({
 
                 const map = new Map();
 
+                const deletedSet = new Set(JSON.parse(localStorage.getItem('zerolens_deleted_assets_v1') || '[]'));
+
                 // 1. Add server assets (primary source of truth)
                 serverAssets.forEach(a => {
                     if (!a || !a.url) return;
+                    if (deletedSet.has(a.url) || (a.id && deletedSet.has(String(a.id)))) return;
+                    if (a.is_deleted || a.metadata?.is_deleted || a.metadata?.deleted_by_user) return;
                     const isVid = a.type === 'video' || (typeof a.url === 'string' && (a.url.includes('.mp4') || a.url.includes('.webm')));
-                    let folder = a.folder || 'studio';
-                    if (!folder || folder === 'default' || folder === 'generated') {
-                        if (a.url.includes('/marketing/')) folder = 'marketing';
-                        else if (a.url.includes('/ugc/')) folder = 'ugc';
-                        else if (a.url.includes('/avatar/') || a.type === 'character') folder = 'avatar';
-                        else folder = 'studio';
-                    }
+                    const studioFolder = inferStudioFolder(a);
                     const ts = a.date ? new Date(a.date).getTime() : Date.now();
                     map.set(a.url, {
                         id: a.id || `srv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
@@ -241,8 +275,9 @@ export const useAppStore = create((set, get) => ({
                         duration: a.duration || 4,
                         timestamp: ts,
                         createdAt: ts,
-                        folder: folder,
-                        category: a.category || folder,
+                        folder: studioFolder,
+                        studio: studioFolder,
+                        category: a.category || studioFolder,
                         projectId: a.projectId || 'default',
                         status: 'completed'
                     });
@@ -261,9 +296,11 @@ export const useAppStore = create((set, get) => ({
                 const merged = Array.from(map.values()).sort((a, b) => (b.timestamp || b.createdAt || 0) - (a.timestamp || a.createdAt || 0));
                 set({ unifiedGallery: merged, isGalleryLoading: false });
 
-                // Sync to cs_studio_gallery for instant offline recovery
+                // Sync caches: store all in unified gallery cache, and ONLY cinema in cs_studio_gallery
                 try {
-                    localStorage.setItem('cs_studio_gallery', JSON.stringify(merged.slice(0, 100)));
+                    localStorage.setItem('zerolens_unified_gallery', JSON.stringify(merged.slice(0, 150)));
+                    const cinemaOnly = merged.filter(i => inferStudioFolder(i) === 'cinema');
+                    localStorage.setItem('cs_studio_gallery', JSON.stringify(cinemaOnly.slice(0, 100)));
                 } catch (_) {
                     void 0;
                 }
@@ -281,6 +318,7 @@ export const useAppStore = create((set, get) => ({
         if (!asset || !asset.url) return;
         const isVid = asset.type === 'video' || (typeof asset.url === 'string' && (asset.url.includes('.mp4') || asset.url.includes('.webm')));
         const now = Date.now();
+        const studioFolder = inferStudioFolder(asset);
         const normalized = {
             id: asset.id || `asset_${now}_${Math.random().toString(36).substr(2, 6)}`,
             type: isVid ? 'video' : 'image',
@@ -295,8 +333,9 @@ export const useAppStore = create((set, get) => ({
             duration: asset.duration || 4,
             timestamp: now,
             createdAt: now,
-            folder: asset.folder || (asset.url.includes('/marketing/') ? 'marketing' : asset.url.includes('/ugc/') ? 'ugc' : 'studio'),
-            category: asset.category || 'generation',
+            folder: studioFolder,
+            studio: studioFolder,
+            category: asset.category || studioFolder,
             projectId: asset.projectId || get().activeProjectId || 'default',
             status: asset.status || 'completed'
         };
@@ -305,7 +344,12 @@ export const useAppStore = create((set, get) => ({
             const current = state.unifiedGallery.filter(i => i.url !== normalized.url);
             const next = [normalized, ...current];
             try {
-                localStorage.setItem('cs_studio_gallery', JSON.stringify(next.slice(0, 100)));
+                localStorage.setItem('zerolens_unified_gallery', JSON.stringify(next.slice(0, 150)));
+                // Only update cinema gallery cache if asset belongs to cinema studio
+                if (studioFolder === 'cinema') {
+                    const cinemaOnly = next.filter(i => inferStudioFolder(i) === 'cinema');
+                    localStorage.setItem('cs_studio_gallery', JSON.stringify(cinemaOnly.slice(0, 100)));
+                }
             } catch (_) {
                 void 0;
             }
@@ -331,9 +375,27 @@ export const useAppStore = create((set, get) => ({
         }
     },
 
-    removeUnifiedAsset: (assetId) => {
+    removeUnifiedAsset: (assetIdOrUrl, assetUrl = null) => {
+        const idStr = String(assetIdOrUrl || '');
+        const targetUrl = assetUrl || (idStr.startsWith('http') ? idStr : null);
+        
+        // Track globally in localStorage so it never re-appears across fetches
+        try {
+            const deleted = JSON.parse(localStorage.getItem('zerolens_deleted_assets_v1') || '[]');
+            if (targetUrl && !deleted.includes(targetUrl)) deleted.push(targetUrl);
+            if (idStr && !deleted.includes(idStr)) deleted.push(idStr);
+            localStorage.setItem('zerolens_deleted_assets_v1', JSON.stringify(deleted.slice(-500)));
+        } catch (_) {
+            void 0;
+        }
+
         set(state => {
-            const next = state.unifiedGallery.filter(i => i.id !== assetId);
+            const next = state.unifiedGallery.filter(i => {
+                if (idStr && String(i.id) === idStr) return false;
+                if (targetUrl && i.url === targetUrl) return false;
+                if (assetUrl && i.url === assetUrl) return false;
+                return true;
+            });
             try {
                 localStorage.setItem('cs_studio_gallery', JSON.stringify(next.slice(0, 100)));
             } catch (_) {
@@ -341,7 +403,7 @@ export const useAppStore = create((set, get) => ({
             }
             return { unifiedGallery: next };
         });
-        get().removeProjectAsset(assetId);
+        get().removeProjectAsset(idStr);
     },
 
     cachedAssets: null,

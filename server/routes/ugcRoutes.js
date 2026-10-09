@@ -852,13 +852,23 @@ Return ONLY valid JSON.`
                 }
             }
 
-            // Always read and merge local JSON database
+            // Filter out any assets marked as deleted by user in DB
+            const activeDbData = (dbData || []).filter(a => {
+                if (!a) return false;
+                if (a.is_deleted === true || a.deleted === true) return false;
+                if (a.metadata && (a.metadata.is_deleted === true || a.metadata.deleted_by_user === true)) return false;
+                return true;
+            });
+
+            // Always read and merge local JSON database, excluding deleted items
             const localAssets = [];
             try {
                 if (LOCAL_ASSETS_FILE && fs.existsSync(LOCAL_ASSETS_FILE)) {
                     const fileAssets = JSON.parse(fs.readFileSync(LOCAL_ASSETS_FILE, 'utf8'));
                     fileAssets.forEach(a => {
-                        if (a.user_id === userId) {
+                        if (a && a.user_id === userId) {
+                            if (a.is_deleted === true || a.deleted === true) return;
+                            if (a.metadata && (a.metadata.is_deleted === true || a.metadata.deleted_by_user === true)) return;
                             localAssets.push(a);
                         }
                     });
@@ -867,10 +877,11 @@ Return ONLY valid JSON.`
                 console.error('[UGC-LOCAL-DB] Failed to read local fallback:', e.message);
             }
 
-            const merged = [...localAssets, ...dbData];
+            const merged = [...localAssets, ...activeDbData];
             const uniqueUrls = new Set();
             const uniqueAssets = merged.filter(a => {
                 if (!a.url) return false;
+                if (a.is_deleted === true || a.metadata?.is_deleted === true || a.metadata?.deleted_by_user === true) return false;
                 if (a.type === 'marketing_template' || a.type === 'reference_upload') return false;
                 if (uniqueUrls.has(a.url)) return false;
                 uniqueUrls.add(a.url);

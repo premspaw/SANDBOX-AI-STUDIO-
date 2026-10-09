@@ -9,7 +9,7 @@ import {
 import { cn } from '../../lib/utils';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import { SHORTS_COST } from '../../config/shortsConfig';
-import { useAppStore } from '../../store';
+import { useAppStore, inferStudioFolder } from '../../store';
 import { extractVideoFrame, downloadDirect, getVideoDuration } from '../../lib/videoUtils';
 import { SidePanel } from '../cinemaStudio/SidePanel';
 import { ReferencePanel } from '../cinemaStudio/ReferencePanel';
@@ -641,7 +641,9 @@ export default function StudioPage() {
         const itemUrl = String(item.url || '');
         if (item.type === 'reference_upload') return false;
         const isRefFolder = itemUrl.includes('/uploads/') || itemUrl.includes('/reference/');
-        return !itemId.startsWith('default_') && !itemUrl.includes('landing-assets') && !isRefFolder;
+        if (itemId.startsWith('default_') || itemUrl.includes('landing-assets') || isRefFolder) return false;
+        // STRICT STUDIO ISOLATION: Only cinema creations in Cinema Studio gallery
+        return inferStudioFolder(item) === 'cinema';
       });
       return deduplicateGallery(filtered);
     } catch {
@@ -667,7 +669,7 @@ export default function StudioPage() {
     if (!galleryLSKey) return;
     const timer = setTimeout(() => {
       try {
-        const persistable = gallery.filter(item => item && !item.loading && item.status !== 'generating' && item.status !== 'failed' && item.status !== 'error' && item.url && !item.url.startsWith('blob:'));
+        const persistable = gallery.filter(item => item && !item.loading && item.status !== 'generating' && item.status !== 'failed' && item.status !== 'error' && item.url && !item.url.startsWith('blob:') && inferStudioFolder(item) === 'cinema');
         const json = JSON.stringify(persistable.slice(0, 100));
         localStorage.setItem(galleryLSKey, json);
         localStorage.setItem('cs_studio_gallery', json);
@@ -687,7 +689,14 @@ export default function StudioPage() {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const deduped = deduplicateGallery(parsed);
+          const cinemaOnly = parsed.filter(item => {
+            if (!item || !item.url) return false;
+            const itemUrl = String(item.url || '');
+            const isRefFolder = itemUrl.includes('/uploads/') || itemUrl.includes('/reference/');
+            if (item.type === 'reference_upload' || itemUrl.includes('landing-assets') || isRefFolder) return false;
+            return inferStudioFolder(item) === 'cinema';
+          });
+          const deduped = deduplicateGallery(cinemaOnly);
           setGallery(prev => {
             if (prev.length === 0) return deduped;
             const existingUrls = new Set(prev.map(i => getNormalizedPath(i.url)).filter(Boolean));
@@ -722,7 +731,9 @@ export default function StudioPage() {
           .filter(asset => {
             if (asset.type === 'reference_upload') return false;
             const url = asset.url || '';
-            return !url.includes('/uploads/') && !url.includes('/reference/');
+            if (url.includes('/uploads/') || url.includes('/reference/')) return false;
+            // STRICT STUDIO ISOLATION: Only cinema creations
+            return inferStudioFolder(asset) === 'cinema';
           })
           .map(asset => {
             const isVid = asset.type === 'video' || (typeof asset.url === 'string' && (asset.url.includes('.mp4') || asset.url.includes('.webm') || asset.url.includes('.mov')));
@@ -770,6 +781,8 @@ export default function StudioPage() {
       if (e?.detail) {
         const item = e.detail;
         if (item && item.url) {
+          // STRICT STUDIO ISOLATION: Only accept cinema items
+          if (inferStudioFolder(item) !== 'cinema') return;
           setGallery(prev => {
             const normPath = getNormalizedPath(item.url);
             const exists = prev.some(p => String(p.id) === String(item.id) || (normPath && getNormalizedPath(p.url) === normPath));

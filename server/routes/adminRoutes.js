@@ -240,13 +240,23 @@ export default function createRouter(deps) {
                 }
             }
 
-            // Always read and merge local JSON database
+            // Filter out any assets marked as deleted by user in DB
+            const activeDbData = (dbData || []).filter(a => {
+                if (!a) return false;
+                if (a.is_deleted === true || a.deleted === true) return false;
+                if (a.metadata && (a.metadata.is_deleted === true || a.metadata.deleted_by_user === true)) return false;
+                return true;
+            });
+
+            // Always read and merge local JSON database, excluding deleted items
             const localAssets = [];
             try {
                 if (fs.existsSync(LOCAL_ASSETS_FILE)) {
                     const fileAssets = JSON.parse(fs.readFileSync(LOCAL_ASSETS_FILE, 'utf8'));
                     fileAssets.forEach(a => {
-                        if (a.user_id === userId) {
+                        if (a && a.user_id === userId) {
+                            if (a.is_deleted === true || a.deleted === true) return;
+                            if (a.metadata && (a.metadata.is_deleted === true || a.metadata.deleted_by_user === true)) return;
                             localAssets.push(a);
                         }
                     });
@@ -255,7 +265,7 @@ export default function createRouter(deps) {
                 console.error('[LOCAL-DB] Failed to read local fallback:', e.message);
             }
 
-            const merged = [...localAssets, ...dbData];
+            const merged = [...localAssets, ...activeDbData];
             const uniqueUrls = new Set();
             const uniqueAssets = merged.filter(a => {
                 if (!a.url) return false;
@@ -815,25 +825,91 @@ export default function createRouter(deps) {
         }
     });
 
-    // Delete asset (secured)
+    // Delete asset (secured) - removes from user's gallery while preserving audit/log record
     router.delete('/delete-asset/:id', async (req, res) => {
         try {
             const user = await requireAuth(req);
             const { id } = req.params;
-            if (!supabase) return res.status(500).json({ error: 'Supabase client missing' });
+            const targetUrl = req.query.url || req.body?.url;
+            const dbClient = supabaseAdmin || supabase;
+            if (!dbClient) return res.status(500).json({ error: 'Database client missing' });
 
-            const { data: asset } = await supabase.from('assets').select('user_id').eq('id', id).single();
-            if (asset && asset.user_id !== user.id) {
-                const adminClient = supabaseAdmin || supabase;
-                const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).single();
-                if (profile?.role !== 'admin') {
-                    return res.status(403).json({ error: 'Forbidden: You do not own this asset.' });
+            // 1. Mark as deleted in local JSON fallback if present
+            try {
+                if (fs.existsSync(LOCAL_ASSETS_FILE)) {
+                    const fileAssets = JSON.parse(fs.readFileSync(LOCAL_ASSETS_FILE, 'utf8'));
+                    let modified = false;
+                    fileAssets.forEach(a => {
+                        if (a && (String(a.id) === String(id) || (targetUrl && a.url === targetUrl))) {
+                            if (a.user_id === user.id || user.role === 'admin') {
+                                a.is_deleted = true;
+                                a.deleted_by_user = true;
+                                a.deleted_at = new Date().toISOString();
+                                if (!a.metadata) a.metadata = {};
+                                a.metadata.is_deleted = true;
+                                a.metadata.deleted_by_user = true;
+                                a.metadata.deleted_at = a.deleted_at;
+                                modified = true;
+                            }
+                        }
+                    });
+                    if (modified) {
+                        fs.writeFileSync(LOCAL_ASSETS_FILE, JSON.stringify(fileAssets, null, 2), 'utf8');
+                        console.log(`[LOCAL-DB] Marked asset ${id} as deleted for user ${user.id}`);
+                    }
                 }
+            } catch (localErr) {
+                console.warn('[LOCAL-DB] Error updating local assets on delete:', localErr.message);
             }
 
-            const { error } = await supabase.from('assets').delete().eq('id', id);
-            if (error) throw error;
-            res.json({ success: true, deletedId: id });
+            // 2. Query matching rows from Supabase
+            let query = dbClient.from('assets').select('*');
+            if (id && id !== 'null' && id !== 'undefined' && !isNaN(Number(id))) {
+                query = query.eq('id', Number(id));
+            } else if (targetUrl) {
+                query = query.eq('url', targetUrl);
+            } else if (id && id !== 'null' && id !== 'undefined') {
+                query = query.or(`id.eq.${id},url.eq.${id}`);
+            }
+
+            const { data: matchedAssets, error: fetchErr } = await query;
+            if (fetchErr) {
+                console.warn('[SERVER] Could not find asset by primary key, trying URL:', fetchErr.message);
+            }
+
+            // If we found assets, ensure ownership and mark deleted in metadata
+            if (matchedAssets && matchedAssets.length > 0) {
+                for (const asset of matchedAssets) {
+                    if (asset.user_id !== user.id) {
+                        const { data: profile } = await dbClient.from('profiles').select('role').eq('id', user.id).single();
+                        if (profile?.role !== 'admin') {
+                            continue; // skip assets not owned by user
+                        }
+                    }
+
+                    // Soft delete by updating metadata (keeps system/billing logs safe)
+                    const updatedMeta = {
+                        ...(asset.metadata || {}),
+                        is_deleted: true,
+                        deleted_by_user: true,
+                        deleted_at: new Date().toISOString()
+                    };
+
+                    await dbClient.from('assets')
+                        .update({ metadata: updatedMeta })
+                        .eq('id', asset.id);
+                }
+            } else if (targetUrl) {
+                // Secondary fallback by URL if ID was an ephemeral client string
+                await dbClient.from('assets')
+                    .update({ 
+                        metadata: { is_deleted: true, deleted_by_user: true, deleted_at: new Date().toISOString() } 
+                    })
+                    .eq('url', targetUrl)
+                    .eq('user_id', user.id);
+            }
+
+            res.json({ success: true, deletedId: id, url: targetUrl });
         } catch (error) {
             console.error('Delete Asset Error:', error);
             res.status(error.status || 500).json({ error: error.message });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     Image as ImageIcon,
     Video,
@@ -24,13 +24,24 @@ import {
     Database,
     Play,
     Plus,
-    X
+    X,
+    Layers,
+    Sliders
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
-import { useAppStore } from '../../store';
+import { useAppStore, inferStudioFolder } from '../../store';
 import { getApiUrl, API_BASE_URL, resolveUrl } from '../../config/apiConfig';
 import { LANDING_ASSETS } from '../../config/landingAssets';
+
+const getStudioBadge = (item) => {
+    const s = item?.studio || inferStudioFolder(item);
+    if (s === 'marketing') return { label: 'Marketing', icon: '🚀', color: 'bg-lime-500/20 text-lime-300 border-lime-500/40 shadow-sm' };
+    if (s === 'ugc') return { label: 'UGC Studio', icon: '📱', color: 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-sm' };
+    if (s === 'remix') return { label: 'Remix', icon: '🔄', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm' };
+    if (s === 'avatar') return { label: 'Avatar', icon: '👤', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm' };
+    return { label: 'Cinema', icon: '🎬', color: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40 shadow-sm' };
+};
 
 const API = API_BASE_URL;
 
@@ -416,12 +427,14 @@ function Lightbox({ item, onClose }) {
 }
 
 
-export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab: setAppTab, defaultTab = 'images' }) {
+export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab: setAppTab, defaultTab = 'all' }) {
     const [activeTab, setActiveTab] = useState(defaultTab);
+    const [selectedStudio, setSelectedStudio] = useState('all'); // 'all' | 'cinema' | 'ugc' | 'marketing' | 'remix' | 'avatar'
     const [viewMode, setViewMode] = useState('grid');
     const [isConnectedToDrive, setIsConnectedToDrive] = useState(false);
-    const { cachedAssets, cachedAssetsUserId, setCachedAssets, userProfile } = useAppStore();
+    const { cachedAssets, cachedAssetsUserId, setCachedAssets, userProfile, unifiedGallery } = useAppStore();
     const [assets, setAssets] = useState({
+        all: [],
         images: [],
         videos: [],
         models: [],
@@ -472,17 +485,21 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
             const response = await fetch(getApiUrl(`/api/list-assets?userId=${targetUser.id}`));
             const data = await response.json();
             
-            if (!response.ok) throw new Error(data.error || "Failed to fetch assets");
-            const allAssets = data.assets || [];
-            const isMarketingAsset = (a) => {
-                const folder = a.folder || a.metadata?.folder;
-                if (folder === 'marketing') return true;
-                if (a.type === 'marketing_template' || a.metadata?.isMarketingCampaign) return true;
-                if (a.url && a.url.includes('/marketing/templates/')) return true;
-                return false;
-            };
+            const deletedSet = (() => {
+                try {
+                    return new Set(JSON.parse(localStorage.getItem('zerolens_deleted_assets_v1') || '[]'));
+                } catch (_) {
+                    return new Set();
+                }
+            })();
+            const allAssets = (data.assets || []).filter(a => {
+                if (!a) return false;
+                if (a.is_deleted || a.metadata?.is_deleted || a.metadata?.deleted_by_user) return false;
+                if (deletedSet.has(a.url) || deletedSet.has(String(a.id))) return false;
+                return true;
+            });
 
-            const dbImages = allAssets.filter(a => a.type === 'image' && !isMarketingAsset(a)).map(a => {
+            const dbImages = allAssets.filter(a => a.type === 'image').map(a => {
                 let displayName = a.name;
                 if (!displayName || displayName === 'CHARACTER Target' || displayName.toUpperCase().endsWith(' TARGET')) {
                     const boardType = a.metadata?.boardType || 'Image';
@@ -495,12 +512,22 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 }
                 return {
                     ...a,
-                    name: displayName
+                    name: displayName,
+                    studio: inferStudioFolder(a)
                 };
             });
-            const dbVideos = allAssets.filter(a => a.type === 'video' && !isMarketingAsset(a));
-            const dbUpscaled = allAssets.filter(a => (a.type === 'upscaled' || a.type === 'upscale') && !isMarketingAsset(a));
-            const dbMarketing = allAssets.filter(a => isMarketingAsset(a) || a.folder === 'marketing' || (a.url && a.url.includes('/marketing/templates/')));
+            const dbVideos = allAssets.filter(a => a.type === 'video').map(a => ({
+                ...a,
+                studio: inferStudioFolder(a)
+            }));
+            const dbUpscaled = allAssets.filter(a => (a.type === 'upscaled' || a.type === 'upscale')).map(a => ({
+                ...a,
+                studio: inferStudioFolder(a)
+            }));
+            const dbMarketing = allAssets.filter(a => inferStudioFolder(a) === 'marketing').map(a => ({
+                ...a,
+                studio: 'marketing'
+            }));
 
             let avatarStudioImages = [];
             try {
@@ -532,6 +559,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                     date: a.created_at ? new Date(a.created_at).toISOString().split('T')[0] : 'Recently',
                                     size: 'N/A',
                                     isAvatarStudio: true,
+                                    studio: 'avatar',
                                     rawData: a
                                 };
                             });
@@ -541,9 +569,19 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 console.warn('[Assets Library] Failed to fetch generated avatars for standard assets:', err);
             }
 
+            const allCombined = [...avatarStudioImages, ...dbImages, ...dbVideos, ...dbUpscaled];
+            const seenUrls = new Set();
+            const dedupedAll = [];
+            allCombined.forEach(item => {
+                if (!item?.url || seenUrls.has(item.url)) return;
+                seenUrls.add(item.url);
+                dedupedAll.push(item);
+            });
+
             setAssets(prev => {
                 const updated = {
                     ...prev,
+                    all: dedupedAll,
                     images: [...avatarStudioImages, ...dbImages],
                     videos: dbVideos,
                     upscaled: dbUpscaled,
@@ -804,29 +842,75 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
     };
 
     const handleDeleteAsset = async (id, tab) => {
-        if (!window.confirm("Permanently delete this asset from the database?")) return;
+        if (!window.confirm("Remove this asset from your creative gallery?")) return;
         
         try {
-            if (tab === 'templates') {
-                // Skip or handle as error if templates are no longer supported
-                return;
-            } else {
-                const { error } = await supabase.from('assets').delete().eq('id', id);
-                if (error) throw error;
+            const targetAsset = (assets[tab] || assets.all || []).find(a => a.id === id);
+            const targetUrl = targetAsset?.url;
+            const idStr = String(id || '');
+
+            // 1. Record in global persistent deleted storage so it never comes back
+            try {
+                const deleted = JSON.parse(localStorage.getItem('zerolens_deleted_assets_v1') || '[]');
+                if (targetUrl && !deleted.includes(targetUrl)) deleted.push(targetUrl);
+                if (idStr && !deleted.includes(idStr)) deleted.push(idStr);
+                localStorage.setItem('zerolens_deleted_assets_v1', JSON.stringify(deleted.slice(-500)));
+            } catch (_) {
+                void 0;
             }
 
-            // Update local state
-            setAssets(prev => ({
-                ...prev,
-                [tab]: prev[tab].filter(a => a.id !== id)
-            }));
-            
-            // Update cache
-            if (cachedAssets) {
-                setCachedAssets({
-                    ...cachedAssets,
-                    [tab]: cachedAssets[tab].filter(a => a.id !== id)
+            // 2. Remove from unified gallery store
+            try {
+                useAppStore.getState().removeUnifiedAsset(idStr, targetUrl);
+            } catch (_) {
+                void 0;
+            }
+
+            // 3. Notify backend /api/delete-asset to update local_assets.json & DB
+            try {
+                fetch(getApiUrl(`/api/delete-asset/${encodeURIComponent(idStr)}?url=${encodeURIComponent(targetUrl || '')}`), {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: idStr, url: targetUrl })
+                }).catch(err => console.warn('[AssetsLibrary] API delete warning:', err.message));
+            } catch (_) {
+                void 0;
+            }
+
+            // 4. Update Supabase: soft-delete to retain audit logs while hiding from gallery
+            if (supabase) {
+                if (!isNaN(Number(id))) {
+                    await supabase.from('assets').update({
+                        metadata: { ...(targetAsset?.metadata || {}), is_deleted: true, deleted_by_user: true, deleted_at: new Date().toISOString() }
+                    }).eq('id', Number(id)).catch(() => {});
+                }
+                if (targetUrl) {
+                    await supabase.from('assets').update({
+                        metadata: { ...(targetAsset?.metadata || {}), is_deleted: true, deleted_by_user: true, deleted_at: new Date().toISOString() }
+                    }).eq('url', targetUrl).catch(() => {});
+                }
+            }
+
+            // 5. Update local state across all tabs
+            setAssets(prev => {
+                const next = { ...prev };
+                ['all', 'images', 'videos', 'marketing', 'upscaled', 'characters'].forEach(k => {
+                    if (Array.isArray(next[k])) {
+                        next[k] = next[k].filter(a => a.id !== id && (!targetUrl || a.url !== targetUrl));
+                    }
                 });
+                return next;
+            });
+            
+            // 6. Update cache
+            if (cachedAssets) {
+                const updatedCached = { ...cachedAssets };
+                ['all', 'images', 'videos', 'marketing', 'upscaled', 'characters'].forEach(k => {
+                    if (Array.isArray(updatedCached[k])) {
+                        updatedCached[k] = updatedCached[k].filter(a => a.id !== id && (!targetUrl || a.url !== targetUrl));
+                    }
+                });
+                setCachedAssets(updatedCached);
             }
         } catch (err) {
             console.error("Delete asset failed:", err);
@@ -834,11 +918,74 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         }
     };
 
+    const activeMediaItems = useMemo(() => {
+        let baseList = [];
+        if (activeTab === 'all') {
+            baseList = assets.all || [];
+        } else if (activeTab === 'images') {
+            baseList = assets.images || [];
+        } else if (activeTab === 'videos') {
+            baseList = assets.videos || [];
+        } else if (activeTab === 'marketing') {
+            baseList = assets.marketing || [];
+        } else if (activeTab === 'upscaled') {
+            baseList = assets.upscaled || [];
+        } else {
+            baseList = assets[activeTab] || [];
+        }
+
+        // Merge any live generations from unifiedGallery not already present
+        if (Array.isArray(unifiedGallery) && unifiedGallery.length > 0) {
+            const knownUrls = new Set(baseList.map(b => b.url || b.image));
+            const extra = [];
+            unifiedGallery.forEach(ug => {
+                if (!ug || !ug.url) return;
+                if (knownUrls.has(ug.url)) return;
+                const ugStudio = ug.studio || inferStudioFolder(ug);
+                const ugType = ug.type || (ug.url.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'image');
+                
+                if (activeTab === 'all') {
+                    extra.push({ ...ug, studio: ugStudio, type: ugType });
+                } else if (activeTab === 'images' && ugType === 'image') {
+                    extra.push({ ...ug, studio: ugStudio, type: 'image' });
+                } else if (activeTab === 'videos' && ugType === 'video') {
+                    extra.push({ ...ug, studio: ugStudio, type: 'video' });
+                } else if (activeTab === 'marketing' && ugStudio === 'marketing') {
+                    extra.push({ ...ug, studio: 'marketing', type: ugType });
+                }
+            });
+            if (extra.length > 0) {
+                baseList = [...extra, ...baseList];
+            }
+        }
+
+        return baseList;
+    }, [activeTab, assets, unifiedGallery]);
+
+    const studioCounts = useMemo(() => {
+        const counts = { all: activeMediaItems.length, cinema: 0, marketing: 0, ugc: 0, remix: 0, avatar: 0 };
+        activeMediaItems.forEach(item => {
+            const s = item.studio || inferStudioFolder(item);
+            if (counts[s] !== undefined) counts[s]++;
+        });
+        return counts;
+    }, [activeMediaItems]);
+
+    const displayedItems = useMemo(() => {
+        if (selectedStudio === 'all') return activeMediaItems;
+        return activeMediaItems.filter(item => {
+            const s = item.studio || inferStudioFolder(item);
+            return s === selectedStudio;
+        });
+    }, [activeMediaItems, selectedStudio]);
+
     const tabs = [
+        { id: 'all', label: 'All Media', icon: Layers },
         { id: 'images', label: 'Images', icon: ImageIcon },
-        { id: 'characters', label: 'Characters', icon: User },
         { id: 'videos', label: 'Videos', icon: Video },
+        { id: 'characters', label: 'Characters', icon: User },
         { id: 'marketing', label: 'Marketing', icon: Bot },
+        { id: 'matrix', label: 'Movie Matrix', icon: Box },
         { id: 'models', label: 'AI Models', icon: Box },
         { id: 'upscaled', label: 'Upscaled', icon: ArrowBigUpDash },
     ];
@@ -932,24 +1079,28 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 </div>
             )}
 
+            {/* 90-Day Retention Notice */}
+            <div className="mx-6 mt-3 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] flex items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-2.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                    <span>
+                        <strong className="text-amber-200">Storage Retention Notice:</strong> Generated media is retained for <strong>90 days</strong> and then automatically deleted. Please download creations to your local drive. (Reminder alerts shown within 15 days of auto-cleanup).
+                    </span>
+                </div>
+            </div>
+
             {/* Tab Bar */}
             <div className={cn("px-6 border-b border-white/5 flex items-center bg-black/20 shrink-0", compact && "px-4 border-none")}>
                 <div className="flex gap-6 overflow-x-auto no-scrollbar">
-                    {[
-                        { id: 'images', label: 'Images', icon: ImageIcon },
-                        { id: 'videos', label: 'Videos', icon: Video },
-                        { id: 'characters', label: 'Characters', icon: User },
-                        { id: 'marketing', label: 'Marketing', icon: Bot },
-                        { id: 'matrix', label: 'Movie Matrix', icon: Box },
-                        { id: 'models', label: 'AI Models', icon: Box },
-                        { id: 'upscaled', label: 'Upscaled', icon: ArrowBigUpDash }
-                    ].map(tab => {
+                    {tabs.map(tab => {
                         const count =
-                            tab.id === 'matrix'
-                                ? (assets.characters?.filter(c => c.isMatrix).length || 0)
-                                : tab.id === 'characters'
-                                    ? (assets.characters?.filter(c => !c.isMatrix).length || 0)
-                                    : (assets[tab.id]?.length || 0);
+                            tab.id === 'all'
+                                ? (assets.all?.length || 0)
+                                : tab.id === 'matrix'
+                                    ? (assets.characters?.filter(c => c.isMatrix).length || 0)
+                                    : tab.id === 'characters'
+                                        ? (assets.characters?.filter(c => !c.isMatrix).length || 0)
+                                        : (assets[tab.id]?.length || 0);
 
                         return (
                             <button
@@ -967,6 +1118,48 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     })}
                 </div>
             </div>
+
+            {/* Studio Filter Bar */}
+            {['all', 'images', 'videos', 'upscaled'].includes(activeTab) && (
+                <div className={cn("px-6 py-2.5 border-b border-white/5 bg-black/40 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0", compact && "px-4")}>
+                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-white/40 mr-2 shrink-0">
+                        <Sliders className="w-3 h-3 text-[#bef264]" />
+                        <span>Studio:</span>
+                    </div>
+                    {[
+                        { id: 'all', label: 'All Studios', icon: '🌌' },
+                        { id: 'cinema', label: 'Cinema Studio', icon: '🎬' },
+                        { id: 'marketing', label: 'Marketing Studio', icon: '🚀' },
+                        { id: 'ugc', label: 'UGC Studio', icon: '📱' },
+                        { id: 'remix', label: 'Remix Studio', icon: '🔄' },
+                        { id: 'avatar', label: 'Avatar Studio', icon: '👤' },
+                    ].map(st => {
+                        const isSel = selectedStudio === st.id;
+                        const cnt = studioCounts[st.id] ?? 0;
+                        return (
+                            <button
+                                key={st.id}
+                                onClick={() => setSelectedStudio(st.id)}
+                                className={cn(
+                                    "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap border shrink-0",
+                                    isSel
+                                        ? "bg-[#bef264] text-black border-[#bef264] shadow-[0_0_12px_rgba(190,242,100,0.35)]"
+                                        : "bg-white/5 text-white/40 border-white/10 hover:text-white/80 hover:border-white/20"
+                                )}
+                            >
+                                <span>{st.icon}</span>
+                                <span>{st.label}</span>
+                                <span className={cn(
+                                    "px-1.5 py-0.2 rounded-full text-[7.5px] font-mono",
+                                    isSel ? "bg-black/20 text-black font-black" : "bg-white/5 text-white/30"
+                                )}>
+                                    {cnt}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar bg-black/10">
@@ -1068,13 +1261,13 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                             );
                         })()}
                     </div>
-                ) : (assets[activeTab]?.length || 0) === 0 ? (
+                ) : (displayedItems?.length || 0) === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center gap-4 opacity-20 text-center">
                         <FolderOpen className="w-20 h-20 text-[#bef264]/20" />
                         <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Sector_Null // No_Assets_Located</span>
                     </div>
                 ) : (
-                    <div className={['images', 'videos'].includes(activeTab)
+                    <div className={['all', 'images', 'videos'].includes(activeTab)
                         ? (compact 
                             ? "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 md:gap-3"
                             : "grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 md:gap-4")
@@ -1082,8 +1275,26 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                             ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4"
                             : "grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-8")
                     }>
-                        {assets[activeTab].map(item => (
-                            <div key={item.id} className="group relative surface-glass border border-white/5 overflow-hidden transition-all duration-700 shadow-2xl rounded-xl hover:border-[#bef264]/60 aspect-[9/16]">
+                        {displayedItems.map(item => (
+                            <div 
+                                key={item.id || item.url} 
+                                onClick={() => setLightboxItem(item)}
+                                className="group relative surface-glass border border-white/5 overflow-hidden transition-all duration-700 shadow-2xl rounded-xl hover:border-[#bef264]/60 aspect-[9/16] cursor-pointer"
+                            >
+                                {/* Studio Origin Badge */}
+                                {(() => {
+                                    const badge = getStudioBadge(item);
+                                    return (
+                                        <div className={cn(
+                                            "absolute top-2 left-2 z-20 px-2 py-0.5 rounded-full text-[7.5px] font-black uppercase tracking-wider border backdrop-blur-md flex items-center gap-1 pointer-events-none transition-transform duration-300 group-hover:scale-105",
+                                            badge.color
+                                        )}>
+                                            <span>{badge.icon}</span>
+                                            <span>{badge.label}</span>
+                                        </div>
+                                    );
+                                })()}
+
                                 {item.type === 'video' ? (
                                     <div className="w-full h-full bg-black relative flex items-center justify-center group/video">
                                         <video
@@ -1096,6 +1307,10 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                         />
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity">
                                             <Film className="w-12 h-12 text-white/20" />
+                                        </div>
+                                        <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/70 px-1.5 py-0.5 rounded-md pointer-events-none z-10">
+                                            <Video size={9} className="text-[#bef264]" />
+                                            <span className="text-[7px] text-[#bef264] font-black uppercase">Video</span>
                                         </div>
                                     </div>
                                 ) : (
@@ -1118,20 +1333,49 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                 )}
 
                                 {/* Action Overlay */}
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2.5 z-30">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onSelectReference?.(item.url, item); }}
-                                        className="w-10 h-10 bg-[#bef264] hover:scale-110 active:scale-95 rounded-full text-black flex items-center justify-center shadow-[0_0_20px_rgba(190,242,100,0.5)] transition-all"
+                                        className="w-9 h-9 bg-[#bef264] hover:scale-110 active:scale-95 rounded-full text-black flex items-center justify-center shadow-[0_0_20px_rgba(190,242,100,0.5)] transition-all"
                                         title="Use as Reference"
                                     >
-                                        <ImagePlus size={16} />
+                                        <ImagePlus size={15} />
+                                    </button>
+                                    <button
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            const ext = item.type === 'video' ? 'mp4' : 'png';
+                                            try {
+                                                const res = await fetch(resolveUrl(item.url));
+                                                const blob = await res.blob();
+                                                const blobUrl = URL.createObjectURL(blob);
+                                                const a = document.createElement('a');
+                                                a.href = blobUrl;
+                                                a.download = `asset-${item.id || 'export'}.${ext}`;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                                URL.revokeObjectURL(blobUrl);
+                                            } catch {
+                                                const a = document.createElement('a');
+                                                a.href = resolveUrl(item.url);
+                                                a.download = `asset-${item.id || 'export'}.${ext}`;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                            }
+                                        }}
+                                        className="w-9 h-9 bg-black/80 hover:bg-white/25 rounded-full text-white backdrop-blur-md flex items-center justify-center transition-all border border-white/20"
+                                        title="Download"
+                                    >
+                                        <Download size={14} />
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleDeleteAsset(item.id, activeTab); }}
-                                        className="w-10 h-10 bg-red-500/80 hover:bg-red-500 hover:scale-110 active:scale-95 rounded-full text-white backdrop-blur-md flex items-center justify-center transition-all border border-red-400/50"
+                                        className="w-9 h-9 bg-red-500/80 hover:bg-red-500 hover:scale-110 active:scale-95 rounded-full text-white backdrop-blur-md flex items-center justify-center transition-all border border-red-400/50"
                                         title="Delete Permanently"
                                     >
-                                        <Trash2 size={16} />
+                                        <Trash2 size={14} />
                                     </button>
                                 </div>
 
@@ -1142,7 +1386,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                 )}
 
                                 {/* Exclude text details in phone gallery mode */}
-                                {!['images', 'videos'].includes(activeTab) && (
+                                {!['all', 'images', 'videos'].includes(activeTab) && (
                                     <div className="p-8">
                                         <div className="text-xs font-black uppercase tracking-widest text-white/90 group-hover:text-[#bef264] transition-colors truncate">{item.name}</div>
                                         <div className="flex items-center justify-between mt-4 text-[9px] font-mono text-white/10 font-bold uppercase tracking-widest">

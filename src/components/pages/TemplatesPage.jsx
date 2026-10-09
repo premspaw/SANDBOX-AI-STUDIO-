@@ -26,7 +26,8 @@ import {
   Layers,
   ArrowRight,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
@@ -913,22 +914,61 @@ export default function TemplatesPage() {
 
 // ── 9:16 VERTICAL TEMPLATE CARD COMPONENT ──
 function TemplateCard({ template, onRemix, onPreview }) {
+  const containerRef = useRef(null);
+  const videoRef = useRef(null);
+  const [isInView, setIsInView] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [liveDuration, setLiveDuration] = useState(template.duration || '');
-  const videoRef = useRef(null);
 
+  // IntersectionObserver for lazy loading video elements as they scroll into view
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+        } else {
+          // If scrolled away, pause to save battery and network
+          if (videoRef.current && !videoRef.current.paused) {
+            videoRef.current.pause();
+          }
+        }
+      },
+      { rootMargin: '350px', threshold: 0.01 }
+    );
+
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  // Handle desktop hover playback
   useEffect(() => {
     if (!videoRef.current) return;
     if (isHovered) {
-      videoRef.current.play().catch(() => {});
+      const p = videoRef.current.play();
+      if (p !== undefined) p.catch(() => {});
     } else {
       videoRef.current.pause();
-      videoRef.current.currentTime = 0;
+      try {
+        videoRef.current.currentTime = 0.001;
+      } catch (_) {
+        /* ignore seek error */
+      }
     }
   }, [isHovered]);
 
+  const rawUrl = resolveUrl(template.video_url);
+  // Append media fragment #t=0.001 to guarantee iOS Safari & Chrome decode frame 0 immediately
+  const videoSrc = rawUrl ? (rawUrl.includes('#') ? rawUrl : `${rawUrl}#t=0.001`) : '';
+
   return (
     <div
+      ref={containerRef}
       onClick={onPreview}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -937,24 +977,46 @@ function TemplateCard({ template, onRemix, onPreview }) {
       {/* 9:16 Aspect Ratio Container */}
       <div className="relative w-full aspect-[9/16] overflow-hidden bg-zinc-950 flex flex-col justify-between">
         
-        {/* Background Video */}
-        <video
-          ref={videoRef}
-          src={resolveUrl(template.video_url)}
-          loop
-          muted
-          playsInline
-          preload="metadata"
-          onLoadedMetadata={(e) => {
-            if (e.currentTarget?.duration && !isNaN(e.currentTarget.duration)) {
-              setLiveDuration(`${Math.max(1, Math.round(e.currentTarget.duration))}s`);
-            }
-          }}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+        {/* Placeholder / Skeleton before load */}
+        {!isLoaded && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/90 z-0">
+            <Loader2 className="w-5 h-5 text-[#c8f135]/60 animate-spin" />
+            <span className="text-[8px] font-mono text-zinc-500 mt-2 uppercase tracking-widest">Preview</span>
+          </div>
+        )}
 
-        {/* Ambient Overlay Vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-black/60 pointer-events-none" />
+        {/* Background Video — only mounted/loaded when in or near viewport */}
+        {isInView && (
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            loop
+            muted
+            playsInline
+            preload="auto"
+            onLoadedMetadata={(e) => {
+              try {
+                if (e.currentTarget.currentTime === 0) {
+                  e.currentTarget.currentTime = 0.001;
+                }
+              } catch (_) {
+                /* ignore seek error */
+              }
+              if (e.currentTarget?.duration && !isNaN(e.currentTarget.duration)) {
+                setLiveDuration(`${Math.max(1, Math.round(e.currentTarget.duration))}s`);
+              }
+            }}
+            onLoadedData={() => setIsLoaded(true)}
+            onCanPlay={() => setIsLoaded(true)}
+            className={cn(
+              "absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:scale-105",
+              isLoaded ? "opacity-100" : "opacity-0"
+            )}
+          />
+        )}
+
+        {/* Ambient Overlay Vignette — clean transparent center so video pops brightly */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/40 pointer-events-none z-10" />
 
         {/* Top Badges Row */}
         <div className="relative z-10 p-2 sm:p-2.5 flex items-center justify-between gap-1">
@@ -976,7 +1038,7 @@ function TemplateCard({ template, onRemix, onPreview }) {
 
         {/* Center Play Icon Overlay (Visible when not playing or hovered) */}
         <div className={cn(
-          "absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none",
+          "absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none z-10",
           isHovered ? "opacity-0" : "opacity-70 sm:opacity-80"
         )}>
           <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl">

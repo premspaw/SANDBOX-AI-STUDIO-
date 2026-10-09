@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useShorts } from '../../hooks/useShorts';
 import { SHORTS_COST, calculateEngineCredits } from '../../config/shortsConfig';
-import { useAppStore } from '../../store';
+import { useAppStore, inferStudioFolder } from '../../store';
 import { supabase } from '../../lib/supabase';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import { cn } from '../../lib/utils';
@@ -1100,16 +1100,19 @@ export default function CinematicStudio() {
     // If we don't know the user yet, start empty — server fetch will populate.
     if (!galleryLSKey) return [];
     try {
-      const cached = localStorage.getItem(galleryLSKey);
+      const cached = localStorage.getItem(galleryLSKey) || localStorage.getItem('cs_studio_gallery');
       const parsed = cached ? JSON.parse(cached) : [];
-      const filtered = parsed.filter(item => {
-        if (!item) return false;
+      const filtered = (Array.isArray(parsed) ? parsed : []).filter(item => {
+        if (!item || !item.url) return false;
+        if (item.status === 'failed' || item.status === 'error') return false;
         const itemId = String(item.id || '');
         const itemUrl = String(item.url || '');
         // Exclude only by type flag or by being in an /uploads/ or /reference/ folder path
         if (item.type === 'reference_upload') return false;
         const isRefFolder = itemUrl.includes('/uploads/') || itemUrl.includes('/reference/');
-        return !itemId.startsWith('default_') && !itemUrl.includes('landing-assets') && !isRefFolder;
+        if (itemId.startsWith('default_') || itemUrl.includes('landing-assets') || isRefFolder) return false;
+        // STRICT STUDIO ISOLATION: Cinema gallery only contains cinema creations
+        return inferStudioFolder(item) === 'cinema';
       });
       const deduped = deduplicateGallery(filtered);
       if (deduped.length !== parsed.length) {
@@ -1129,11 +1132,18 @@ export default function CinematicStudio() {
   useEffect(() => {
     if (!galleryLSKey) return;
     try {
-      const cached = localStorage.getItem(galleryLSKey);
+      const cached = localStorage.getItem(galleryLSKey) || localStorage.getItem('cs_studio_gallery');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const deduped = deduplicateGallery(parsed);
+          const cinemaOnly = parsed.filter(item => {
+            if (!item || !item.url) return false;
+            const itemUrl = String(item.url || '');
+            const isRefFolder = itemUrl.includes('/uploads/') || itemUrl.includes('/reference/');
+            if (item.type === 'reference_upload' || itemUrl.includes('landing-assets') || isRefFolder) return false;
+            return inferStudioFolder(item) === 'cinema';
+          });
+          const deduped = deduplicateGallery(cinemaOnly);
           setGallery(prev => {
             if (prev.length === 0) return deduped;
             // Retain any items already in prev (especially generating or new items)
@@ -1169,16 +1179,18 @@ export default function CinematicStudio() {
           : (Array.isArray(assets[activeProjectId]) ? assets[activeProjectId] : []));
 
     // Also pull assets from the active project in Project Box so user sees them in the common gallery
-    const boxItems = activeProjectAssetList.map(a => ({
-      id: a.id,
-      type: a.type || 'image',
-      url: a.url,
-      prompt: a.prompt || a.name || 'Project Asset',
-      engine: a.engine || (a.boardType ? `${a.boardType} Sheet` : 'Project Asset'),
-      aspect: a.aspect || '16:9',
-      ts: typeof a.createdAt === 'number' ? a.createdAt : (a.createdAt ? new Date(a.createdAt).getTime() : 0) || (typeof a.timestamp === 'number' ? a.timestamp : 0) || (a.created_at ? new Date(a.created_at).getTime() : 0) || (typeof a.id === 'number' && a.id > 1000000000000 ? a.id : 0),
-      projectId: a.projectId || (activeProjectId === 'all' ? 'default' : activeProjectId)
-    }));
+    const boxItems = activeProjectAssetList
+      .filter(a => inferStudioFolder(a) === 'cinema')
+      .map(a => ({
+        id: a.id,
+        type: a.type || 'image',
+        url: a.url,
+        prompt: a.prompt || a.name || 'Project Asset',
+        engine: a.engine || (a.boardType ? `${a.boardType} Sheet` : 'Project Asset'),
+        aspect: a.aspect || '16:9',
+        ts: typeof a.createdAt === 'number' ? a.createdAt : (a.createdAt ? new Date(a.createdAt).getTime() : 0) || (typeof a.timestamp === 'number' ? a.timestamp : 0) || (a.created_at ? new Date(a.created_at).getTime() : 0) || (typeof a.id === 'number' && a.id > 1000000000000 ? a.id : 0),
+        projectId: a.projectId || (activeProjectId === 'all' ? 'default' : activeProjectId)
+      }));
 
     const seenUrls = new Set(baseItems.map(i => getNormalizedPath(i.url) || i.url).filter(Boolean));
     const seenIds = new Set(baseItems.map(i => String(i.id)));
@@ -1225,7 +1237,9 @@ export default function CinematicStudio() {
               if (asset.type === 'reference_upload') return false;
               const url = asset.url || '';
               const isRefFolder = url.includes('/uploads/') || url.includes('/reference/');
-              return !isRefFolder;
+              if (isRefFolder) return false;
+              // STRICT STUDIO ISOLATION: Cinema gallery only contains cinema creations
+              return inferStudioFolder(asset) === 'cinema';
             })
             .map(asset => {
               let aspectVal = asset.aspect || asset.aspectRatio || '16:9';

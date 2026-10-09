@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { getApiUrl } from '../../../config/apiConfig';
-import { useAppStore } from '../../../store';
+import { useAppStore, inferStudioFolder } from '../../../store';
 
 // ── URL Normalization Helper ──────────────────────────────────────────────────
 const getNormalizedPath = (url: string | undefined | null): string => {
@@ -199,8 +199,8 @@ export function useUGCGallery(currentUserId: string) {
     try {
       const saved = localStorage.getItem(lsKey);
       const parsed: any[] = saved ? JSON.parse(saved) : [];
-      // On cold start: drop blobs (they're dead) and deduplicate
-      const valid = parsed.filter(i => isValidItem(i, false));
+      // On cold start: drop blobs (they're dead), filter to UGC only, and deduplicate
+      const valid = parsed.filter(i => isValidItem(i, false) && inferStudioFolder(i) === 'ugc');
       if (valid.length !== parsed.length) {
         try { localStorage.setItem(lsKey, JSON.stringify(valid)); } catch { /* ignore */ }
       }
@@ -227,7 +227,7 @@ export function useUGCGallery(currentUserId: string) {
       })
       .then(({ assets }) => {
         const dbItems: GalleryItem[] = (Array.isArray(assets) ? assets : [])
-          .filter((a: any) => isValidItem(a, false))
+          .filter((a: any) => isValidItem(a, false) && inferStudioFolder(a) === 'ugc')
           .map((a: any) => ({
             id: String(a.id),
             type: (a.type === 'video' ? 'video' : 'image') as 'image' | 'video',
