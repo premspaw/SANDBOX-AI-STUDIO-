@@ -977,7 +977,9 @@ export const useAppStore = create((set, get) => ({
                                 shortsBalance: 50
                             })
                         }).catch(e => console.debug('[WELCOME_EMAIL]', e));
-                    } catch (ign) {}
+                    } catch (ign) {
+                        console.debug('[WELCOME_EMAIL_ERR]', ign);
+                    }
                 }
 
                 const result = await supabase
