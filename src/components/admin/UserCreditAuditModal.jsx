@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, User, Coins, RefreshCw, X, Search, Check, AlertCircle,
   Plus, Minus, Clock, Film, Image as ImageIcon, Sparkles, ExternalLink,
-  ChevronRight, ArrowUpRight, CheckCircle2, History, Send, Users, UserCheck, Wrench, RotateCcw
+  ChevronRight, ArrowUpRight, CheckCircle2, History, Send, Users, UserCheck, Wrench, RotateCcw,
+  CreditCard
 } from 'lucide-react';
 import { getApiUrl } from '../../config/apiConfig';
 import { supabase } from '../../lib/supabase';
@@ -19,9 +20,9 @@ export function UserCreditAuditModal({ isOpen, onClose }) {
   const [roleFilter, setRoleFilter] = useState('all'); // 'all' | 'customers' | 'staff'
 
   // Audit data
-  const [auditData, setAuditData] = useState({ profile: null, transactions: [], assets: [] });
+  const [auditData, setAuditData] = useState({ profile: null, transactions: [], assets: [], billingHistory: [] });
   const [loadingAudit, setLoadingAudit] = useState(false);
-  const [activeTab, setActiveTab] = useState('transactions'); // 'transactions' | 'assets'
+  const [activeTab, setActiveTab] = useState('transactions'); // 'transactions' | 'billing' | 'assets'
 
   // Adjustment form
   const [adjustMode, setAdjustMode] = useState('delta'); // 'delta' | 'exact'
@@ -77,7 +78,8 @@ export function UserCreditAuditModal({ isOpen, onClose }) {
         setAuditData({
           profile: data.profile || userObj,
           transactions: data.transactions || [],
-          assets: data.assets || []
+          assets: data.assets || [],
+          billingHistory: data.billingHistory || []
         });
       }
     } catch (err) {
@@ -607,7 +609,20 @@ export function UserCreditAuditModal({ isOpen, onClose }) {
                       )}
                     >
                       <History className="w-3.5 h-3.5" />
-                      <span>Transaction Ledger ({auditData.transactions.length})</span>
+                      <span>Shorts Ledger ({auditData.transactions.length})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('billing')}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                        activeTab === 'billing'
+                          ? "bg-white/10 text-white font-extrabold"
+                          : "text-zinc-500 hover:text-zinc-300"
+                      )}
+                    >
+                      <CreditCard className="w-3.5 h-3.5 text-[#c8f135]" />
+                      <span>Payment Receipts ({auditData.billingHistory?.length || 0})</span>
                     </button>
                     <button
                       type="button"
@@ -686,6 +701,64 @@ export function UserCreditAuditModal({ isOpen, onClose }) {
                             </div>
                           );
                         })}
+                      </div>
+                    )
+                  ) : activeTab === 'billing' ? (
+                    (!auditData.billingHistory || auditData.billingHistory.length === 0) ? (
+                      <div className="h-full flex items-center justify-center text-zinc-500 text-xs flex-col gap-2">
+                        <CreditCard className="w-8 h-8 opacity-30 text-[#c8f135]" />
+                        <span>No monetary payment receipts recorded yet for this user.</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-white/10 text-zinc-400 font-mono text-[10px] uppercase">
+                              <th className="pb-3 pl-2">Date & Time</th>
+                              <th className="pb-3">Plan / Description</th>
+                              <th className="pb-3">Razorpay / Txn ID</th>
+                              <th className="pb-3">Amount Paid</th>
+                              <th className="pb-3 pr-2 text-right">Payment Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5 font-mono">
+                            {auditData.billingHistory.map((bill, bIdx) => {
+                              const bDate = bill.created_at
+                                ? new Date(bill.created_at).toLocaleString('en-US', {
+                                    month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                                  })
+                                : 'Recent';
+                              const isSuccess = bill.status === 'SUCCESS' || bill.status === 'PAID';
+                              return (
+                                <tr key={bill.id || bIdx} className="hover:bg-white/[0.02] transition-colors">
+                                  <td className="py-3 pl-2 text-zinc-400 text-[11px] whitespace-nowrap">{bDate}</td>
+                                  <td className="py-3 font-sans font-bold text-white text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <span className={cn("w-2 h-2 rounded-full shrink-0", isSuccess ? "bg-emerald-400" : "bg-red-400")} />
+                                      <span>{bill.plan_name || 'Shorts Top-Up'}</span>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 text-[11px] font-mono text-zinc-300">
+                                    <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-zinc-300">
+                                      {bill.transaction_id || '—'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 font-mono font-black text-xs text-[#c8f135]">
+                                    ₹{Number(bill.amount || 0).toLocaleString('en-IN')}
+                                  </td>
+                                  <td className="py-3 pr-2 text-right">
+                                    <span className={cn(
+                                      "px-2 py-0.5 rounded-full text-[9px] font-bold border",
+                                      isSuccess ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-red-500/10 text-red-400 border-red-500/30"
+                                    )}>
+                                      {bill.status || 'PAID'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     )
                   ) : (

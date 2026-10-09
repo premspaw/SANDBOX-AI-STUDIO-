@@ -520,14 +520,82 @@ export default function createRouter(deps) {
                 } catch (_) {}
             }
 
+            // Fetch billing / payment history for this user
+            let billingHistory = [];
+            if (targetUserId) {
+                try {
+                    const { data: bills } = await client
+                        .from('billing_history')
+                        .select('*')
+                        .eq('user_id', targetUserId)
+                        .order('created_at', { ascending: false })
+                        .limit(50);
+                    billingHistory = bills || [];
+                } catch (bErr) {
+                    console.warn('[ADMIN_USER_AUDIT] Billing history warning:', bErr.message);
+                }
+            }
+
             return res.json({
                 success: true,
                 profile: profile || { id: targetUserId, email: email || null, shorts_balance: 0 },
                 transactions,
-                assets
+                assets,
+                billingHistory
             });
         } catch (err) {
             console.error('[ADMIN_USER_AUDIT_ERROR]:', err);
+            res.status(err.status || 500).json({ error: err.message });
+        }
+    });
+
+    /**
+     * GET /api/admin/billing-history
+     * Header: Authorization: Bearer <token>
+     * Admin endpoint: Returns recent billing and payment records across all users.
+     */
+    router.get('/admin/billing-history', async (req, res) => {
+        try {
+            await requireAdmin(req);
+            const client = supabaseAdmin || supabase;
+            if (!client) {
+                return res.json({ success: true, payments: [] });
+            }
+
+            const { data: payments, error } = await client
+                .from('billing_history')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(100);
+
+            if (error) {
+                console.warn('[ADMIN_BILLING_HISTORY_WARN]:', error.message);
+                return res.json({ success: true, payments: [] });
+            }
+
+            // Enrich with user email if available
+            const userIds = [...new Set((payments || []).map(p => p.user_id).filter(Boolean))];
+            let userMap = {};
+            if (userIds.length > 0) {
+                const { data: profiles } = await client
+                    .from('profiles')
+                    .select('id, email, full_name, tier')
+                    .in('id', userIds);
+                if (profiles) {
+                    profiles.forEach(pr => { userMap[pr.id] = pr; });
+                }
+            }
+
+            const enriched = (payments || []).map(p => ({
+                ...p,
+                user_email: userMap[p.user_id]?.email || 'N/A',
+                user_name: userMap[p.user_id]?.full_name || 'Creator',
+                user_tier: userMap[p.user_id]?.tier || 'STARTER'
+            }));
+
+            return res.json({ success: true, payments: enriched });
+        } catch (err) {
+            console.error('[ADMIN_BILLING_HISTORY_ERROR]:', err);
             res.status(err.status || 500).json({ error: err.message });
         }
     });

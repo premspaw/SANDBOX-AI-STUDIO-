@@ -814,42 +814,79 @@ export default function SettingsPage() {
 
                             {/* Billing & Transaction Records */}
                             <div className="p-5 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
-                                        <CreditCard size={14} className="text-[#c8f135]" />
-                                        <span>Recent Billing & Credit Receipts</span>
-                                    </h4>
-                                    <span className="text-[10px] font-mono text-zinc-500">Secure Razorpay / Supabase Sync</span>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div>
+                                        <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                                            <CreditCard size={14} className="text-[#c8f135]" />
+                                            <span>Recent Billing & Credit Receipts</span>
+                                        </h4>
+                                        <span className="text-[10px] font-mono text-zinc-500">Official Razorpay payment receipts & order history</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('history')}
+                                        className="text-[10px] font-mono text-[#c8f135] hover:underline flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                                    >
+                                        <span>View Shorts Usage Ledger</span>
+                                        <span>→</span>
+                                    </button>
                                 </div>
 
                                 {billingHistory.length === 0 ? (
                                     <div className="py-6 text-center text-xs text-zinc-500 font-mono bg-white/[0.01] rounded-2xl border border-dashed border-white/5">
-                                        No recent billing charges recorded for this session.
+                                        No recent billing charges recorded for this account.
                                     </div>
                                 ) : (
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left text-xs">
                                             <thead>
                                                 <tr className="border-b border-white/10 text-zinc-400 font-mono text-[10px] uppercase">
-                                                    <th className="pb-2">Date</th>
-                                                    <th className="pb-2">Description</th>
-                                                    <th className="pb-2">Amount</th>
-                                                    <th className="pb-2">Status</th>
+                                                    <th className="pb-2.5 pl-1">Date & Time</th>
+                                                    <th className="pb-2.5">Plan / Description</th>
+                                                    <th className="pb-2.5">Transaction ID</th>
+                                                    <th className="pb-2.5">Amount Paid</th>
+                                                    <th className="pb-2.5 pr-1 text-right">Payment Status</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-white/5 font-mono">
-                                                {billingHistory.map((item, i) => (
-                                                    <tr key={i} className="hover:bg-white/[0.02]">
-                                                        <td className="py-2.5 text-zinc-400">{new Date(item.created_at).toLocaleDateString()}</td>
-                                                        <td className="py-2.5 font-semibold text-white">{item.description || 'Credits Top-Up'}</td>
-                                                        <td className="py-2.5 text-[#c8f135] font-black">{item.amount || '₹999'}</td>
-                                                        <td className="py-2.5">
-                                                            <span className="px-2 py-0.5 rounded-full text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
-                                                                Paid
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
+                                                {billingHistory.map((item, i) => {
+                                                    const isSuccess = item.status === 'SUCCESS' || item.status === 'PAID';
+                                                    const formattedDate = item.created_at
+                                                        ? new Date(item.created_at).toLocaleString('en-US', {
+                                                            month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                                                        })
+                                                        : 'Recent';
+
+                                                    return (
+                                                        <tr key={item.id || i} className="hover:bg-white/[0.02] transition-colors">
+                                                            <td className="py-3 pl-1 text-zinc-400 text-[11px] whitespace-nowrap">{formattedDate}</td>
+                                                            <td className="py-3 font-sans font-bold text-white text-xs">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={cn("w-2 h-2 rounded-full shrink-0", isSuccess ? "bg-emerald-400" : "bg-red-400")} />
+                                                                    <span>{item.plan_name || item.description || 'Shorts Top-Up'}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-3 text-[11px] text-zinc-400">
+                                                                <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-zinc-300 font-mono">
+                                                                    {item.transaction_id || '—'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-3 text-[#c8f135] font-black text-xs">
+                                                                ₹{Number(item.amount || 0).toLocaleString('en-IN')}
+                                                            </td>
+                                                            <td className="py-3 pr-1 text-right">
+                                                                <span className={cn(
+                                                                    "px-2 py-0.5 rounded-full text-[9px] font-bold border",
+                                                                    isSuccess
+                                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                                                        : "bg-red-500/10 text-red-400 border-red-500/30"
+                                                                )}>
+                                                                    {item.status || 'PAID'}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
                                             </tbody>
                                         </table>
                                     </div>
