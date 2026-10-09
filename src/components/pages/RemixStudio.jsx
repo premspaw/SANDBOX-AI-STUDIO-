@@ -196,13 +196,19 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const sanitized = parsed.map(item => {
+          const sanitized = [];
+          const seen = new Set();
+          parsed.forEach(item => {
+            if (!item) return;
+            const key = item.id ? String(item.id) : (item.url || '');
+            if (seen.has(key)) return;
+            seen.add(key);
             const isInf = item.mode === 'ai-influencer' || item.type === 'image';
-            return {
+            sanitized.push({
               ...item,
               type: isInf ? 'image' : (item.type || 'video'),
               url: getMediaPreviewUrl(item.url, isInf)
-            };
+            });
           });
           setHistoryList(sanitized);
           setGeneratedResult(prev => prev || sanitized[0]);
@@ -250,13 +256,37 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
 
             if (dbItems.length > 0) {
               setHistoryList(prev => {
-                const map = new Map();
-                // Add db items first
-                dbItems.forEach(item => map.set(item.url, item));
-                prev.forEach(item => {
-                  if (!map.has(item.url)) map.set(item.url, item);
+                const merged = [];
+                const seenIds = new Set();
+                const seenUrls = new Set();
+
+                const normalizeUrl = (u) => {
+                  if (!u) return '';
+                  try {
+                    if (u.includes('proxy-image?url=')) {
+                      const match = u.match(/proxy-image\?url=([^&]+)/);
+                      if (match && match[1]) return decodeURIComponent(match[1]).split('?')[0];
+                    }
+                    return u.split('?')[0];
+                  } catch (_) {
+                    return u;
+                  }
+                };
+
+                // Add dbItems first, then prev without duplicating ID or URL
+                [...dbItems, ...prev].forEach(item => {
+                  if (!item) return;
+                  const idKey = item.id ? String(item.id) : null;
+                  const urlKey = normalizeUrl(item.url);
+
+                  if (idKey && seenIds.has(idKey)) return;
+                  if (urlKey && seenUrls.has(urlKey)) return;
+
+                  if (idKey) seenIds.add(idKey);
+                  if (urlKey) seenUrls.add(urlKey);
+                  merged.push(item);
                 });
-                const merged = Array.from(map.values());
+
                 try {
                   localStorage.setItem('remix_studio_history_v1', JSON.stringify(merged.slice(0, 60)));
                 } catch (cacheErr) {
@@ -1021,10 +1051,22 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     return optionsCatalog.filter(cat => !cat.tiers || cat.tiers.includes(aiTier));
   }, [optionsCatalog, aiTier]);
 
-  // Filter history by active filter tab
+  // Filter history by active filter tab with strictly unique entries
   const filteredHistory = useMemo(() => {
-    if (historyFilter === 'all') return historyList;
-    return historyList.filter(item => item.mode === historyFilter);
+    const list = historyFilter === 'all' 
+      ? historyList 
+      : historyList.filter(item => item.mode === historyFilter);
+
+    const unique = [];
+    const seen = new Set();
+    list.forEach((item, idx) => {
+      const key = item.id ? String(item.id) : `idx_${idx}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(item);
+      }
+    });
+    return unique;
   }, [historyList, historyFilter]);
 
   return (
@@ -1327,9 +1369,9 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                   {referenceImages.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-xl bg-white/[0.02] border border-white/10">
                       <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider pl-1">Tags:</span>
-                      {referenceImages.map((img) => (
+                      {referenceImages.map((img, idx) => (
                         <button
-                          key={img.id}
+                          key={img.id ? `tag-${img.id}` : `tag-idx-${idx}`}
                           type="button"
                           onClick={() => insertTagIntoPrompt(img.tag)}
                           className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] font-bold text-[#D4FF00] transition-all flex items-center gap-1"
@@ -1967,9 +2009,9 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 ref={galleryScrollRef}
                 className="flex items-stretch gap-3 overflow-x-auto custom-scrollbar pb-3 pt-1 scroll-smooth snap-x select-none"
               >
-                {filteredHistory.map((item) => (
+                {filteredHistory.map((item, idx) => (
                   <div
-                    key={item.id}
+                    key={item.id ? `remix-hist-${item.id}` : `remix-hist-idx-${idx}`}
                     onClick={() => setGeneratedResult(item)}
                     className={`w-48 sm:w-56 shrink-0 snap-start group relative rounded-2xl border bg-white/[0.02] p-2.5 cursor-pointer transition-all overflow-hidden ${
                       generatedResult?.id === item.id 
