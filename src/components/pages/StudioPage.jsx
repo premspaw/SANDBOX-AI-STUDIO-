@@ -3101,13 +3101,16 @@ export default function StudioPage() {
         isMobile ? (mobileTab === 'controls' ? "flex flex-1 w-full h-full min-h-0" : "hidden") : "flex"
       )}>
         <motion.div
-          animate={{
-            width: isMobile ? '100%' : (isSidebarOpen ? (typeof window !== 'undefined' && window.innerWidth >= 1280 ? 360 : 330) : 0),
-            opacity: isMobile ? 1 : (isSidebarOpen ? 1 : 0)
+          animate={isMobile ? { opacity: 1 } : {
+            width: isSidebarOpen ? (typeof window !== 'undefined' && window.innerWidth >= 1280 ? 360 : 330) : 0,
+            opacity: isSidebarOpen ? 1 : 0
           }}
-          transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-          className="h-full w-full border-r border-white/[0.08] bg-[#07070b] flex flex-col overflow-hidden"
-          style={{ minWidth: 0, willChange: 'width, opacity', transform: 'translateZ(0)' }}
+          transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+          className={cn(
+            "h-full border-r border-white/[0.08] bg-[#07070b] flex flex-col overflow-hidden",
+            isMobile ? "w-full" : "w-auto"
+          )}
+          style={{ minWidth: 0, willChange: isMobile ? 'opacity' : 'width, opacity', transform: 'translateZ(0)' }}
         >
           <SidePanel
             isOpen={true}

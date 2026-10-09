@@ -1,5 +1,6 @@
 import express from 'express';
 import fs from 'fs';
+import { sendWelcomeEmail } from '../services/emailService.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -68,6 +69,13 @@ export default function createRouter(deps) {
                     shorts_balance: initialBal
                 });
                 profile = { shorts_balance: initialBal, brand_voice: {} };
+                if (user.email) {
+                    sendWelcomeEmail({
+                        email: user.email,
+                        name: user.user_metadata?.full_name || '',
+                        shortsBalance: initialBal
+                    }).catch(err => console.error('[CREDITS_WELCOME_EMAIL] Error:', err));
+                }
             }
 
             const brandVoice = profile?.brand_voice || {};

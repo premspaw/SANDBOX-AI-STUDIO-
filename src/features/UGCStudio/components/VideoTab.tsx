@@ -42,6 +42,48 @@ export default function VideoTab() {
   } = useUGC();
 
   const presetsBtnRef = useRef<HTMLButtonElement>(null);
+  const [localPrompt, setLocalPrompt] = useState(videoPrompt || '');
+  const isTypingRef = useRef(false);
+  const debounceRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!isTypingRef.current) {
+      setLocalPrompt(videoPrompt || '');
+    }
+  }, [videoPrompt]);
+
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    isTypingRef.current = true;
+    setLocalPrompt(val);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      React.startTransition(() => {
+        setVideoPrompt(val);
+        if (splitScenes.length > 0) {
+          setSplitScenes((prev: any[]) =>
+            prev.map((s, idx) => (multiShotPrompt ? { ...s, prompt: val } : (idx === activeSplitTab ? { ...s, prompt: val } : s)))
+          );
+        }
+      });
+    }, 120);
+  };
+
+  const handlePromptBlur = () => {
+    isTypingRef.current = false;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    setVideoPrompt(localPrompt);
+    if (splitScenes.length > 0) {
+      setSplitScenes((prev: any[]) =>
+        prev.map((s, idx) => (multiShotPrompt ? { ...s, prompt: localPrompt } : (idx === activeSplitTab ? { ...s, prompt: localPrompt } : s)))
+      );
+    }
+  };
 
   return (
     <div className="px-3 pt-3 pb-2">
@@ -52,16 +94,9 @@ export default function VideoTab() {
         <div className="flex-1 flex flex-col border border-white/[0.08] focus-within:border-[#c8f135]/30 rounded-2xl transition-all duration-200 bg-[#0d0d0f] relative z-10">
           {/* Textarea */}
           <textarea
-            value={videoPrompt}
-            onChange={e => {
-              const val = e.target.value;
-              setVideoPrompt(val);
-              if (splitScenes.length > 0) {
-                setSplitScenes((prev: any[]) =>
-                  prev.map((s, idx) => (multiShotPrompt ? { ...s, prompt: val } : (idx === activeSplitTab ? { ...s, prompt: val } : s)))
-                );
-              }
-            }}
+            value={localPrompt}
+            onChange={handlePromptChange}
+            onBlur={handlePromptBlur}
             rows={2}
             className="w-full bg-transparent border-0 text-[11px] text-white/80 placeholder-white/20 focus:outline-none resize-none leading-relaxed px-3 pt-3 pb-1 min-h-[52px] font-sans rounded-t-2xl"
             placeholder="Describe your video scene — Gemini Omni Flash 1.1 generates up to a 10-sec clip…"

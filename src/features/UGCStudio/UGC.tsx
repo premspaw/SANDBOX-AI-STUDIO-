@@ -109,6 +109,60 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 // VIDEO_STYLES, SCENE_STYLES → imported from features/UGCStudio/constants/videoStyles
 
+const FastScriptTextarea = React.memo(({
+  value,
+  onChange,
+  placeholder,
+  className
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  placeholder: string;
+  className?: string;
+}) => {
+  const [localVal, setLocalVal] = useState(value || '');
+  const isTypingRef = useRef(false);
+  const debounceTimerRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!isTypingRef.current) {
+      setLocalVal(value || '');
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const next = e.target.value;
+    isTypingRef.current = true;
+    setLocalVal(next);
+
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      React.startTransition(() => {
+        onChange(next);
+      });
+    }, 120);
+  };
+
+  const handleBlur = () => {
+    isTypingRef.current = false;
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    onChange(localVal);
+  };
+
+  return (
+    <textarea
+      value={localVal}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      className={className}
+      placeholder={placeholder}
+    />
+  );
+});
 
 export default function UGC() {
   const { spend, refund, canAfford } = useShorts();
@@ -4913,9 +4967,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                       <p className="text-[10px] font-mono text-[#c8f135] uppercase tracking-widest animate-pulse">{isExtractingPrompts ? 'Extracting prompts...' : activeTab === 'podcast' ? 'Writing podcast...' : 'Writing script...'}</p>
                     </div>
                   )}
-                  <textarea
+                  <FastScriptTextarea
                     value={script}
-                    onChange={(e) => setScript(e.target.value)}
+                    onChange={(val) => setScript(val)}
                     className="w-full h-16 bg-transparent font-sans text-sm text-white/90 resize-none focus:outline-none placeholder-white/20 leading-relaxed pr-8"
                     placeholder={activeTab === 'podcast' ? 'Your podcast script will appear here — or type episode direction...' : 'Your UGC script will appear here — or type your creative direction...'}
                   />

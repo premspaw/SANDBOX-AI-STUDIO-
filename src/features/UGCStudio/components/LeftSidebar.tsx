@@ -10,6 +10,7 @@ import { getApiUrl, resolveUrl } from '../../../config/apiConfig';
 import { GoogleGenAI } from '@google/genai';
 import { fileToBase64, safeJsonParse } from '../utils/imageUtils';
 import { useAppStore } from '../../../store';
+import { cn } from '../../../lib/utils';
 
 export default function LeftSidebar() {
   const {
@@ -169,10 +170,13 @@ export default function LeftSidebar() {
   return (
     <div className="w-full md:w-auto relative flex shrink-0 h-full z-[45]">
       <motion.div
-        animate={{ width: isMobile ? '100%' : (isSidebarOpen ? 280 : 0), opacity: isMobile ? 1 : (isSidebarOpen ? 1 : 0) }}
-        transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-        className="h-full w-full md:w-auto border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden relative z-[45]"
-        style={{ minWidth: 0, willChange: 'width, opacity', transform: 'translateZ(0)' }}
+        animate={isMobile ? { opacity: 1 } : { width: isSidebarOpen ? 280 : 0, opacity: isSidebarOpen ? 1 : 0 }}
+        transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+        className={cn(
+          "h-full border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden relative z-[45]",
+          isMobile ? "w-full" : "w-auto"
+        )}
+        style={{ minWidth: 0, willChange: isMobile ? 'opacity' : 'width, opacity', transform: 'translateZ(0)' }}
       >
         <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5">
           {activeTab === 'edit' ? (

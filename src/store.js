@@ -955,6 +955,7 @@ export const useAppStore = create((set, get) => ({
                     security_alerts: true,
                     two_factor_enabled: false,
                     tier: 'FREE',
+                    shorts_balance: 50,
                     updated_at: new Date().toISOString(),
                 };
 
@@ -963,6 +964,21 @@ export const useAppStore = create((set, get) => ({
                     .upsert(payload, { onConflict: 'id' });
 
                 if (upsertError) throw upsertError;
+
+                // Send automated welcome email from support@zerolens.in
+                if (authUser.email) {
+                    try {
+                        fetch(getApiUrl('/api/auth/welcome'), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                email: authUser.email,
+                                name: payload.full_name,
+                                shortsBalance: 50
+                            })
+                        }).catch(e => console.debug('[WELCOME_EMAIL]', e));
+                    } catch (ign) {}
+                }
 
                 const result = await supabase
                     .from('profiles')

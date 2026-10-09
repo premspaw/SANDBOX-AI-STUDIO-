@@ -149,6 +149,7 @@ import OpenAI from 'openai';
 
 import { Storage } from '@google-cloud/storage';
 import crypto from 'crypto'; // For Razorpay webhook HMAC-SHA256 verification
+import { sendPaymentSuccessEmail, sendWelcomeEmail } from './server/services/emailService.js';
 
 // ─────────────────────────────────────────────────────────────
 // VERTEX AI & GCS AUTH via Service Account
@@ -2286,7 +2287,7 @@ app.post('/api/webhook/razorpay',
                 } else if (amount_in_rs === 999 || amount_in_rs === 1000) {
                     creditsToAdd = 1000; targetTier = null; planName = 'Creator Pro';
                 } else if (amount_in_rs === 299 || amount_in_rs === 300 || amount_in_rs === 399 || amount_in_rs === 319) {
-                    creditsToAdd = 250; targetTier = 'STARTER'; planName = 'Starter Fuel';
+                    creditsToAdd = 400; targetTier = 'STARTER'; planName = 'Starter Fuel';
                 }
                 
                 // Fallback Range Checks
@@ -2294,7 +2295,7 @@ app.post('/api/webhook/razorpay',
                 else if (amount_in_rs >= 3500) { creditsToAdd = 5500; targetTier = 'DIRECTOR'; planName = 'Enterprise Bulk'; }
                 else if (amount_in_rs >= 1500) { creditsToAdd = 2600; targetTier = 'INFLUENCER'; planName = 'Studio Master'; }
                 else if (amount_in_rs >= 700)  { creditsToAdd = 1000; targetTier = null; planName = 'Creator Pro'; }
-                else if (amount_in_rs >= 200)  { creditsToAdd = 250;  targetTier = 'STARTER'; planName = 'Starter Fuel'; }
+                else if (amount_in_rs >= 200)  { creditsToAdd = 400;  targetTier = 'STARTER'; planName = 'Starter Fuel'; }
 
                 if (creditsToAdd > 0 && supabaseAdmin) {
                     const { data: existingPayment } = await supabaseAdmin
@@ -2308,7 +2309,7 @@ app.post('/api/webhook/razorpay',
                         return res.status(200).json({ success: true, duplicate: true });
                     }
 
-                    const { data: profile } = await supabaseAdmin.from('profiles').select('shorts_balance').eq('id', userId).single();
+                    const { data: profile } = await supabaseAdmin.from('profiles').select('shorts_balance, full_name, email').eq('id', userId).single();
                     const new_balance = (profile?.shorts_balance ?? 0) + creditsToAdd;
 
                     const profileUpdate = { shorts_balance: new_balance, last_payment_at: new Date().toISOString() };
@@ -2317,6 +2318,20 @@ app.post('/api/webhook/razorpay',
                     await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', userId);
                     await supabaseAdmin.from('billing_history').insert({ user_id: userId, plan_name: planName, amount: amount_in_rs, status: 'SUCCESS', transaction_id });
                     await supabaseAdmin.from('shorts_transactions').insert({ user_id: userId, amount: creditsToAdd, action_type: 'razorpay_payment', reason: `Purchase: ${planName}` });
+
+                    // Automated Payment Confirmation Email from support@zerolens.in
+                    const recipientEmail = customerEmail || profile?.email;
+                    if (recipientEmail) {
+                        sendPaymentSuccessEmail({
+                            email: recipientEmail,
+                            name: profile?.full_name || 'Creator',
+                            planName,
+                            amountPaid: amount_in_rs,
+                            creditsAdded: creditsToAdd,
+                            newBalance: new_balance,
+                            transactionId: transaction_id
+                        }).catch(e => console.error('[RAZORPAY_EMAIL] Failed to send payment confirmation email:', e));
+                    }
                 }
             } else {
                 console.warn(`[RAZORPAY_WEBHOOK] Payment received (${transaction_id}) but could not match any user_id or email (${customerEmail})`);
@@ -2346,6 +2361,25 @@ const apiLimiter = rateLimit({
     }
 });
 app.use('/api/', apiLimiter);
+
+// ── Automated Welcome Email Endpoint (support@zerolens.in) ─────────
+app.post('/api/auth/welcome', async (req, res) => {
+    try {
+        const { email, name, shortsBalance } = req.body || {};
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+        const result = await sendWelcomeEmail({
+            email,
+            name: name || '',
+            shortsBalance: Number(shortsBalance) || 50
+        });
+        res.json({ success: true, result });
+    } catch (err) {
+        console.error('[API_AUTH_WELCOME_ERROR]:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 
 

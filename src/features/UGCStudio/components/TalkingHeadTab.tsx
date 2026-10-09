@@ -49,6 +49,39 @@ export const TalkingHeadTab: React.FC = () => {
     setShowTemplatesDropdown(false);
   };
 
+  const [localScript, setLocalScript] = useState(thScript || '');
+  const isTypingRef = useRef(false);
+  const debounceRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!isTypingRef.current) {
+      setLocalScript(thScript || '');
+    }
+  }, [thScript]);
+
+  const handleScriptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    isTypingRef.current = true;
+    setLocalScript(val);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      React.startTransition(() => {
+        setThScript(val);
+      });
+    }, 120);
+  };
+
+  const handleScriptBlur = () => {
+    isTypingRef.current = false;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    setThScript(localScript);
+  };
+
   return (
     <div className="px-3 pt-3 pb-2">
       {/* ── Main Side-by-Side Flex Layout ── */}
@@ -59,8 +92,9 @@ export const TalkingHeadTab: React.FC = () => {
           
           {/* Script Textarea */}
           <textarea
-            value={thScript}
-            onChange={e => setThScript(e.target.value)}
+            value={localScript}
+            onChange={handleScriptChange}
+            onBlur={handleScriptBlur}
             rows={2}
             className="w-full bg-transparent border-0 text-[11px] text-white/80 placeholder-white/20 focus:outline-none resize-none leading-relaxed px-3 pt-3 pb-1 min-h-[52px] font-sans rounded-t-2xl"
             placeholder="Write what the creator says to camera — hook first, then sell... or pick a Creator Template below."

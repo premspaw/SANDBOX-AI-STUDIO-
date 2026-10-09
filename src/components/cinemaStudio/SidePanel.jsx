@@ -2237,7 +2237,9 @@ export const SidePanel = React.memo(({
     const cursorPos = e.target.selectionStart;
     isTypingRef.current = true;
     localPromptRef.current = val;
-    setLocalPrompt(val);
+    React.startTransition(() => {
+      setLocalPrompt(val);
+    });
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
