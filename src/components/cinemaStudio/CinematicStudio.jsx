@@ -4528,7 +4528,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
         {/* ── FLOATING INPUT DOCK ── */}
         <div className={cn(
-          "absolute bottom-0 left-0 right-0 z-30 p-3 pb-2 pointer-events-none transition-all duration-300 ease-in-out",
+          "absolute bottom-0 left-0 right-0 z-30 p-2 sm:p-3 pb-2 pointer-events-none transition-all duration-300 ease-in-out",
           showSidePanel ? "pl-0 lg:pl-[32rem]" : "pl-0"
         )}>
           <div className="max-w-4xl mx-auto pointer-events-auto">
@@ -4537,7 +4537,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             <div className="flex flex-col sm:flex-row items-stretch gap-1.5 sm:gap-2.5 w-full">
               
               {/* Mode Switcher Tab (Compact dual-toggle on mobile) */}
-              <div className="bg-[#08080c]/95 border border-white/15 rounded-xl sm:rounded-2xl p-1 sm:p-1.5 flex flex-row sm:flex-col gap-1 sm:gap-1.5 shadow-xl shrink-0 select-none backdrop-blur-3xl self-stretch justify-between sm:w-14">
+              <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-1 sm:p-1.5 flex flex-row sm:flex-col gap-1 sm:gap-1.5 shadow-xl shrink-0 select-none self-stretch justify-between sm:w-14">
                 <button
                   type="button"
                   onClick={() => {
@@ -4577,7 +4577,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               </div>
 
               {/* ── Main Floating Input Bar (Vertical premium studio layout) ── */}
-              <div className="relative rounded-xl sm:rounded-2xl border border-white/15 bg-[#08080c]/95 backdrop-blur-3xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col p-2 sm:p-3 gap-1.5 sm:gap-2 flex-1 min-w-0 hover:border-white/20 transition-all duration-300">
+              <div className="relative rounded-xl sm:rounded-2xl border border-white/10 bg-black shadow-[0_25px_70px_rgba(0,0,0,0.95)] flex flex-col p-2 sm:p-3 gap-1.5 sm:gap-2 flex-1 min-w-0 hover:border-white/20 transition-all duration-300">
                 
                 {/* ── TOP ATTACHED CONTROL BAR (Refs, Camera Movement, Angle, Lens, Style) ── */}
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none w-full pb-1 mb-0.5 border-b border-white/[0.06]" style={{ scrollbarWidth: 'none' }}>

@@ -2943,7 +2943,7 @@ export const SidePanel = React.memo(({
 
   const panelContent = (
     <div className={cn(
-      "h-full bg-[#07070b]/95 backdrop-blur-3xl flex flex-col z-10 overflow-hidden",
+      "h-full bg-[#07070b] flex flex-col z-10 overflow-hidden",
       inlineMode
         ? "w-full border-r border-white/[0.08]"
         : "w-full md:w-[350px] lg:w-[370px] border-r border-white/[0.08] shadow-[20px_0_60px_rgba(0,0,0,0.8)]"
@@ -5427,12 +5427,12 @@ export const SidePanel = React.memo(({
 
             </div>
 
-            {/* 4. Sleek Sticky Bottom Action Bar — Full Prominence on Mobile */}
-            <div className="absolute bottom-0 left-0 right-0 py-2.5 sm:py-3.5 px-3 sm:px-4 bg-[#06060a]/98 border-t border-white/[0.12] backdrop-blur-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.9)] pb-safe">
+            {/* 4. Sleek Sticky Bottom Action Bar — Full Prominence on Mobile (Solid Black Opaque, Compact Height) */}
+            <div className="absolute bottom-0 left-0 right-0 py-2 sm:py-3 px-3 sm:px-4 bg-black border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2.5 z-20 shadow-[0_-15px_35px_rgba(0,0,0,1)] pb-safe">
               <div className="flex items-center justify-between sm:flex-col sm:items-start min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className={cn("w-2 h-2 rounded-full animate-pulse shrink-0", (panelTab === 'seedance' || panelTab === 'seedance-2.5' || panelTab === 'remix') ? "bg-amber-400" : "bg-[#c8f135]")} />
-                  <span className="text-[10px] sm:text-[9.5px] font-black text-zinc-300 uppercase tracking-widest truncate">
+                  <span className={cn("w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full animate-pulse shrink-0", (panelTab === 'seedance' || panelTab === 'seedance-2.5' || panelTab === 'remix') ? "bg-amber-400" : "bg-[#c8f135]")} />
+                  <span className="text-[9px] sm:text-[9.5px] font-black text-zinc-300 uppercase tracking-widest truncate">
                     {panelTab === 'transition' && transitionSubTab === 'omni-keyframe'
                       ? 'Omni Keyframe Ready'
                       : panelTab === 'transition'
@@ -5452,10 +5452,10 @@ export const SidePanel = React.memo(({
                       : 'Motion Control Easy Ready'}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 text-[11px] sm:text-[11.5px] font-black text-[#c8f135] mt-0 sm:mt-0.5">
-                  <span className="text-zinc-400 font-mono text-[9px] uppercase hidden xs:inline sm:hidden">Cost:</span>
+                <div className="flex items-center gap-1 text-[10px] sm:text-[11.5px] font-black text-[#c8f135] mt-0 sm:mt-0.5">
+                  <span className="text-zinc-400 font-mono text-[8.5px] uppercase hidden xs:inline sm:hidden">Cost:</span>
                   <span>{calculatedCredits}⚡ Shorts</span>
-                  <span className="text-[9px] font-semibold text-zinc-500 font-mono">({userCredits}⚡ bal)</span>
+                  <span className="text-[8.5px] sm:text-[9px] font-semibold text-zinc-500 font-mono">({userCredits}⚡ bal)</span>
                 </div>
               </div>
 
@@ -5491,7 +5491,7 @@ export const SidePanel = React.memo(({
                   )
                 }
                 className={cn(
-                  "w-full sm:w-auto h-12 sm:h-11 px-4 sm:px-6 rounded-xl sm:rounded-2xl text-xs sm:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(200,241,53,0.35)] border shrink-0 active:scale-95 select-none",
+                  "w-full sm:w-auto h-10 sm:h-11 px-4 sm:px-6 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(200,241,53,0.3)] border shrink-0 active:scale-95 select-none",
                   (!isCooldown && (
                     panelTab === 'remix'
                       ? (remixEngine === 'omni'

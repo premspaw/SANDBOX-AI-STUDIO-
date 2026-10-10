@@ -34,161 +34,9 @@ import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import { resolveUrl, getApiUrl } from '../../config/apiConfig';
 
-// Curated default 9:16 vertical video templates
-const SEED_TEMPLATES = [
-  // ── TRENDING ──
-  {
-    id: 'seed_trend_1',
-    title: 'Cyber Kinetic Fashion Walk',
-    category: 'trending',
-    video_url: 'https://cdn.zerolens.in/landing/assets/uploaded_1783857951560.mp4',
-    prompt: 'Transfer high-fashion confident street runway motion to subject with neon cyberpunk city lights, anamorphic lens flare and crisp 4K lighting',
-    aspect_ratio: '9:16',
-    duration: '6s',
-    remix_count: 2480,
-    badge: 'VIRAL'
-  },
-  {
-    id: 'seed_trend_2',
-    title: 'Glow Reveal Transformation',
-    category: 'trending',
-    video_url: 'https://cdn.zerolens.in/landing/assets/uploaded_1783622460440.mp4',
-    prompt: 'Cinematic slow-motion aesthetic model turn, golden rim lighting, luxury editorial styling with subtle particle dust',
-    aspect_ratio: '9:16',
-    duration: '5s',
-    remix_count: 1890,
-    badge: 'TRENDING'
-  },
+// Curated default 9:16 vertical video templates (empty by default so only user-uploaded remix templates appear)
+const SEED_TEMPLATES = [];
 
-  // ── HAPPY BIRTHDAY ──
-  {
-    id: 'seed_bday_1',
-    title: 'Neon Birthday Confetti Party',
-    category: 'birthday',
-    video_url: 'https://cdn.zerolens.in/landing/assets/uploaded_1783615271525.mp4',
-    prompt: 'Subject celebrating with vibrant holographic birthday confetti explosion, warm celebratory bokeh, beaming smile, golden glow atmosphere',
-    aspect_ratio: '9:16',
-    duration: '5s',
-    remix_count: 3120,
-    badge: 'POPULAR'
-  },
-  {
-    id: 'seed_bday_2',
-    title: 'Sparkler Candle Glow Birthday',
-    category: 'birthday',
-    video_url: 'https://cdn.zerolens.in/landing-assets/IMG_5525.MP4',
-    prompt: 'Intimate birthday celebration, subject laughing softly holding glowing sparklers, floating pastel balloons in background, cinematic shallow depth of field',
-    aspect_ratio: '9:16',
-    duration: '6s',
-    remix_count: 1450,
-    badge: 'HOT'
-  },
-  {
-    id: 'seed_bday_3',
-    title: 'VIP Birthday Toast Reveal',
-    category: 'birthday',
-    video_url: 'https://cdn.zerolens.in/landing-assets/0302.mp4',
-    prompt: 'High energy birthday champagne pop celebration, golden streamers, euphoric party lighting, 4k hyper-realistic motion transfer',
-    aspect_ratio: '9:16',
-    duration: '7s',
-    remix_count: 980,
-    badge: 'NEW'
-  },
-
-  // ── WEDDING & ROMANCE ──
-  {
-    id: 'seed_wed_1',
-    title: 'Royal Wedding Veil Slow-Mo',
-    category: 'wedding',
-    video_url: 'https://cdn.zerolens.in/landing/assets/uploaded_1783879918655.mp4',
-    prompt: 'Emotional royal wedding ceremony entrance, floating embroidered bridal veil, soft golden hour sunlight, floral archway, hyper-detailed jewelry shimmer',
-    aspect_ratio: '9:16',
-    duration: '6s',
-    remix_count: 4210,
-    badge: 'FEATURED'
-  },
-  {
-    id: 'seed_wed_2',
-    title: 'Golden Hour Couple Romance',
-    category: 'wedding',
-    video_url: 'https://cdn.zerolens.in/landing-assets/IMG_5265.MP4',
-    prompt: 'Breathtaking romantic couple sunset embrace, gentle breeze through hair, warm cinematic amber backlight, 35mm film grain aesthetic',
-    aspect_ratio: '9:16',
-    duration: '5s',
-    remix_count: 2750,
-    badge: 'CLASSIC'
-  },
-  {
-    id: 'seed_wed_3',
-    title: 'Luxury Sangeet Dance Spin',
-    category: 'wedding',
-    video_url: 'https://cdn.zerolens.in/landing/assets/uploaded_1783622487836.mp4',
-    prompt: 'Grand traditional wedding dance twirl with glittering silk lehenga, warm fairy lights, royal palace architecture, dynamic fluid movement',
-    aspect_ratio: '9:16',
-    duration: '7s',
-    remix_count: 1830,
-    badge: 'VIRAL'
-  },
-
-  // ── MARKETING & ADS ──
-  {
-    id: 'seed_mkt_1',
-    title: 'UGC Skincare Hook & Glow',
-    category: 'marketing',
-    video_url: 'https://cdn.zerolens.in/landing/assets/uploaded_1783860587721.mp4',
-    prompt: 'Engaging UGC creator close-up testing skincare serum, dewy natural glass skin, ring-light illumination, high-retention viral TikTok format',
-    aspect_ratio: '9:16',
-    duration: '5s',
-    remix_count: 5320,
-    badge: 'TOP AD'
-  },
-  {
-    id: 'seed_mkt_2',
-    title: 'Sneaker & Product Macro Drop',
-    category: 'marketing',
-    video_url: 'https://cdn.zerolens.in/landing/assets/uploaded_1783874575574.mp4',
-    prompt: 'High energy product unboxing and 360 rotation, dramatic studio spotlights, clean minimalist podium, crisp commercial e-commerce grade detail',
-    aspect_ratio: '9:16',
-    duration: '6s',
-    remix_count: 3640,
-    badge: 'HIGH ROI'
-  },
-  {
-    id: 'seed_mkt_3',
-    title: 'Gourmet Food & Beverage Splash',
-    category: 'marketing',
-    video_url: 'https://cdn.zerolens.in/landing/assets/uploaded_1783874669798.mp4',
-    prompt: 'Mouth-watering commercial food hero shot, macro slow-motion steam, golden glistening texture, restaurant quality advertisement lighting',
-    aspect_ratio: '9:16',
-    duration: '5s',
-    remix_count: 1990,
-    badge: 'HOOK'
-  },
-
-  // ── VIRAL & REELS ──
-  {
-    id: 'seed_viral_1',
-    title: 'Cinematic Lifestyle Vlog Pass',
-    category: 'viral',
-    video_url: 'https://cdn.zerolens.in/landing/assets/uploaded_1783875397189.mp4',
-    prompt: 'Aesthetic travel influencer POV walking through cafe street, natural sunlight, organic hand-held motion, modern TikTok viral grading',
-    aspect_ratio: '9:16',
-    duration: '5s',
-    remix_count: 4120,
-    badge: '1.2M VIEWS'
-  },
-  {
-    id: 'seed_viral_2',
-    title: 'Futuristic Studio Hologram',
-    category: 'viral',
-    video_url: 'https://cdn.zerolens.in/landing/assets/uploaded_1783622589711.mp4',
-    prompt: 'Sci-fi cinematic subject turning toward camera with subtle holographic light reflections, ultra-sharp 8k studio backdrop, moody contrast',
-    aspect_ratio: '9:16',
-    duration: '6s',
-    remix_count: 2210,
-    badge: 'TRENDING'
-  }
-];
 
 const CATEGORIES = [
   { id: 'all', label: 'All Templates', icon: Flame, color: 'text-[#c8f135]' },
@@ -208,13 +56,20 @@ export default function TemplatesPage() {
   const [authUser, setAuthUser] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [templates, setTemplates] = useState(SEED_TEMPLATES);
-  const [isLoading, setIsLoading] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [displayLimit, setDisplayLimit] = useState(18);
+  const loadMoreRef = useRef(null);
 
   // Preview Modal
   const [activePreview, setActivePreview] = useState(null);
   const [previewMuted, setPreviewMuted] = useState(true);
+  const [previewIsPlaying, setPreviewIsPlaying] = useState(true);
+  const [previewProgress, setPreviewProgress] = useState(0);
+  const [previewCurrentTime, setPreviewCurrentTime] = useState('0:00');
+  const [previewTotalDuration, setPreviewTotalDuration] = useState('0:00');
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const previewVideoRef = useRef(null);
 
   // Admin Upload Modal
   const [showAdminUpload, setShowAdminUpload] = useState(false);
@@ -321,6 +176,23 @@ export default function TemplatesPage() {
       return matchesCat && matchesSearch;
     });
   }, [templates, selectedCategory, searchQuery]);
+
+  // Progressive lazy loading slice for high-performance rendering
+  const visibleTemplates = useMemo(() => {
+    return filteredTemplates.slice(0, displayLimit);
+  }, [filteredTemplates, displayLimit]);
+
+  // IntersectionObserver to load more templates as user scrolls
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && displayLimit < filteredTemplates.length) {
+        setDisplayLimit(prev => prev + 18);
+      }
+    }, { rootMargin: '400px' });
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [displayLimit, filteredTemplates.length]);
 
   // Handle file pick for Admin upload
   const handleFileChange = (e) => {
@@ -468,28 +340,21 @@ export default function TemplatesPage() {
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-6 relative z-10">
             {/* Title & Description */}
-            <div className="space-y-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[9px] sm:text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30 flex items-center gap-1">
-                  <Flame size={11} className="fill-[#c8f135]" />
-                  9:16 VERTICAL VIRAL HUB
-                </span>
-                <span className="text-[9px] sm:text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-white/5 text-zinc-300 border border-white/10">
-                  {filteredTemplates.length} Templates Live
-                </span>
-                {isAdmin && (
+            <div className="space-y-1.5 min-w-0">
+              {isAdmin && (
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[9px] sm:text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40 flex items-center gap-1 shadow-[0_0_12px_rgba(239,68,68,0.2)]">
                     <ShieldCheck size={11} className="text-red-400" />
                     ADMIN UPLOADER ACTIVE
                   </span>
-                )}
-              </div>
+                </div>
+              )}
 
               <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight uppercase">
-                Viral Video <span className="text-[#c8f135]">Templates</span>
+                Viral Video <span className="text-[#c8f135]">Remix</span>
               </h1>
               <p className="text-[11px] sm:text-xs text-zinc-400 max-w-2xl leading-relaxed">
-                Pick any trending 9:16 video, tap <strong className="text-white">Remix</strong>, and upload your photo to recreate it in seconds.
+                Pick any viral video to remix, tap <strong className="text-white">Remix</strong>, and upload your photo or character to recreate it in seconds.
               </p>
             </div>
 
@@ -564,32 +429,67 @@ export default function TemplatesPage() {
           })}
         </div>
 
-        {/* 3. DENSE 9:16 TEMPLATES GRID (2 columns on mobile so multiple templates are visible at once!) */}
-        {filteredTemplates.length === 0 ? (
+        {/* 3. DENSE 9:16 TEMPLATES GRID */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3.5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div 
+                key={i} 
+                className="rounded-xl sm:rounded-2xl aspect-[9/16] bg-zinc-950/80 border border-white/5 animate-pulse flex flex-col justify-between p-3"
+              >
+                <div className="h-4 w-12 bg-white/10 rounded-md" />
+                <div className="space-y-2">
+                  <div className="h-3 w-3/4 bg-white/10 rounded" />
+                  <div className="h-6 w-full bg-[#c8f135]/20 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredTemplates.length === 0 ? (
           <div className="p-12 text-center rounded-3xl bg-white/[0.02] border border-dashed border-white/10 space-y-3">
             <Film className="w-12 h-12 text-zinc-600 mx-auto" />
             <h3 className="text-base font-bold text-white uppercase">No Templates Found</h3>
             <p className="text-xs text-zinc-400 max-w-sm mx-auto">
-              No templates match your selected category or search filter. Try selecting "All Templates" or reset your search.
+              {templates.length === 0
+                ? "No remix templates uploaded yet. Upload a template to get started."
+                : "No templates match your selected category or search filter. Try selecting \"All Templates\" or reset your search."}
             </p>
-            <button
-              onClick={() => { setSelectedCategory('all'); setSearchQuery(''); }}
-              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase transition-all"
-            >
-              Reset Filters
-            </button>
+            {templates.length === 0 && isAdmin ? (
+              <button
+                type="button"
+                onClick={() => setShowAdminUpload(true)}
+                className="px-4 py-2 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black text-xs font-black uppercase transition-all shadow-[0_0_15px_rgba(200,241,53,0.3)]"
+              >
+                Upload First Template
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { setSelectedCategory('all'); setSearchQuery(''); }}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase transition-all"
+              >
+                Reset Filters
+              </button>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3.5">
-            {filteredTemplates.map((template) => (
-              <TemplateCard
-                key={template.id}
-                template={template}
-                onRemix={(customTemplate, e) => handleRemix(customTemplate || template, e)}
-                onPreview={() => setActivePreview(template)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3.5">
+              {visibleTemplates.map((template) => (
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  onRemix={(customTemplate, e) => handleRemix(customTemplate || template, e)}
+                  onPreview={() => setActivePreview(template)}
+                />
+              ))}
+            </div>
+            {displayLimit < filteredTemplates.length && (
+              <div ref={loadMoreRef} className="py-6 flex justify-center">
+                <Loader2 className="w-6 h-6 text-[#c8f135] animate-spin" />
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -627,38 +527,136 @@ export default function TemplatesPage() {
                 </button>
               </div>
 
-              {/* 9:16 Video Player Container */}
-              <div className="relative aspect-[9/16] max-h-[58vh] bg-black overflow-hidden flex items-center justify-center">
+              {/* 9:16 Video Player Container (Interactive Tap-to-Play/Pause) */}
+              <div 
+                onClick={() => {
+                  if (!previewVideoRef.current) return;
+                  if (previewVideoRef.current.paused) {
+                    previewVideoRef.current.play().then(() => setPreviewIsPlaying(true)).catch(() => {});
+                  } else {
+                    previewVideoRef.current.pause();
+                    setPreviewIsPlaying(false);
+                  }
+                }}
+                className="relative aspect-[9/16] max-h-[58vh] bg-black overflow-hidden flex items-center justify-center cursor-pointer select-none group"
+              >
                 <video
+                  ref={previewVideoRef}
                   src={resolveUrl(activePreview.video_url)}
                   autoPlay
                   loop
                   playsInline
                   muted={previewMuted}
+                  onPlaying={() => setPreviewIsPlaying(true)}
+                  onPause={() => setPreviewIsPlaying(false)}
+                  onTimeUpdate={(e) => {
+                    const ct = e.currentTarget.currentTime;
+                    const dur = e.currentTarget.duration;
+                    if (dur && !isNaN(dur) && dur > 0) {
+                      setPreviewProgress((ct / dur) * 100);
+                      const curMin = Math.floor(ct / 60);
+                      const curSec = Math.floor(ct % 60);
+                      setPreviewCurrentTime(`${curMin}:${curSec < 10 ? '0' : ''}${curSec}`);
+                      const totMin = Math.floor(dur / 60);
+                      const totSec = Math.floor(dur % 60);
+                      setPreviewTotalDuration(`${totMin}:${totSec < 10 ? '0' : ''}${totSec}`);
+                    }
+                  }}
                   onLoadedMetadata={(e) => {
                     if (e.currentTarget?.duration && !isNaN(e.currentTarget.duration)) {
                       const durSec = Math.max(1, Math.round(e.currentTarget.duration));
+                      const totMin = Math.floor(durSec / 60);
+                      const totSec = Math.floor(durSec % 60);
+                      setPreviewTotalDuration(`${totMin}:${totSec < 10 ? '0' : ''}${totSec}`);
                       if (!activePreview.duration || activePreview.duration === '5s') {
                         setActivePreview(prev => prev ? ({ ...prev, duration: `${durSec}s` }) : null);
                       }
+                    }
+                    if (previewVideoRef.current) {
+                      previewVideoRef.current.play().then(() => setPreviewIsPlaying(true)).catch(() => {
+                        // Retry muted if browser policies blocked audio
+                        if (previewVideoRef.current) {
+                          previewVideoRef.current.muted = true;
+                          setPreviewMuted(true);
+                          previewVideoRef.current.play().catch(() => {});
+                        }
+                      });
                     }
                   }}
                   className="w-full h-full object-cover"
                 />
 
-                {/* Sound Toggle Button */}
-                <button
-                  type="button"
-                  onClick={() => setPreviewMuted(prev => !prev)}
-                  className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-md border border-white/15 transition-all cursor-pointer shadow-lg"
-                  title={previewMuted ? "Unmute" : "Mute"}
+                {/* Big Centered Play Overlay when paused */}
+                {!previewIsPlaying && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center transition-all pointer-events-none">
+                    <div className="w-14 h-14 rounded-full bg-black/80 backdrop-blur-md border border-[#c8f135]/60 flex items-center justify-center text-[#c8f135] shadow-[0_0_30px_rgba(200,241,53,0.35)] animate-pulse">
+                      <Play size={24} className="fill-[#c8f135] translate-x-0.5" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Bottom Scrub Timeline Bar */}
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const pct = Math.max(0, Math.min(1, clickX / rect.width));
+                    if (previewVideoRef.current && previewVideoRef.current.duration) {
+                      previewVideoRef.current.currentTime = pct * previewVideoRef.current.duration;
+                    }
+                  }}
+                  className="absolute bottom-0 left-0 right-0 h-1.5 hover:h-2.5 transition-all bg-white/20 cursor-pointer z-20"
                 >
-                  {previewMuted ? <VolumeX size={14} /> : <Volume2 size={14} className="text-[#c8f135]" />}
-                </button>
+                  <div 
+                    className="h-full bg-[#c8f135] transition-all"
+                    style={{ width: `${previewProgress}%` }}
+                  />
+                </div>
+
+                {/* Controls Bar (Play/Pause, Time, Sound) */}
+                <div 
+                  onClick={(e) => e.stopPropagation()} 
+                  className="absolute bottom-2.5 inset-x-2.5 flex items-center justify-between z-20 pointer-events-auto"
+                >
+                  <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10 text-[9px] font-mono text-zinc-300">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!previewVideoRef.current) return;
+                        if (previewVideoRef.current.paused) {
+                          previewVideoRef.current.play().then(() => setPreviewIsPlaying(true)).catch(() => {});
+                        } else {
+                          previewVideoRef.current.pause();
+                          setPreviewIsPlaying(false);
+                        }
+                      }}
+                      className="text-white hover:text-[#c8f135] transition-colors"
+                      title={previewIsPlaying ? "Pause" : "Play"}
+                    >
+                      {previewIsPlaying ? <Pause size={12} className="fill-current" /> : <Play size={12} className="fill-current" />}
+                    </button>
+                    <span>{previewCurrentTime} / {previewTotalDuration || activePreview.duration || '0:05'}</span>
+                  </div>
+
+                  {/* Sound Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextMuted = !previewMuted;
+                      setPreviewMuted(nextMuted);
+                      if (previewVideoRef.current) previewVideoRef.current.muted = nextMuted;
+                    }}
+                    className="w-8 h-8 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md border border-white/15 transition-all cursor-pointer shadow-lg"
+                    title={previewMuted ? "Unmute" : "Mute"}
+                  >
+                    {previewMuted ? <VolumeX size={14} /> : <Volume2 size={14} className="text-[#c8f135]" />}
+                  </button>
+                </div>
 
                 {/* Badge */}
                 {activePreview.badge && (
-                  <span className="absolute top-3 left-3 text-[9px] font-mono font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#c8f135] text-black shadow-md">
+                  <span className="absolute top-3 left-3 text-[9px] font-mono font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#c8f135] text-black shadow-md z-10 pointer-events-none">
                     {activePreview.badge}
                   </span>
                 )}
@@ -918,10 +916,10 @@ function TemplateCard({ template, onRemix, onPreview }) {
   const videoRef = useRef(null);
   const [isInView, setIsInView] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [liveDuration, setLiveDuration] = useState(template.duration || '');
 
-  // IntersectionObserver for lazy loading video elements as they scroll into view
+  // IntersectionObserver for lazy loading: only mount and play when card is near/in viewport
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -930,14 +928,21 @@ function TemplateCard({ template, onRemix, onPreview }) {
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsInView(true);
+          // Play automatically when in viewport
+          if (videoRef.current) {
+            videoRef.current.play()
+              .then(() => setIsPlaying(true))
+              .catch(() => {});
+          }
         } else {
-          // If scrolled away, pause to save battery and network
+          // Pause when scrolled out of view to save mobile data, GPU and battery
           if (videoRef.current && !videoRef.current.paused) {
             videoRef.current.pause();
+            setIsPlaying(false);
           }
         }
       },
-      { rootMargin: '350px', threshold: 0.01 }
+      { rootMargin: '250px', threshold: 0.1 }
     );
 
     observer.observe(el);
@@ -946,32 +951,39 @@ function TemplateCard({ template, onRemix, onPreview }) {
     };
   }, []);
 
-  // Handle desktop hover playback
-  useEffect(() => {
+  const handleCanPlay = () => {
+    setIsLoaded(true);
+    if (isInView && videoRef.current) {
+      videoRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {});
+    }
+  };
+
+  const togglePlay = (e) => {
+    e.stopPropagation();
     if (!videoRef.current) return;
-    if (isHovered) {
-      const p = videoRef.current.play();
-      if (p !== undefined) p.catch(() => {});
+    if (videoRef.current.paused) {
+      videoRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {});
     } else {
       videoRef.current.pause();
-      try {
-        videoRef.current.currentTime = 0.001;
-      } catch (_) {
-        /* ignore seek error */
-      }
+      setIsPlaying(false);
     }
-  }, [isHovered]);
+  };
 
-  const rawUrl = resolveUrl(template.video_url);
-  // Append media fragment #t=0.001 to guarantee iOS Safari & Chrome decode frame 0 immediately
-  const videoSrc = rawUrl ? (rawUrl.includes('#') ? rawUrl : `${rawUrl}#t=0.001`) : '';
+  const cleanVideoUrl = resolveUrl(template.video_url);
 
   return (
     <div
       ref={containerRef}
       onClick={onPreview}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => {
+        if (videoRef.current && videoRef.current.paused) {
+          videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+        }
+      }}
       className="group relative rounded-xl sm:rounded-2xl overflow-hidden border border-white/10 hover:border-[#c8f135]/60 bg-black cursor-pointer transition-all duration-300 flex flex-col justify-between shadow-lg hover:shadow-[0_0_25px_rgba(200,241,53,0.2)]"
     >
       {/* 9:16 Aspect Ratio Container */}
@@ -981,33 +993,43 @@ function TemplateCard({ template, onRemix, onPreview }) {
         {!isLoaded && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/90 z-0">
             <Loader2 className="w-5 h-5 text-[#c8f135]/60 animate-spin" />
-            <span className="text-[8px] font-mono text-zinc-500 mt-2 uppercase tracking-widest">Preview</span>
+            <span className="text-[8px] font-mono text-zinc-500 mt-2 uppercase tracking-widest">Loading</span>
           </div>
         )}
 
-        {/* Background Video — only mounted/loaded when in or near viewport */}
+        {/* Thumbnail image if available, with native lazy loading */}
+        {template.thumbnail_url && (
+          <img
+            src={template.thumbnail_url}
+            alt={template.title}
+            loading="lazy"
+            decoding="async"
+            className={cn(
+              "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
+              isLoaded ? "opacity-0 pointer-events-none" : "opacity-100"
+            )}
+          />
+        )}
+
+        {/* Background Video — ONLY rendered & loaded when in viewport */}
         {isInView && (
           <video
             ref={videoRef}
-            src={videoSrc}
+            src={cleanVideoUrl}
+            autoPlay
             loop
             muted
             playsInline
-            preload="auto"
+            preload="metadata"
+            onLoadedData={handleCanPlay}
+            onCanPlay={handleCanPlay}
+            onPlaying={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
             onLoadedMetadata={(e) => {
-              try {
-                if (e.currentTarget.currentTime === 0) {
-                  e.currentTarget.currentTime = 0.001;
-                }
-              } catch (_) {
-                /* ignore seek error */
-              }
               if (e.currentTarget?.duration && !isNaN(e.currentTarget.duration)) {
                 setLiveDuration(`${Math.max(1, Math.round(e.currentTarget.duration))}s`);
               }
             }}
-            onLoadedData={() => setIsLoaded(true)}
-            onCanPlay={() => setIsLoaded(true)}
             className={cn(
               "absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:scale-105",
               isLoaded ? "opacity-100" : "opacity-0"
@@ -1015,7 +1037,7 @@ function TemplateCard({ template, onRemix, onPreview }) {
           />
         )}
 
-        {/* Ambient Overlay Vignette — clean transparent center so video pops brightly */}
+        {/* Ambient Overlay Vignette */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/40 pointer-events-none z-10" />
 
         {/* Top Badges Row */}
@@ -1030,31 +1052,49 @@ function TemplateCard({ template, onRemix, onPreview }) {
             </span>
           )}
 
-          <span className="text-[8px] sm:text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-black/60 text-zinc-300 border border-white/10 flex items-center gap-1">
-            <Zap size={9} className="text-[#c8f135]" />
-            <span>{liveDuration || template.duration || '5s'}</span>
-          </span>
-        </div>
-
-        {/* Center Play Icon Overlay (Visible when not playing or hovered) */}
-        <div className={cn(
-          "absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none z-10",
-          isHovered ? "opacity-0" : "opacity-70 sm:opacity-80"
-        )}>
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl">
-            <Play size={14} className="fill-white translate-x-0.5" />
+          <div className="flex items-center gap-1">
+            <span className="text-[8px] sm:text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-black/60 text-zinc-300 border border-white/10 flex items-center gap-1">
+              <Zap size={9} className="text-[#c8f135]" />
+              <span>{liveDuration || template.duration || '5s'}</span>
+            </span>
           </div>
         </div>
 
+        {/* Center Play Button Overlay (Visible when paused on mobile/desktop) */}
+        {!isPlaying && isLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <button
+              type="button"
+              onClick={togglePlay}
+              className="pointer-events-auto w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl hover:scale-110 active:scale-95 transition-all cursor-pointer"
+              title="Play Video"
+            >
+              <Play size={14} className="fill-white translate-x-0.5 text-white" />
+            </button>
+          </div>
+        )}
+
         {/* Bottom Details & Direct REMIX Action */}
         <div className="relative z-10 p-2 sm:p-3 space-y-1.5 bg-gradient-to-t from-black via-black/90 to-transparent">
-          <div>
-            <h4 className="text-[11px] sm:text-xs font-black text-white uppercase tracking-tight line-clamp-1 group-hover:text-[#c8f135] transition-colors">
-              {template.title}
-            </h4>
-            <p className="text-[9px] sm:text-[10px] text-zinc-400 font-mono line-clamp-1">
-              {template.remix_count ? `${template.remix_count.toLocaleString()} remixes` : 'New template'}
-            </p>
+          <div className="flex items-center justify-between gap-1">
+            <div className="min-w-0 flex-1">
+              <h4 className="text-[11px] sm:text-xs font-black text-white uppercase tracking-tight line-clamp-1 group-hover:text-[#c8f135] transition-colors">
+                {template.title}
+              </h4>
+              <p className="text-[9px] sm:text-[10px] text-zinc-400 font-mono line-clamp-1">
+                {template.remix_count ? `${template.remix_count.toLocaleString()} remixes` : 'New template'}
+              </p>
+            </div>
+
+            {/* Quick Play/Pause button on card corner */}
+            <button
+              type="button"
+              onClick={togglePlay}
+              className="w-6 h-6 rounded-lg bg-white/10 hover:bg-[#c8f135] text-zinc-300 hover:text-black flex items-center justify-center transition-all shrink-0 cursor-pointer"
+              title={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? <Pause size={10} className="fill-current" /> : <Play size={10} className="fill-current translate-x-0.2" />}
+            </button>
           </div>
 
           {/* Action Button: REMIX */}
