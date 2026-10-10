@@ -2221,7 +2221,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       activeTab,
       panelTab,
       transitionSubTab: opts.transitionSubTab || 'sequence',
-      remixEngine: opts.remixEngine || storeRemixEngine || 'jitsu',
+      remixEngine: opts.remixEngine || storeRemixEngine || 'omni',
       motionMode,
       motionRefVideoDuration,
       extensionSourceVideo,
@@ -2951,7 +2951,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       return;
     }
 
-    if (overrideOptions?.task === 'edit' || (panelTab === 'remix' && overrideOptions?.engine === 'omni')) {
+    if (overrideOptions?.task === 'edit' || panelTab === 'remix') {
       console.log('[CinematicStudio] Video edit task detected — delegating generation to handleOmniEditGenerate');
       return handleOmniEditGenerate(overrideOptions);
     }

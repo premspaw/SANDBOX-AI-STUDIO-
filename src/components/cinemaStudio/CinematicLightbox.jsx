@@ -666,7 +666,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
     setLightboxItem(null);
   };
 
-  // Remix & Edit Video with Omni 1.1 / Jitsu
+  // Video Edit with Omni 1.1
   const handleRemixScene = () => {
     if (handleUseAsRemixVideo) {
       handleUseAsRemixVideo(lightboxItem);
@@ -1108,16 +1108,16 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                     </button>
                   )}
 
-                  {/* 4. EDIT / REMIX SCENE */}
+                  {/* 4. EDIT VIDEO (OMNI 1.1) */}
                   {lightboxItem.type !== 'image' && (
                     <button
                       type="button"
                       onClick={handleRemixScene}
-                      className="col-span-2 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-purple-500/35 bg-purple-600/15 hover:bg-purple-600/25 backdrop-blur-md text-purple-200 hover:text-white transition-all group cursor-pointer shadow-sm active:scale-[0.98]"
-                      title="Edit & Remix scene"
+                      className="col-span-2 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#c8f135]/35 bg-[#c8f135]/15 hover:bg-[#c8f135]/25 backdrop-blur-md text-[#c8f135] hover:text-white transition-all group cursor-pointer shadow-sm active:scale-[0.98]"
+                      title="Edit video with Omni 1.1"
                     >
-                      <Sparkles size={13} className="text-purple-300 shrink-0" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-white">🎨 Edit & Remix</span>
+                      <Sparkles size={13} className="text-[#c8f135] shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-white">🎨 Edit Video</span>
                     </button>
                   )}
 

@@ -429,8 +429,8 @@ export const useAppStore = create((set, get) => ({
     extensionPrompt: '',
     setExtensionPrompt: (prompt) => set({ extensionPrompt: prompt }),
 
-    // Video Remix / Edit Engine ('jitsu' | 'omni')
-    remixEngine: 'jitsu',
+    // Video Edit Engine (Omni 1.1)
+    remixEngine: 'omni',
     setRemixEngine: (engine) => set({ remixEngine: engine }),
 
     clearSession: () => {

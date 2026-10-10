@@ -327,11 +327,11 @@ export const SidePanel = React.memo(({
   const handleExtensionGenerate = propHandleExtensionGenerate;
   const handleOmniEditGenerate = propHandleOmniEditGenerate;
 
-  // Remix Engine State ('jitsu' | 'omni')
+  // Video Edit Engine State (Omni 1.1)
   const storeRemixEngine = useAppStore(state => state.remixEngine);
   const storeSetRemixEngine = useAppStore(state => state.setRemixEngine);
-  const [localRemixEngine, setLocalRemixEngine] = useState('jitsu');
-  const remixEngine = storeRemixEngine || localRemixEngine;
+  const [localRemixEngine, setLocalRemixEngine] = useState('omni');
+  const remixEngine = storeRemixEngine || localRemixEngine || 'omni';
   const setRemixEngine = useCallback((val) => {
     setLocalRemixEngine(val);
     if (storeSetRemixEngine) storeSetRemixEngine(val);
@@ -1808,101 +1808,61 @@ export const SidePanel = React.memo(({
 
     const rawVid = motionRefVideo || motionRefVideoPreview || videoPreview || (seedanceVideos && seedanceVideos[0]);
     if (!rawVid) {
-      const msg = remixEngine === 'omni'
-        ? "Please upload or select a Source Video to Edit with Omni 1.1."
-        : "Please upload or select a Driving Source Motion Video for Remix.";
+      const msg = "Please upload or select a Source Video to Edit with Omni 1.1.";
       if (showToast) showToast(msg, "error");
       else alert(msg);
       return;
     }
 
-    if (remixEngine === 'omni') {
-      const finalPrompt = (localPrompt || promptText || '').trim();
-      if (!finalPrompt) {
-        const msg = "Please enter instructions for what to edit or replace in the video.";
-        if (showToast) showToast(msg, "error");
-        else alert(msg);
-        return;
-      }
-
-      const rawImgs = [
-        motionSubjectImage || motionSubjectPreview,
-        ...(seedanceImages || []).slice(0, 3)
-      ].filter(Boolean);
-
-      startCooldown(8);
-      setPromptText(finalPrompt);
-
-      if (handleOmniEditGenerate) {
-        return handleOmniEditGenerate({
-          sourceVideo: rawVid,
-          prompt: finalPrompt,
-          images: rawImgs,
-          duration: motionRefVideoDuration ? Math.max(4, Math.min(10, Math.round(motionRefVideoDuration))) : 5,
-          resolution: resolution === '4k' ? '1080p' : (resolution || '720p'),
-          aspectRatio,
-          generateAudio
-        });
-      }
-
-      // Direct fallback
-      const [resolvedVid, resolvedImgs] = await Promise.all([
-        resolveBlobToBase64(rawVid),
-        Promise.all(rawImgs.map(img => resolveBlobToBase64(img)))
-      ]);
-
-      const engineToUse = 'gemini-omni-1.1-flash';
-      setActiveTab('video');
-      setActiveEngine(engineToUse);
-      handleGenerate(finalPrompt, engineToUse, {
-        video: resolvedVid || rawVid,
-        sourceVideo: resolvedVid || rawVid,
-        task: 'edit',
-        prompt: finalPrompt,
-        motionPrompt: finalPrompt,
-        ref_images: (resolvedImgs || []).filter(Boolean),
-        duration: duration || 5,
-        resolution: (resolution === '4k') ? '1080p' : (resolution || '720p'),
-        aspectRatio,
-        generateAudio,
-        creditReason: 'omni_video_edit'
-      });
+    const finalPrompt = (localPrompt || promptText || '').trim();
+    if (!finalPrompt) {
+      const msg = "Please enter instructions for what to edit or replace in the video.";
+      if (showToast) showToast(msg, "error");
+      else alert(msg);
       return;
     }
 
-    const rawImages = [
-      motionSubjectImage,
-      motionSubjectPreview,
-      ...(seedanceImages || []).filter(Boolean),
-      ...(omniRefPreviews || []).filter(Boolean),
-      firstFramePreview,
-      omniFirstFramePreview
+    const rawImgs = [
+      motionSubjectImage || motionSubjectPreview,
+      ...(seedanceImages || []).slice(0, 3)
     ].filter(Boolean);
 
-    if (rawImages.length === 0) {
-      const msg = "Please upload or select at least 1 Character / Style Reference Image.";
-      if (showToast) showToast(msg, "error");
-      else alert(msg);
-      return;
+    startCooldown(8);
+    setPromptText(finalPrompt);
+
+    if (handleOmniEditGenerate) {
+      return handleOmniEditGenerate({
+        sourceVideo: rawVid,
+        prompt: finalPrompt,
+        images: rawImgs,
+        duration: motionRefVideoDuration ? Math.max(4, Math.min(10, Math.round(motionRefVideoDuration))) : 5,
+        resolution: resolution === '4k' ? '1080p' : (resolution || '720p'),
+        aspectRatio,
+        generateAudio
+      });
     }
 
+    // Direct fallback
     const [resolvedVid, resolvedImgs] = await Promise.all([
       resolveBlobToBase64(rawVid),
-      Promise.all(rawImages.slice(0, 8).map(img => resolveBlobToBase64(img)))
+      Promise.all(rawImgs.map(img => resolveBlobToBase64(img)))
     ]);
 
-    startCooldown(8);
-    const engineToUse = 'remix-motion-transfer';
-    setPromptText(localPrompt);
+    const engineToUse = 'gemini-omni-1.1-flash';
     setActiveTab('video');
     setActiveEngine(engineToUse);
-    handleGenerate(localPrompt, engineToUse, {
-      video_url: resolvedVid || rawVid,
-      image_urls: (resolvedImgs || []).filter(Boolean),
-      resolution: (resolution === '4k') ? '1080p' : (resolution || '720p'),
+    handleGenerate(finalPrompt, engineToUse, {
+      video: resolvedVid || rawVid,
+      sourceVideo: resolvedVid || rawVid,
+      task: 'edit',
+      prompt: finalPrompt,
+      motionPrompt: finalPrompt,
+      ref_images: (resolvedImgs || []).filter(Boolean),
       duration: duration || 5,
+      resolution: (resolution === '4k') ? '1080p' : (resolution || '720p'),
       aspectRatio,
-      creditCost: calculatedCredits
+      generateAudio,
+      creditReason: 'omni_video_edit'
     });
   };
 
@@ -3007,17 +2967,18 @@ export const SidePanel = React.memo(({
             onClick={() => {
               setPanelTab('remix');
               setActiveTab('video');
-              setActiveEngine('remix-motion-transfer');
+              setRemixEngine('omni');
+              setActiveEngine('gemini-omni-1.1-flash');
               if (resolution === '4k') setResolution('1080p');
             }}
             className={cn(
               "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
               panelTab === 'remix'
-                ? "bg-gradient-to-r from-amber-400/25 via-yellow-400/20 to-transparent text-amber-300 border border-amber-400/50 shadow-[0_0_15px_rgba(251,191,36,0.25)] font-black"
+                ? "bg-gradient-to-r from-[#c8f135]/25 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/50 shadow-[0_0_15px_rgba(200,241,53,0.25)] font-black"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
             )}
           >
-            Remix
+            Edit
           </button>
 
           <button
@@ -3926,66 +3887,38 @@ export const SidePanel = React.memo(({
                     {renderPromptStudio("Direct with references! E.g.: '@image1 character walks past @image2 while matching camera motion of @video1, 4k 60fps'")}
                   </div>
                 ) : panelTab === 'remix' ? (
-                  /* ── REMIX & VIDEO EDIT FLOW (JITSU + OMNI 1.1) ── */
+                  /* ── OMNI 1.1 VIDEO EDIT FLOW ── */
                   <div className="space-y-3">
-                    {/* 0. Top Dual Engine Switcher */}
-                    <div className="p-1 bg-black/60 rounded-2xl border border-white/[0.08] flex items-center gap-1 shadow-inner">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRemixEngine('jitsu');
-                          setActiveEngine('remix-motion-transfer');
-                        }}
-                        className={cn(
-                          "flex-1 py-1.5 px-2.5 rounded-xl text-[10.5px] sm:text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer",
-                          remixEngine === 'jitsu'
-                            ? "bg-gradient-to-r from-amber-400/25 via-yellow-400/20 to-transparent text-amber-300 border border-amber-400/50 shadow-[0_0_12px_rgba(251,191,36,0.25)] font-black"
-                            : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
-                        )}
-                      >
-                        <Zap size={11} className={remixEngine === 'jitsu' ? "text-amber-400 fill-current" : "text-zinc-500"} />
-                        <span>Jitsu (Motion)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRemixEngine('omni');
-                          setActiveEngine('gemini-omni-1.1-flash');
-                        }}
-                        className={cn(
-                          "flex-1 py-1.5 px-2.5 rounded-xl text-[10.5px] sm:text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer",
-                          remixEngine === 'omni'
-                            ? "bg-gradient-to-r from-[#c8f135]/25 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/50 shadow-[0_0_12px_rgba(200,241,53,0.25)] font-black"
-                            : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
-                        )}
-                      >
-                        <Sparkles size={11} className={remixEngine === 'omni' ? "text-[#c8f135] fill-current" : "text-zinc-500"} />
-                        <span>Omni 1.1 (Video Edit)</span>
-                      </button>
+                    {/* Omni 1.1 Video Edit Header */}
+                    <div className="p-2.5 rounded-2xl bg-gradient-to-r from-[#c8f135]/15 via-black/60 to-black/40 border border-[#c8f135]/30 flex items-center justify-between shadow-inner">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-[#c8f135]/20 border border-[#c8f135]/40 flex items-center justify-center shrink-0">
+                          <Sparkles size={13} className="text-[#c8f135]" />
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                            <span>Omni 1.1 Video Edit</span>
+                            <span className="px-1.5 py-0.2 rounded-full bg-[#c8f135]/20 text-[#c8f135] text-[8px] font-mono font-bold border border-[#c8f135]/30">EDIT</span>
+                          </div>
+                          <div className="text-[8.5px] text-zinc-400">Transform, replace elements, characters, or styles in existing videos</div>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Source Video Card */}
                     <div className="space-y-1.5 p-2.5 rounded-2xl bg-black/40 border border-white/[0.08] backdrop-blur-xl">
                       <div className="flex items-center justify-between pb-1 border-b border-white/5">
-                        <span className={cn(
-                          "text-[9.5px] font-black uppercase tracking-wider flex items-center gap-1.5",
-                          remixEngine === 'omni' ? "text-[#c8f135]" : "text-amber-300"
-                        )}>
-                          <Video className={cn("w-3 h-3", remixEngine === 'omni' ? "text-[#c8f135]" : "text-amber-400")} />
-                          <span>1. {remixEngine === 'omni' ? 'Source Video to Edit (@video1)' : 'Driving Source Video (@video1)'}</span>
+                        <span className="text-[9.5px] font-black uppercase tracking-wider text-[#c8f135] flex items-center gap-1.5">
+                          <Video className="w-3 h-3 text-[#c8f135]" />
+                          <span>1. Source Video to Edit (@video1)</span>
                         </span>
                         <div className="flex items-center gap-1">
                           {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
                             <button
                               type="button"
                               onClick={() => setGalleryPickerSlot({ type: 'motion_video' })}
-                              className={cn(
-                                "text-[7.5px] font-bold px-1.5 py-0.5 rounded transition-all cursor-pointer border",
-                                remixEngine === 'omni'
-                                  ? "text-[#c8f135] bg-[#c8f135]/10 hover:bg-[#c8f135]/20 border-[#c8f135]/30"
-                                  : "text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 border-amber-400/25"
-                              )}
-                              title="Pick Driving Video from Studio Gallery"
+                              className="text-[7.5px] font-bold px-1.5 py-0.5 rounded transition-all cursor-pointer border text-[#c8f135] bg-[#c8f135]/10 hover:bg-[#c8f135]/20 border-[#c8f135]/30"
+                              title="Pick Source Video from Studio Gallery"
                             >
                               + Gal
                             </button>
@@ -4004,15 +3937,9 @@ export const SidePanel = React.memo(({
                       </div>
 
                       {(motionRefVideoPreview || motionRefVideo) ? (
-                        <div className={cn(
-                          "aspect-video w-full rounded-xl overflow-hidden bg-black/70 border relative group shadow-md flex items-center justify-center",
-                          remixEngine === 'omni' ? "border-[#c8f135]/40" : "border-amber-500/40"
-                        )}>
+                        <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/70 border border-[#c8f135]/40 relative group shadow-md flex items-center justify-center">
                           <video src={motionRefVideoPreview || motionRefVideo} className="w-full h-full object-cover" muted loop autoPlay playsInline />
-                          <div className={cn(
-                            "absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 border text-[9px] font-mono font-bold",
-                            remixEngine === 'omni' ? "border-[#c8f135]/40 text-[#c8f135]" : "border-amber-400/40 text-amber-300"
-                          )}>
+                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 border border-[#c8f135]/40 text-[9px] font-mono font-bold text-[#c8f135]">
                             @video1
                           </div>
                           <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all gap-1.5 backdrop-blur-[2px]">
@@ -4029,78 +3956,102 @@ export const SidePanel = React.memo(({
                         <button
                           type="button"
                           onClick={() => motionVideoInputRef.current?.click()}
-                          className={cn(
-                            "aspect-video w-full rounded-xl border border-dashed border-white/15 bg-white/[0.01] transition-all flex flex-col items-center justify-center gap-1 text-zinc-400 cursor-pointer p-2",
-                            remixEngine === 'omni'
-                              ? "hover:border-[#c8f135]/60 hover:bg-[#c8f135]/[0.04] hover:text-[#c8f135]"
-                              : "hover:border-amber-400/60 hover:bg-amber-500/[0.04] hover:text-amber-300"
-                          )}
+                          className="aspect-video w-full rounded-xl border border-dashed border-white/15 bg-white/[0.01] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/[0.04] hover:text-[#c8f135] transition-all flex flex-col items-center justify-center gap-1 text-zinc-400 cursor-pointer p-2"
                         >
-                          <Upload size={16} className={remixEngine === 'omni' ? "text-[#c8f135]/80" : "text-amber-400/80"} />
+                          <Upload size={16} className="text-[#c8f135]/80" />
                           <span className="text-[9px] font-bold uppercase tracking-wider">
-                            {remixEngine === 'omni' ? 'Upload Video to Edit (4s-10s)' : 'Upload Source Motion Video'}
+                            Upload Video to Edit (4s-10s)
                           </span>
                           <span className="text-[7.5px] text-zinc-500 font-mono">
-                            {remixEngine === 'omni' ? 'MP4, MOV (Edit characters, objects, lighting or scene)' : 'MP4, MOV (Motion & timing transferred)'}
+                            MP4, MOV (Edit characters, objects, lighting or scene)
                           </span>
                         </button>
                       )}
                     </div>
 
-                    {/* Reference Images Card */}
-                    {remixEngine === 'omni' ? (
-                      /* ── OMNI 1.1: 4 Reference Image Slots (@image1 - @image4) ── */
-                      <div className="space-y-1.5 p-2.5 rounded-2xl bg-black/40 border border-white/[0.08] backdrop-blur-xl">
-                        <div className="flex items-center justify-between pb-1 border-b border-white/5">
-                          <span className="text-[9.5px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
-                            <Sparkles className="w-3 h-3 text-cyan-400" />
-                            <span>2. Visual References (@image1 – @image4)</span>
-                          </span>
-                          <div className="flex items-center gap-1">
-                            {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const hasSubject = Boolean(motionSubjectPreview || motionSubjectImage);
-                                  if (!hasSubject) {
-                                    setGalleryPickerSlot({ type: 'remix_image', slotIdx: 0 });
-                                  } else {
-                                    const emptyIdx = seedanceImages.slice(0, 3).findIndex(i => !i);
-                                    setGalleryPickerSlot({ type: 'remix_image', slotIdx: emptyIdx !== -1 ? emptyIdx + 1 : 1 });
-                                  }
-                                }}
-                                className="text-[7.5px] font-bold text-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
-                                title="Pick Reference Image from Studio Gallery"
-                              >
-                                + Gal
-                              </button>
-                            )}
+                    {/* Reference Images Card (@image1 – @image4) */}
+                    <div className="space-y-1.5 p-2.5 rounded-2xl bg-black/40 border border-white/[0.08] backdrop-blur-xl">
+                      <div className="flex items-center justify-between pb-1 border-b border-white/5">
+                        <span className="text-[9.5px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3 text-cyan-400" />
+                          <span>2. Visual References (@image1 – @image4)</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
                             <button
                               type="button"
-                              onClick={() => remixImageInputRef.current?.click()}
+                              onClick={() => {
+                                const hasSubject = Boolean(motionSubjectPreview || motionSubjectImage);
+                                if (!hasSubject) {
+                                  setGalleryPickerSlot({ type: 'remix_image', slotIdx: 0 });
+                                } else {
+                                  const emptyIdx = seedanceImages.slice(0, 3).findIndex(i => !i);
+                                  setGalleryPickerSlot({ type: 'remix_image', slotIdx: emptyIdx !== -1 ? emptyIdx + 1 : 1 });
+                                }
+                              }}
                               className="text-[7.5px] font-bold text-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                              title="Pick Reference Image from Studio Gallery"
                             >
-                              + Upload
+                              + Gal
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => remixImageInputRef.current?.click()}
+                            className="text-[7.5px] font-bold text-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                          >
+                            + Upload
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="text-[8px] text-zinc-400 leading-tight">
+                        Attach reference images to guide replacements, character locking, or visual aesthetics.
+                      </div>
+
+                      {/* 4 Dedicated Slots */}
+                      <div className="grid grid-cols-4 gap-1.5 pt-1">
+                        {/* Slot 0: @image1 */}
+                        {(motionSubjectPreview || motionSubjectImage) ? (
+                          <div className="relative group aspect-square rounded-xl overflow-hidden border border-cyan-400/60 bg-black shadow-md">
+                            <img src={motionSubjectPreview || motionSubjectImage} alt="Image 1" className="w-full h-full object-cover" />
+                            <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-cyan-400/40 text-[8px] font-mono font-bold text-cyan-300">
+                              @image1
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleClearMotionSubject}
+                              className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity cursor-pointer"
+                            >
+                              <Trash2 size={8} />
                             </button>
                           </div>
-                        </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGalleryPickerSlot({ type: 'remix_image', slotIdx: 0 });
+                            }}
+                            className="aspect-square rounded-xl border border-dashed border-white/15 hover:border-cyan-400/60 bg-white/[0.02] hover:bg-cyan-500/[0.04] flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-cyan-300 transition-all cursor-pointer"
+                          >
+                            <Plus size={12} />
+                            <span className="text-[7.5px] font-mono font-bold">@image1</span>
+                          </button>
+                        )}
 
-                        <div className="text-[8px] text-zinc-400 leading-tight">
-                          Attach reference images to guide replacements, character locking, or visual aesthetics.
-                        </div>
-
-                        {/* 4 Dedicated Slots */}
-                        <div className="grid grid-cols-4 gap-1.5 pt-1">
-                          {/* Slot 0: @image1 */}
-                          {(motionSubjectPreview || motionSubjectImage) ? (
-                            <div className="relative group aspect-square rounded-xl overflow-hidden border border-cyan-400/60 bg-black shadow-md">
-                              <img src={motionSubjectPreview || motionSubjectImage} alt="Image 1" className="w-full h-full object-cover" />
+                        {/* Slots 1-3: @image2 - @image4 */}
+                        {[0, 1, 2].map((slotIdx) => {
+                          const img = seedanceImages[slotIdx];
+                          const tag = `@image${slotIdx + 2}`;
+                          return img ? (
+                            <div key={slotIdx} className="relative group aspect-square rounded-xl overflow-hidden border border-cyan-400/50 bg-black shadow-md">
+                              <img src={img} alt={`Image ${slotIdx + 2}`} className="w-full h-full object-cover" />
                               <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-cyan-400/40 text-[8px] font-mono font-bold text-cyan-300">
-                                @image1
+                                {tag}
                               </div>
                               <button
                                 type="button"
-                                onClick={handleClearMotionSubject}
+                                onClick={() => handleClearSeedanceImage(slotIdx)}
                                 className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity cursor-pointer"
                               >
                                 <Trash2 size={8} />
@@ -4108,165 +4059,48 @@ export const SidePanel = React.memo(({
                             </div>
                           ) : (
                             <button
+                              key={slotIdx}
                               type="button"
                               onClick={() => {
-                                setGalleryPickerSlot({ type: 'remix_image', slotIdx: 0 });
+                                setGalleryPickerSlot({ type: 'remix_image', slotIdx: slotIdx + 1 });
                               }}
                               className="aspect-square rounded-xl border border-dashed border-white/15 hover:border-cyan-400/60 bg-white/[0.02] hover:bg-cyan-500/[0.04] flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-cyan-300 transition-all cursor-pointer"
                             >
                               <Plus size={12} />
-                              <span className="text-[7.5px] font-mono font-bold">@image1</span>
+                              <span className="text-[7.5px] font-mono font-bold">{tag}</span>
                             </button>
-                          )}
-
-                          {/* Slots 1-3: @image2 - @image4 */}
-                          {[0, 1, 2].map((slotIdx) => {
-                            const img = seedanceImages[slotIdx];
-                            const tag = `@image${slotIdx + 2}`;
-                            return img ? (
-                              <div key={slotIdx} className="relative group aspect-square rounded-xl overflow-hidden border border-cyan-400/50 bg-black shadow-md">
-                                <img src={img} alt={`Image ${slotIdx + 2}`} className="w-full h-full object-cover" />
-                                <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-cyan-400/40 text-[8px] font-mono font-bold text-cyan-300">
-                                  {tag}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleClearSeedanceImage(slotIdx)}
-                                  className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity cursor-pointer"
-                                >
-                                  <Trash2 size={8} />
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                key={slotIdx}
-                                type="button"
-                                onClick={() => {
-                                  setGalleryPickerSlot({ type: 'remix_image', slotIdx: slotIdx + 1 });
-                                }}
-                                className="aspect-square rounded-xl border border-dashed border-white/15 hover:border-cyan-400/60 bg-white/[0.02] hover:bg-cyan-500/[0.04] flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-cyan-300 transition-all cursor-pointer"
-                              >
-                                <Plus size={12} />
-                                <span className="text-[7.5px] font-mono font-bold">{tag}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                          );
+                        })}
                       </div>
-                    ) : (
-                      /* ── JITSU: 1 to 8 Character / Style References ── */
-                      <div className="space-y-1.5 p-2.5 rounded-2xl bg-black/40 border border-white/[0.08] backdrop-blur-xl">
-                        <div className="flex items-center justify-between pb-1 border-b border-white/5">
-                          <span className="text-[9.5px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
-                            <Sparkles className="w-3 h-3 text-purple-400" />
-                            <span>2. Character / Style References (1-8)</span>
-                          </span>
-                          <div className="flex items-center gap-1">
-                            {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const hasSubject = Boolean(motionSubjectPreview || motionSubjectImage);
-                                  if (!hasSubject) {
-                                    setGalleryPickerSlot({ type: 'remix_image', slotIdx: 0 });
-                                  } else {
-                                    const emptyIdx = seedanceImages.findIndex(i => !i);
-                                    setGalleryPickerSlot({ type: 'remix_image', slotIdx: emptyIdx !== -1 ? emptyIdx + 1 : 1 });
-                                  }
-                                }}
-                                className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
-                                title="Pick Reference Image from Studio Gallery"
-                              >
-                                + Gal
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => remixImageInputRef.current?.click()}
-                              className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
-                            >
-                              + Upload
-                            </button>
-                          </div>
-                        </div>
+                    </div>
 
-                        {/* Display Selected Subject Image & Seedance Image Slots */}
-                        <div className="grid grid-cols-4 gap-1.5 pt-1">
-                          {(motionSubjectPreview || motionSubjectImage) && (
-                            <div className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/60 bg-black shadow-md">
-                              <img src={motionSubjectPreview || motionSubjectImage} alt="Image 1" className="w-full h-full object-cover" />
-                              <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-purple-400/40 text-[8px] font-mono font-bold text-purple-300">
-                                @image1
-                              </div>
-                              <button
-                                type="button"
-                                onClick={handleClearMotionSubject}
-                                className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity"
-                              >
-                                <Trash2 size={8} />
-                              </button>
-                            </div>
-                          )}
-                          {seedanceImages.slice(0, 7).map((img, idx) => img ? (
-                            <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/50 bg-black shadow-md">
-                              <img src={img} alt={`Image ${idx + 2}`} className="w-full h-full object-cover" />
-                              <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-purple-400/40 text-[8px] font-mono font-bold text-purple-300">
-                                {`@image${idx + 2}`}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleClearSeedanceImage(idx)}
-                                className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity"
-                              >
-                                <Trash2 size={8} />
-                              </button>
-                            </div>
-                          ) : null)}
-
-                          {/* Add Button */}
+                    {/* Prompt Studio & Edit Idea Chips */}
+                    <div className="space-y-2">
+                      {renderPromptStudio("Describe video edits! E.g.: 'Replace the jacket on character with @image1, keep scene motion identical' or 'Remove the sunglasses and change weather to rain'")}
+                      {/* Quick Edit Idea Chips */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-500">Edit Ideas:</span>
+                        {[
+                          { label: "Replace with @image1", text: "Replace the primary subject with @image1, preserving exact camera motion, lighting, and physics." },
+                          { label: "Style from @image1", text: "Transform the visual style, color grading, and cinematic aesthetic of the scene to match @image1." },
+                          { label: "Remove Object", text: "Seamlessly remove the selected object from the video and inpaint the background naturally." },
+                          { label: "Cyberpunk Night", text: "Transform the scene setting into a cyberpunk night city with glowing neon lights and reflective wet streets." },
+                          { label: "Rainy Weather", text: "Change the environment weather to cinematic heavy rainfall with puddles and overcast mood." }
+                        ].map((chip) => (
                           <button
+                            key={chip.label}
                             type="button"
-                            onClick={() => remixImageInputRef.current?.click()}
-                            className="aspect-square rounded-xl border border-dashed border-white/15 hover:border-purple-400/60 bg-white/[0.02] hover:bg-purple-500/[0.04] flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-purple-300 transition-all cursor-pointer"
+                            onClick={() => {
+                              setPromptText(chip.text);
+                              if (setOmniPromptText) setOmniPromptText(chip.text);
+                            }}
+                            className="px-2 py-0.5 rounded-lg text-[8.5px] font-medium bg-white/[0.03] hover:bg-[#c8f135]/15 text-zinc-400 hover:text-[#c8f135] border border-white/10 hover:border-[#c8f135]/30 transition-all cursor-pointer"
                           >
-                            <Plus size={14} />
-                            <span className="text-[7.5px] font-bold">Add Ref</span>
+                            {chip.label}
                           </button>
-                        </div>
+                        ))}
                       </div>
-                    )}
-
-                    {/* Prompt Studio */}
-                    {remixEngine === 'omni' ? (
-                      <div className="space-y-2">
-                        {renderPromptStudio("Describe video edits! E.g.: 'Replace the jacket on character with @image1, keep scene motion identical' or 'Remove the sunglasses and change weather to rain'")}
-                        {/* Quick Edit Idea Chips */}
-                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                          <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-500">Edit Ideas:</span>
-                          {[
-                            { label: "Replace with @image1", text: "Replace the primary subject with @image1, preserving exact camera motion, lighting, and physics." },
-                            { label: "Style from @image1", text: "Transform the visual style, color grading, and cinematic aesthetic of the scene to match @image1." },
-                            { label: "Remove Object", text: "Seamlessly remove the selected object from the video and inpaint the background naturally." },
-                            { label: "Cyberpunk Night", text: "Transform the scene setting into a cyberpunk night city with glowing neon lights and reflective wet streets." },
-                            { label: "Rainy Weather", text: "Change the environment weather to cinematic heavy rainfall with puddles and overcast mood." }
-                          ].map((chip) => (
-                            <button
-                              key={chip.label}
-                              type="button"
-                              onClick={() => {
-                                setPromptText(chip.text);
-                                if (setOmniPromptText) setOmniPromptText(chip.text);
-                              }}
-                              className="px-2 py-0.5 rounded-lg text-[8.5px] font-medium bg-white/[0.03] hover:bg-[#c8f135]/15 text-zinc-400 hover:text-[#c8f135] border border-white/10 hover:border-[#c8f135]/30 transition-all cursor-pointer"
-                            >
-                              {chip.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      renderPromptStudio("Describe character appearance, lighting, style, scene ambiance for Genjutsu Motion Transfer...")
-                    )}
+                    </div>
                   </div>
                 ) : panelTab === 'motion' ? (
                   /* ── MOTION CONTROL FLOW (DUAL ENGINE: MOTION EASY VS KLING MOTION) ── */
@@ -5196,22 +5030,10 @@ export const SidePanel = React.memo(({
                     </div>
                   </div>
                 ) : panelTab === 'remix' ? (
-                  /* Dedicated Parameters for Remix / Edit (Engine + Resolution + Aspect Ratio + SFX) */
+                  /* Dedicated Parameters for Omni 1.1 Video Edit (Resolution + Aspect Ratio + Duration + SFX) */
                   <div className="space-y-3">
-                    {/* Engine + Resolution */}
+                    {/* Resolution + Aspect Ratio */}
                     <div className="grid grid-cols-2 gap-2">
-                      <GlassSelect
-                        label="Engine"
-                        icon={Sparkles}
-                        value={remixEngine}
-                        onChange={setRemixEngine}
-                        options={[
-                          { value: 'jitsu', label: 'Jitsu (Default)' },
-                          { value: 'omni', label: 'Omni 1.1' }
-                        ]}
-                        align="up"
-                      />
-
                       <GlassSelect
                         label="Resolution"
                         value={resolution === '4k' ? '1080p' : (resolution || '720p')}
@@ -5219,10 +5041,7 @@ export const SidePanel = React.memo(({
                         options={resolutionOptions}
                         align="up"
                       />
-                    </div>
 
-                    {/* Aspect Ratio + Duration Synced from Video */}
-                    <div className="grid grid-cols-2 gap-2">
                       <GlassSelect
                         label="Aspect Ratio"
                         value={aspectRatio}
@@ -5230,57 +5049,54 @@ export const SidePanel = React.memo(({
                         options={aspectOptions}
                         align="up"
                       />
+                    </div>
 
-                      <div className="flex flex-col justify-center px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08]">
-                        <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-400">Duration</span>
-                        <span className="text-[9.5px] font-mono text-[#c8f135] font-semibold mt-0.5 truncate">
-                          {remixEngine === 'omni'
-                            ? (motionRefVideoDuration ? `${motionRefVideoDuration}s (from video)` : '4s–10s (Auto-synced)')
-                            : 'Synced to video'}
-                        </span>
-                      </div>
+                    {/* Duration Synced from Video */}
+                    <div className="flex flex-col justify-center px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                      <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-400">Duration</span>
+                      <span className="text-[9.5px] font-mono text-[#c8f135] font-semibold mt-0.5 truncate">
+                        {motionRefVideoDuration ? `${motionRefVideoDuration}s (from video)` : '4s–10s (Auto-synced)'}
+                      </span>
                     </div>
 
                     {/* Sound Effects Toggle (Omni 1.1) */}
-                    {remixEngine === 'omni' && (
-                      <div className="space-y-1.5 w-full">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[9.5px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1">
-                            <Volume2 className="w-3 h-3 text-zinc-400" />
-                            <span>Sound Effects (SFX)</span>
-                          </label>
-                          <span className="text-[8.5px] font-mono text-zinc-500">Native Audio</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setGenerateAudio(!generateAudio)}
-                          className={cn(
-                            "w-full h-[38px] px-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer select-none",
-                            generateAudio
-                              ? "bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-extrabold"
-                              : "bg-black/40 border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
-                          )}
-                          title={generateAudio ? "Sound Effects ON (Realistic audio generated with video edit)" : "Audio Muted"}
-                        >
-                          <div className="flex items-center gap-1.5 truncate">
-                            {generateAudio ? (
-                              <Volume2 size={13} className="text-[#c8f135] shrink-0" />
-                            ) : (
-                              <VolumeX size={13} className="text-zinc-500 shrink-0" />
-                            )}
-                            <span className="text-[10.5px] font-bold truncate">{generateAudio ? 'SFX ON' : 'Muted'}</span>
-                          </div>
-                          <span className={cn(
-                            "text-[8.5px] font-mono font-bold px-1 py-0.2 rounded border shrink-0",
-                            generateAudio
-                              ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/30"
-                              : "bg-white/[0.04] text-zinc-500 border-white/[0.06]"
-                          )}>
-                            {generateAudio ? 'SFX ON' : 'OFF'}
-                          </span>
-                        </button>
+                    <div className="space-y-1.5 w-full">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[9.5px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1">
+                          <Volume2 className="w-3 h-3 text-zinc-400" />
+                          <span>Sound Effects (SFX)</span>
+                        </label>
+                        <span className="text-[8.5px] font-mono text-zinc-500">Native Audio</span>
                       </div>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => setGenerateAudio(!generateAudio)}
+                        className={cn(
+                          "w-full h-[38px] px-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer select-none",
+                          generateAudio
+                            ? "bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-extrabold"
+                            : "bg-black/40 border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
+                        )}
+                        title={generateAudio ? "Sound Effects ON (Realistic audio generated with video edit)" : "Audio Muted"}
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          {generateAudio ? (
+                            <Volume2 size={13} className="text-[#c8f135] shrink-0" />
+                          ) : (
+                            <VolumeX size={13} className="text-zinc-500 shrink-0" />
+                          )}
+                          <span className="text-[10.5px] font-bold truncate">{generateAudio ? 'SFX ON' : 'Muted'}</span>
+                        </div>
+                        <span className={cn(
+                          "text-[8.5px] font-mono font-bold px-1 py-0.2 rounded border shrink-0",
+                          generateAudio
+                            ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/30"
+                            : "bg-white/[0.04] text-zinc-500 border-white/[0.06]"
+                        )}>
+                          {generateAudio ? 'SFX ON' : 'OFF'}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 ) : panelTab === 'motion' ? (
                   /* Motion Control Easy Parameters: Quality Mode, Aspect Ratio, Fixed 10s Duration, SFX */
@@ -5431,7 +5247,7 @@ export const SidePanel = React.memo(({
             <div className="absolute bottom-0 left-0 right-0 py-2 sm:py-3 px-3 sm:px-4 bg-black border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2.5 z-20 shadow-[0_-15px_35px_rgba(0,0,0,1)] pb-safe">
               <div className="flex items-center justify-between sm:flex-col sm:items-start min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className={cn("w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full animate-pulse shrink-0", (panelTab === 'seedance' || panelTab === 'seedance-2.5' || panelTab === 'remix') ? "bg-amber-400" : "bg-[#c8f135]")} />
+                  <span className={cn("w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full animate-pulse shrink-0", (panelTab === 'seedance' || panelTab === 'seedance-2.5') ? "bg-amber-400" : "bg-[#c8f135]")} />
                   <span className="text-[9px] sm:text-[9.5px] font-black text-zinc-300 uppercase tracking-widest truncate">
                     {panelTab === 'transition' && transitionSubTab === 'omni-keyframe'
                       ? 'Omni Keyframe Ready'
@@ -5442,7 +5258,7 @@ export const SidePanel = React.memo(({
                       : panelTab === 'seedance'
                       ? `${activeEngine === 'seedace' ? 'Seedance 2.0 Pro' : activeEngine === 'seedance-mini' ? 'Seedance Mini' : 'Seedance Fast'} Ready`
                       : panelTab === 'remix'
-                      ? (remixEngine === 'omni' ? 'Omni 1.1 Video Edit Ready' : 'Genjutsu Motion Transfer Ready')
+                      ? 'Omni 1.1 Video Edit Ready'
                       : panelTab === 'omni'
                       ? 'Omni Ready'
                       : panelTab === 'omni-multi'
@@ -5481,10 +5297,7 @@ export const SidePanel = React.memo(({
                 disabled={
                   isCooldown || isBusy || (
                     panelTab === 'remix'
-                      ? (remixEngine === 'omni'
-                          ? (!motionRefVideoPreview && !motionRefVideo && !videoPreview) || (!promptText && !omniPromptText && !localPrompt)
-                          : (!motionRefVideoPreview && !motionRefVideo && !videoPreview) || (!motionSubjectPreview && !motionSubjectImage && seedanceImages.every(i => !i))
-                        )
+                      ? (!motionRefVideoPreview && !motionRefVideo && !videoPreview) || (!promptText && !omniPromptText && !localPrompt)
                       : panelTab === 'motion'
                       ? (!motionSubjectPreview && !motionSubjectImage) || (!motionRefVideoPreview && !motionRefVideo)
                       : !canGenerate
@@ -5494,15 +5307,12 @@ export const SidePanel = React.memo(({
                   "w-full sm:w-auto h-10 sm:h-11 px-4 sm:px-6 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(200,241,53,0.3)] border shrink-0 active:scale-95 select-none",
                   (!isCooldown && (
                     panelTab === 'remix'
-                      ? (remixEngine === 'omni'
-                          ? (!!(motionRefVideoPreview || motionRefVideo || videoPreview) && !!(promptText || omniPromptText || localPrompt))
-                          : ((motionRefVideoPreview || motionRefVideo || videoPreview) && (motionSubjectPreview || motionSubjectImage || seedanceImages.some(Boolean)))
-                        )
+                      ? (!!(motionRefVideoPreview || motionRefVideo || videoPreview) && !!(promptText || omniPromptText || localPrompt))
                       : panelTab === 'motion'
                       ? (!!(motionSubjectPreview || motionSubjectImage) && !!(motionRefVideoPreview || motionRefVideo))
                       : canGenerate && !isBusy
                   ))
-                    ? (panelTab === 'seedance' || panelTab === 'seedance-2.5' || panelTab === 'remix')
+                    ? (panelTab === 'seedance' || panelTab === 'seedance-2.5')
                       ? "bg-gradient-to-r from-amber-400 to-[#c8f135] hover:brightness-110 text-black border-amber-400/60 hover:shadow-[0_0_40px_rgba(251,191,36,0.6)] cursor-pointer"
                       : "bg-[#c8f135] hover:bg-[#d8ff43] text-black border-[#d4ff00]/60 hover:shadow-[0_0_40px_rgba(200,241,53,0.6)] cursor-pointer"
                     : "bg-white/5 text-zinc-500 border-white/5 cursor-not-allowed shadow-none"
@@ -5529,7 +5339,7 @@ export const SidePanel = React.memo(({
                     <span>
                       {panelTab === 'omni-multi' && extensionSourceVideo
                         ? `Extend Video (+${extensionDuration || 4}s)`
-                        : panelTab === 'remix' && remixEngine === 'omni'
+                        : panelTab === 'remix'
                         ? '⚡ Edit Video (Omni 1.1)'
                         : panelTab === 'motion'
                         ? 'Transfer Motion (10s)'

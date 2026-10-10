@@ -155,7 +155,7 @@ export function calculateEngineCredits(engineId, options = {}) {
         return Math.ceil(costPerSec * dur);
     }
 
-    // 4. Remix Studio (Higgsfield Genjutsu Motion Transfer / Object Swap / AI Influencer)
+    // 4. Video Edit Studio (Omni 1.1 Video Edit)
     if (engLower.includes('ai-influencer') || engLower.includes('influencer')) {
         return SHORTS_COST.ai_influencer || 6;
     }
@@ -163,13 +163,8 @@ export function calculateEngineCredits(engineId, options = {}) {
         if (remixEngine === 'ai-influencer' || options.mode === 'ai-influencer') {
             return SHORTS_COST.ai_influencer || 6;
         }
-        if (remixEngine === 'omni') {
-            const remixDur = Math.max(4, Math.min(10, Math.round(Number(motionRefVideoDuration) || 5)));
-            return remixDur * 5;
-        }
-        const remixDur = Math.max(1, Math.round(Number(motionRefVideoDuration) || dur || 5));
-        const costPerSec = resLower === '1080p' ? 90 : (resLower === '480p' ? 36 : 63);
-        return costPerSec * remixDur;
+        const remixDur = Math.max(4, Math.min(10, Math.round(Number(motionRefVideoDuration) || dur || 5)));
+        return remixDur * 5;
     }
 
     // 5. Gemini Omni Flash (omni-flash, gemini-omni-1.1-flash, omni)
