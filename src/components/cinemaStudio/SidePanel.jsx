@@ -3889,22 +3889,6 @@ export const SidePanel = React.memo(({
                 ) : panelTab === 'remix' ? (
                   /* ── OMNI 1.1 VIDEO EDIT FLOW ── */
                   <div className="space-y-3">
-                    {/* Omni 1.1 Video Edit Header */}
-                    <div className="p-2.5 rounded-2xl bg-gradient-to-r from-[#c8f135]/15 via-black/60 to-black/40 border border-[#c8f135]/30 flex items-center justify-between shadow-inner">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-lg bg-[#c8f135]/20 border border-[#c8f135]/40 flex items-center justify-center shrink-0">
-                          <Sparkles size={13} className="text-[#c8f135]" />
-                        </div>
-                        <div>
-                          <div className="text-[11px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
-                            <span>Omni 1.1 Video Edit</span>
-                            <span className="px-1.5 py-0.2 rounded-full bg-[#c8f135]/20 text-[#c8f135] text-[8px] font-mono font-bold border border-[#c8f135]/30">EDIT</span>
-                          </div>
-                          <div className="text-[8.5px] text-zinc-400">Transform, replace elements, characters, or styles in existing videos</div>
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Source Video Card */}
                     <div className="space-y-1.5 p-2.5 rounded-2xl bg-black/40 border border-white/[0.08] backdrop-blur-xl">
                       <div className="flex items-center justify-between pb-1 border-b border-white/5">
@@ -3956,14 +3940,14 @@ export const SidePanel = React.memo(({
                         <button
                           type="button"
                           onClick={() => motionVideoInputRef.current?.click()}
-                          className="aspect-video w-full rounded-xl border border-dashed border-white/15 bg-white/[0.01] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/[0.04] hover:text-[#c8f135] transition-all flex flex-col items-center justify-center gap-1 text-zinc-400 cursor-pointer p-2"
+                          className="aspect-video w-full rounded-xl border border-dashed border-white/15 bg-white/[0.01] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/[0.04] hover:text-[#c8f135] transition-all flex flex-col items-center justify-center gap-1 text-zinc-400 cursor-pointer p-2 text-center"
                         >
                           <Upload size={16} className="text-[#c8f135]/80" />
                           <span className="text-[9px] font-bold uppercase tracking-wider">
                             Upload Video to Edit (4s-10s)
                           </span>
-                          <span className="text-[7.5px] text-zinc-500 font-mono">
-                            MP4, MOV (Edit characters, objects, lighting or scene)
+                          <span className="text-[7.5px] text-zinc-500 font-mono max-w-[90%] leading-relaxed">
+                            MP4, MOV • Transform, replace elements, characters, or styles in any video
                           </span>
                         </button>
                       )}
