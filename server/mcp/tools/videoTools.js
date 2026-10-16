@@ -276,6 +276,7 @@ async function launchBackgroundVideoWorker(jobPayload, generationId, cost, user,
       // 1. Omni Flash 1.1 path (Google Gemini Omni Flash 1.1)
       if (jobPayload.provider === 'omni' || jobPayload.engine.toLowerCase().includes('omni')) {
         const port = process.env.PORT || 3002;
+        const appBaseUrl = (process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
         console.log(`[MCP Video Worker] Generating video with Google Gemini Omni Flash 1.1 on port ${port}...`);
 
         const omniPayload = {
