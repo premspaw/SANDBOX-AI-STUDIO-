@@ -1184,7 +1184,7 @@ export default function StudioPage() {
     const engineLabel = engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : engine.includes('2.5') ? 'Seedance 2.5 Pro' : 'Seedance 2.0 Pro';
     const targetProj = (activeProjectId === 'all' || !activeProjectId) ? 'default' : activeProjectId;
 
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 240; i++) {
       await new Promise(r => setTimeout(r, 5000));
       try {
         const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId || ''}&aspectRatio=${encodeURIComponent(activeRatio)}&engine=${encodeURIComponent(engine)}&projectId=${encodeURIComponent(targetProj)}&prompt=${encodeURIComponent(activePrompt || '')}`));
@@ -1256,12 +1256,13 @@ export default function StudioPage() {
           throw new Error(json.error || json.message || `${engineLabel} generation failed.`);
         }
       } catch (pollErr) {
-        if (pollErr.message && !pollErr.message.includes('fetch')) {
+        if (pollErr.message && !pollErr.message.includes('fetch') && (pollErr.message.includes('failed') || pollErr.message.includes('error'))) {
           throw pollErr;
         }
       }
     }
-    throw new Error(`${engineLabel} generation timed out.`);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast(`${engineLabel} is rendering on cloud GPU. The server is tracking it and will save to your assets automatically.`, 'info');
   };
 
   // Omni Flash Video Extension Handler (+4s = 20⚡, +6s = 30⚡, +8s = 40⚡, +10s = 50⚡)
@@ -1634,6 +1635,14 @@ export default function StudioPage() {
 
   // Handle Generation
   const handleGenerate = async (customPrompt, customEngine, customOptions = {}) => {
+    if (!userId || userId === 'anon' || userId === 'local_user') {
+      const showModal = useAppStore.getState().setShowClaimCreditsModal;
+      if (showModal) {
+        showModal(true);
+        return;
+      }
+    }
+
     const now = Date.now();
     if (now - lastGenerateTimestampRef.current < 4000) {
       console.warn("[Studio] Duplicate generate call ignored (debounce window active)");

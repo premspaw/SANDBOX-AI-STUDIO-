@@ -2444,7 +2444,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     setStatus('polling');
     const engineLabel = (engine.includes('2.5') || engine.includes('2-5')) ? 'Seedance 2.5' : engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : 'Seedance 2.0';
 
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 300; i++) {
       await new Promise(r => setTimeout(r, 6000));
       const elapsed = (i + 1) * 6;
       setPollMsg(`Rendering video... (${elapsed}s)`);
@@ -2538,16 +2538,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         continue;
       }
     }
-    if (tempId) {
-      setGallery(prev => prev.filter(item => item.id !== tempId));
-    }
-    setStatus('error');
-    const timeoutMsg = `${engineLabel} compilation timed out.`;
-    setErrorMsg(timeoutMsg);
+    // After 30 minutes, don't delete or fail - the autonomous server worker will persist it
+    setStatus('idle');
     setPollMsg('');
     const showToast = useAppStore.getState().showToast;
-    if (showToast) showToast(timeoutMsg, "error");
-    await triggerRefund('cinematic_video_generation');
+    if (showToast) showToast(`${engineLabel} is rendering on cloud GPU. It will automatically populate in your gallery upon completion.`, "info");
   };
 
   const pollKlingTask = async (taskId, activePrompt, activeRatio, engine, tempId = null) => {
@@ -2945,6 +2940,14 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   /* ─── GENERATE ───────────────────────────────────────────── */
   const handleGenerate = async (overridePrompt, overrideEngine, overrideOptions = {}) => {
+    if (!userProfile?.id || userProfile.id === 'anon' || userProfile.id === 'local_user') {
+      const showModal = useAppStore.getState().setShowClaimCreditsModal;
+      if (showModal) {
+        showModal(true);
+        return;
+      }
+    }
+
     if (isSubmittingRef.current) return;
     if (isMaxConcurrentReached) {
       useAppStore.getState().showToast?.(`Maximum concurrent generation limit reached (${maxConcurrent} jobs). Please wait for an active job to complete.`, 'warning');
@@ -5351,19 +5354,45 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     badge={`${getRequiredCredits(activeEngine)} ⚡`}
                     accentColor="fuchsia"
                   >
-                    {(close) => (
+                    {(close) => {
+                      const isFreeTierUser = (!userProfile?.tier || userProfile.tier === 'FREE' || userProfile.tier === 'free') && userProfile?.role !== 'admin' && userProfile?.email !== 'premspaw@gmail.com';
+                      const gptUsed = userProfile?.brand_voice?.free_gpt_images_used || 0;
+                      return (
                       <div className="space-y-0.5">
-                        {(activeTab === 'image' ? IMAGE_ENGINES : ENGINES).map((eng, i) => (
+                        {(activeTab === 'image' ? IMAGE_ENGINES : ENGINES).map((eng, i) => {
+                          const isGptModel = activeTab === 'image' && (eng.id.startsWith('gpt-image') || eng.id.includes('sunburst') || eng.id.includes('flare'));
+                          const isGptLocked = isFreeTierUser && isGptModel && gptUsed >= 2;
+                          const gptTrialsRemaining = Math.max(0, 2 - gptUsed);
+
+                          return (
                           <motion.button
                             key={eng.id}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: i * 0.03, type: 'spring', stiffness: 400, damping: 25 }}
-                            onClick={() => { setActiveEngine(eng.id); close(); }}
+                            onClick={() => {
+                              if (isGptLocked) {
+                                const showToast = useAppStore.getState().showToast;
+                                if (showToast) {
+                                  showToast("You've used your 2 free GPT image trials. Please select Nano Banana or upgrade to continue using GPT.", "warning", {
+                                    label: "⚡ Upgrade",
+                                    onClick: () => {
+                                      const setTab = useAppStore.getState().setActiveTab;
+                                      if (setTab) setTab('pricing');
+                                    }
+                                  });
+                                }
+                                return;
+                              }
+                              setActiveEngine(eng.id);
+                              close();
+                            }}
                             className={cn(
                               "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all group/eng",
                               activeEngine === eng.id
                                 ? "bg-fuchsia-500/10 border border-fuchsia-500/25"
+                                : isGptLocked
+                                ? "border border-transparent opacity-50 hover:bg-white/[0.02]"
                                 : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
                             )}
                           >
@@ -5376,14 +5405,28 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                               {eng.icon}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className={cn(
-                                "text-[10px] font-black uppercase tracking-wider truncate",
-                                activeEngine === eng.id ? "text-fuchsia-400" : "text-white/70"
-                              )}>
-                                {eng.label}
-                              </p>
+                              <div className="flex items-center gap-1.5">
+                                <p className={cn(
+                                  "text-[10px] font-black uppercase tracking-wider truncate",
+                                  activeEngine === eng.id ? "text-fuchsia-400" : "text-white/70"
+                                )}>
+                                  {eng.label}
+                                </p>
+                                {isFreeTierUser && isGptModel && (
+                                  <span className={cn(
+                                    "text-[6.5px] font-black uppercase px-1 py-0.2 rounded tracking-tight",
+                                    isGptLocked
+                                      ? "bg-amber-500/15 border border-amber-500/30 text-amber-400"
+                                      : "bg-fuchsia-500/15 border border-fuchsia-500/30 text-fuchsia-300"
+                                  )}>
+                                    {isGptLocked ? "Trial Used (2/2)" : `${gptTrialsRemaining}/2 Trial`}
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[7.5px] text-gray-600 font-medium truncate">
-                                {eng.id === 'veo-3.1-generate-preview'
+                                {isGptLocked
+                                  ? "2/2 free trial uses completed — Upgrade plan to unlock"
+                                  : eng.id === 'veo-3.1-generate-preview'
                                   ? `Google Standard — ${resolution === '4k' ? (generateAudio ? '80⚡/s' : '54⚡/s') : (generateAudio ? '54⚡/s' : '30⚡/s')}`
                                   : eng.id === 'veo-3.1-fast-generate-preview'
                                   ? `Google Fast — ${resolution === '4k' ? (generateAudio ? '38⚡/s' : '31⚡/s') : resolution === '1080p' ? (generateAudio ? '15⚡/s' : '12⚡/s') : (generateAudio ? '12⚡/s' : '10⚡/s')}`
@@ -5418,9 +5461,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                               )}
                             </div>
                           </motion.button>
-                        ))}
+                        );
+                        })}
                       </div>
-                    )}
+                      );
+                    }}
                   </UpwardDropdown>
 
                   {/* ASPECT RATIO DROPDOWN */}

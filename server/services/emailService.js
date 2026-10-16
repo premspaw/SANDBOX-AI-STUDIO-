@@ -111,7 +111,7 @@ async function sendEmail({ to, subject, html, text }) {
 /**
  * 1. Welcome Email (Triggered upon new user signup / first login)
  */
-export async function sendWelcomeEmail({ email, name, shortsBalance = 50 }) {
+export async function sendWelcomeEmail({ email, name, shortsBalance = 60 }) {
   const displayName = name ? name.split(' ')[0] : 'Creator';
   const subject = `Welcome to ZeroLens AI Studio 🎬 (${shortsBalance} Free Shorts Credited)`;
 
@@ -181,7 +181,7 @@ export async function sendWelcomeEmail({ email, name, shortsBalance = 50 }) {
                       ${shortsBalance} <span style="font-size: 18px; color: #c8f135; font-weight: 700;">Shorts</span>
                     </div>
                     <span style="font-size: 11px; color: #8e92a4; display: block; margin-top: 8px; font-family: monospace;">
-                      100% Unlocked · Instant Access to All AI Engines
+                      50⚡ for 1 full Video + 10⚡ for Images · Instant Access
                     </span>
                   </td>
                 </tr>

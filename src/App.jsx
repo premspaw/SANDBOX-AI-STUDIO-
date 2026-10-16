@@ -4,6 +4,7 @@ import { Layout } from './components/pages/Layout';
 import { supabase } from './lib/supabase';
 import { initFaviconAnimation } from './utils/favicon';
 import { Toast } from './components/common/Toast';
+import ClaimFreeCreditsModal from './components/common/ClaimFreeCreditsModal';
 import { useAppStore } from './store';
 
 // Helper for lazy imports that automatically retries/reloads on deployment chunk mismatches
@@ -499,6 +500,7 @@ function App() {
         </div>
       )}
 
+      <ClaimFreeCreditsModal />
       <Toast />
     </Layout>
   )

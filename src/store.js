@@ -54,8 +54,10 @@ export const useAppStore = create((set, get) => ({
     imageAnalysis: null,
     detailMatrix: null,
     activeCharacter: null,
-    userShorts: 50,
+    userShorts: 60,
     userProfile: null,
+    showClaimCreditsModal: false,
+    setShowClaimCreditsModal: (show) => set({ showClaimCreditsModal: !!show }),
 
     // Remix Template Pre-population Data
     remixInitialData: null,
@@ -997,7 +999,7 @@ export const useAppStore = create((set, get) => ({
             const now = Date.now();
             if (_profileCache[userId] && (now - (_profileCacheAt[userId] || 0)) < PROFILE_CACHE_TTL) {
                 const cached = _profileCache[userId];
-                let totalShorts = (cached.shorts_balance ?? 50) + (cached.brand_voice?.fractional_shorts ?? 0);
+                let totalShorts = (cached.shorts_balance ?? 60) + (cached.brand_voice?.fractional_shorts ?? 0);
                 set({ userProfile: cached, userShorts: totalShorts });
                 return;
             }
@@ -1022,7 +1024,14 @@ export const useAppStore = create((set, get) => ({
                     security_alerts: true,
                     two_factor_enabled: false,
                     tier: 'FREE',
-                    shorts_balance: 50,
+                    shorts_balance: 60,
+                    brand_voice: {
+                        free_tier: true,
+                        free_video_credits: 50,
+                        free_image_credits: 10,
+                        free_gpt_images_used: 0,
+                        max_free_gpt_images: 2
+                    },
                     updated_at: new Date().toISOString(),
                 };
 
@@ -1041,7 +1050,7 @@ export const useAppStore = create((set, get) => ({
                             body: JSON.stringify({
                                 email: authUser.email,
                                 name: payload.full_name,
-                                shortsBalance: 50
+                                shortsBalance: 60
                             })
                         }).catch(e => console.debug('[WELCOME_EMAIL]', e));
                     } catch (ign) {
@@ -1063,7 +1072,7 @@ export const useAppStore = create((set, get) => ({
             if (data) {
                 _profileCache[userId] = data;
                 _profileCacheAt[userId] = Date.now();
-                let totalShorts = (data.shorts_balance ?? 50) + (data.brand_voice?.fractional_shorts ?? 0);
+                let totalShorts = (data.shorts_balance ?? 60) + (data.brand_voice?.fractional_shorts ?? 0);
                 set({ userProfile: data, userShorts: totalShorts });
 
                 if (data.role === 'admin' || data.email === 'premspaw@gmail.com') {

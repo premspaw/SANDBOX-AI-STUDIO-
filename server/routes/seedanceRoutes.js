@@ -43,6 +43,10 @@ function sanitizeServerError(rawMsg) {
         return 'Reference Video Resolution Too Low: Reference videos require a resolution of at least 409,600 pixels (e.g. 640x640, 854x480, or 1280x720). Please upload a higher resolution video.';
     }
 
+    if (lower.includes('free video credits') || lower.includes('free image credits')) {
+        return str;
+    }
+
     if (lower.includes('insufficient') && (lower.includes('shorts') || lower.includes('balance'))) {
         return 'Insufficient Shorts balance. Please top up your Shorts credits to continue.';
     }
@@ -196,6 +200,96 @@ export default function createRouter(deps) {
             throw new Error("Video generation request failed. Please try again or contact support@zerolens.in.");
         }
         return taskId;
+    };
+
+    // Autonomous background task poller: guarantees videos are saved even if client browser is closed or disconnects
+    const activeMonitoredTasks = new Set();
+    const trackSeedanceTaskInBackground = ({ taskId, userId, aspectRatio, folder, prompt, engine, projectId }) => {
+        if (!taskId || activeMonitoredTasks.has(taskId)) return;
+        activeMonitoredTasks.add(taskId);
+
+        const apiKey = process.env.KIE_API_KEY;
+        if (!apiKey) return;
+
+        let attempts = 0;
+        const maxAttempts = 180; // 180 * 8s = 1440s = 24 minutes
+        const interval = setInterval(async () => {
+            attempts++;
+            if (attempts > maxAttempts) {
+                clearInterval(interval);
+                activeMonitoredTasks.delete(taskId);
+                return;
+            }
+
+            try {
+                const resp = await fetch(`https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`, {
+                    headers: { 'Authorization': `Bearer ${apiKey}` },
+                    signal: AbortSignal.timeout(10000)
+                });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (data.code !== 200 || !data.data) return;
+
+                const state = (data.data?.state || data.data?.status || '').toLowerCase();
+                if (state === 'success' || state === 'succeed' || state === 'completed') {
+                    clearInterval(interval);
+                    activeMonitoredTasks.delete(taskId);
+
+                    let finalUrl = data.data?.videos?.[0]?.url || data.data?.resultUrl || data.data?.response?.resultUrls?.[0] || data.data?.url;
+                    if (!finalUrl && data.data?.resultJson) {
+                        try {
+                            const parsed = typeof data.data.resultJson === 'string' ? JSON.parse(data.data.resultJson) : data.data.resultJson;
+                            finalUrl = parsed?.resultUrls?.[0] || parsed?.video_url || (Array.isArray(parsed) ? parsed[0] : null);
+                        } catch (_) {}
+                    }
+
+                    if (finalUrl) {
+                        console.log(`[AUTONOMOUS-TASK-MONITOR] ✅ Task ${taskId} finished on Kie. Saving asset for user: ${userId}...`);
+                        const targetProj = projectId || 'default';
+                        let persistentUrl = finalUrl;
+
+                        if (typeof uploadVideoToSupabase === 'function' && userId) {
+                            try {
+                                const vResp = await fetch(finalUrl, { signal: AbortSignal.timeout(60000) });
+                                if (vResp.ok) {
+                                    const ab = await vResp.arrayBuffer();
+                                    if (ab && ab.byteLength > 0) {
+                                        persistentUrl = await uploadVideoToSupabase(
+                                            Buffer.from(ab),
+                                            userId,
+                                            aspectRatio || '16:9',
+                                            folder || 'generated',
+                                            prompt || '',
+                                            engine || 'Seedance',
+                                            { projectId: targetProj, project_id: targetProj, prompt, engine }
+                                        );
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('[AUTONOMOUS-TASK-MONITOR] Upload notice:', e.message);
+                            }
+                        }
+
+                        if (typeof saveLocalAsset === 'function') {
+                            saveLocalAsset({
+                                name: `seedance_${userId || 'anon'}_${Date.now()}.mp4`,
+                                type: 'video',
+                                url: persistentUrl,
+                                user_id: userId || 'local_user',
+                                project_id: targetProj,
+                                aspect: aspectRatio || '16:9',
+                                metadata: { folder: folder || 'generated', projectId: targetProj, prompt: prompt || '', engine: engine || 'Seedance' },
+                                prompt: prompt || '',
+                                engine: engine || 'Seedance'
+                            });
+                        }
+                    }
+                } else if (state === 'fail' || state === 'failed' || state === 'error') {
+                    clearInterval(interval);
+                    activeMonitoredTasks.delete(taskId);
+                }
+            } catch (_) {}
+        }, 8000);
     };
 
     // POST /api/seedance/generate
@@ -437,6 +531,15 @@ export default function createRouter(deps) {
                         resolvedLastFrame,
                         targetModel: 'bytedance/seedance-2-fast'
                     });
+                    trackSeedanceTaskInBackground({
+                        taskId,
+                        userId: targetUserId,
+                        aspectRatio: aspectRatio || "16:9",
+                        folder: 'generated',
+                        prompt: finalPrompt,
+                        engine: 'seedance-fast',
+                        projectId: req.body.projectId || 'default'
+                    });
                     return res.json({ success: true, requestId: taskId, engine: 'seedace-kie' });
                 }
 
@@ -488,6 +591,15 @@ export default function createRouter(deps) {
                                 targetModel: 'bytedance/seedance-2-fast'
                             });
                             console.log(`[SEEDANCE-FAST-FALLBACK] Fallback task created on Kie.ai successfully: ${taskId}`);
+                            trackSeedanceTaskInBackground({
+                                taskId,
+                                userId: targetUserId,
+                                aspectRatio: aspectRatio || "16:9",
+                                folder: 'generated',
+                                prompt: finalPrompt,
+                                engine: 'seedance-fast',
+                                projectId: req.body.projectId || 'default'
+                            });
                             return res.json({ success: true, requestId: taskId, engine: 'seedace-kie' });
                         } catch (fallbackErr) {
                             console.error(`[SEEDANCE-FAST-FALLBACK] Kie.ai fallback also failed:`, fallbackErr);
@@ -559,6 +671,15 @@ export default function createRouter(deps) {
                                     targetModel: 'bytedance/seedance-2-fast'
                                 });
                                 console.log(`[SEEDANCE-2.0-FALLBACK] Fallback task created on Kie.ai successfully: ${taskId}`);
+                                trackSeedanceTaskInBackground({
+                                    taskId,
+                                    userId: targetUserId,
+                                    aspectRatio: aspectRatio || "16:9",
+                                    folder: 'generated',
+                                    prompt: finalPrompt,
+                                    engine: 'seedace-kie',
+                                    projectId: req.body.projectId || 'default'
+                                });
                                 return res.json({ success: true, requestId: taskId, engine: 'seedace-kie' });
                             } catch (fallbackErr) {
                                 console.error(`[SEEDANCE-2.0-FALLBACK] Kie.ai fallback also failed:`, fallbackErr);
@@ -618,6 +739,15 @@ export default function createRouter(deps) {
                     }
 
                     console.log(`[SEEDANCE-2.0-KIE] Task created successfully: ${taskId}`);
+                    trackSeedanceTaskInBackground({
+                        taskId,
+                        userId: targetUserId,
+                        aspectRatio: aspectRatio || "16:9",
+                        folder: 'generated',
+                        prompt: finalPrompt,
+                        engine: 'seedace-kie',
+                        projectId: req.body.projectId || 'default'
+                    });
                     return res.json({ success: true, requestId: taskId, engine: 'seedace-kie' });
                 }
             }
@@ -679,6 +809,15 @@ export default function createRouter(deps) {
                 }
 
                 console.log(`[SEEDANCE-MINI] Task created successfully: ${taskId}`);
+                trackSeedanceTaskInBackground({
+                    taskId,
+                    userId: targetUserId,
+                    aspectRatio: aspectRatio || "16:9",
+                    folder: 'generated',
+                    prompt: finalPrompt,
+                    engine: 'seedance-mini',
+                    projectId: req.body.projectId || 'default'
+                });
                 return res.json({ success: true, requestId: taskId, engine: 'seedance-mini' });
             }
 
@@ -909,6 +1048,15 @@ export default function createRouter(deps) {
                 }
 
                 console.log(`[SEEDANCE-2.5] Task created successfully on Kie.ai: ${taskId}`);
+                trackSeedanceTaskInBackground({
+                    taskId,
+                    userId: targetUserId,
+                    aspectRatio: aspectRatio || "16:9",
+                    folder: 'generated',
+                    prompt: finalPrompt,
+                    engine: 'seedance-2.5-kie',
+                    projectId: req.body.projectId || 'default'
+                });
                 return res.json({ 
                     success: true, 
                     requestId: taskId, 
@@ -1138,6 +1286,9 @@ export default function createRouter(deps) {
 
             if (state === 'success' || state === 'succeed' || state === 'completed') {
                 let finalUrl = pollData.data?.videos?.[0]?.url || pollData.data?.resultUrl;
+                if (!finalUrl && pollData.data?.response?.resultUrls?.[0]) {
+                    finalUrl = pollData.data.response.resultUrls[0];
+                }
                 if (!finalUrl && pollData.data?.resultJson) {
                     try {
                         const parsed = typeof pollData.data.resultJson === 'string'
@@ -1158,47 +1309,67 @@ export default function createRouter(deps) {
                     return res.json({ status: 'processing' });
                 }
 
-                // Try to download and re-host on Supabase storage (failsafe: return Kie URL directly)
-                let supabaseUrl = finalUrl;
-                if (typeof uploadVideoToSupabase === 'function') {
-                    try {
-                        console.log(`[SEEDANCE-STATUS-KIE] Downloading video: ${finalUrl}`);
-                        const videoResp = await fetch(finalUrl, { signal: AbortSignal.timeout(60000) });
-                        if (videoResp.ok) {
-                            const ab = await videoResp.arrayBuffer();
-                            if (ab && ab.byteLength > 0) {
-                                console.log(`[SEEDANCE-STATUS-KIE] Downloaded ${(ab.byteLength / 1024 / 1024).toFixed(1)}MB, uploading to Supabase...`);
-                                const extraMeta = projectId ? { projectId } : {};
-                                supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder || 'generated', undefined, 'Seedance', extraMeta);
-                            }
-                        }
-                    } catch (dlErr) {
-                        console.warn(`[SEEDANCE-STATUS-KIE] Download/upload failed (${dlErr.message}), returning Kie URL directly`);
-                        supabaseUrl = finalUrl;
-                        // Fallback: Save Kie CDN URL directly to local DB so it shows in gallery on reload
-                        if (typeof saveLocalAsset === 'function' && userId) {
-                            try {
-                                saveLocalAsset({
-                                    name: `seedance_${userId}_${Date.now()}.mp4`,
-                                    type: 'video',
-                                    url: supabaseUrl,
-                                    user_id: userId,
-                                    project_id: projectId || 'default',
-                                    aspect: aspectRatio || '16:9',
-                                    metadata: { folder: folder || 'generated', projectId, prompt: req.query.prompt || '', engine: engine || 'Seedance' },
-                                    prompt: req.query.prompt || '',
-                                    engine: engine || 'Seedance'
-                                });
-                                console.log(`[SEEDANCE-STATUS-KIE] Saved Kie CDN URL to local fallback DB for user ${userId}`);
-                            } catch (saveErr) {
-                                console.warn(`[SEEDANCE-STATUS-KIE] Local fallback DB save failed: ${saveErr.message}`);
-                            }
-                        }
-                    }
-                }
+                console.log(`[SEEDANCE-STATUS-KIE] ✅ Task ${requestId} completed! Immediately returning URL to client: ${finalUrl.substring(0, 80)}...`);
 
-                console.log(`[SEEDANCE-STATUS-KIE] ✅ Completed | URL: ${supabaseUrl.substring(0, 80)}...`);
-                return res.json({ status: 'completed', url: supabaseUrl });
+                // ⚡ RETURN IMMEDIATELY TO CLIENT: Zero lag, zero gateway timeout, instant playback in UI!
+                res.json({
+                    status: 'completed',
+                    url: finalUrl,
+                    videoUrl: finalUrl,
+                    resultUrl: finalUrl,
+                    provider: 'kie'
+                });
+
+                // 🔄 Asynchronously persist & re-host in background without blocking user
+                (async () => {
+                    try {
+                        const targetProj = projectId || 'default';
+                        const extraMeta = { projectId: targetProj, project_id: targetProj, prompt: req.query.prompt || '', engine: engine || 'Seedance' };
+                        let persistentUrl = finalUrl;
+
+                        if (typeof uploadVideoToSupabase === 'function' && userId) {
+                            try {
+                                console.log(`[SEEDANCE-STATUS-KIE-BG] Background downloading video for permanent storage: ${finalUrl}`);
+                                const videoResp = await fetch(finalUrl, { signal: AbortSignal.timeout(60000) });
+                                if (videoResp.ok) {
+                                    const ab = await videoResp.arrayBuffer();
+                                    if (ab && ab.byteLength > 0) {
+                                        persistentUrl = await uploadVideoToSupabase(
+                                            Buffer.from(ab),
+                                            userId,
+                                            aspectRatio || '16:9',
+                                            folder || 'generated',
+                                            req.query.prompt || '',
+                                            engine || 'Seedance',
+                                            extraMeta
+                                        );
+                                        console.log(`[SEEDANCE-STATUS-KIE-BG] Re-hosted to permanent storage: ${persistentUrl}`);
+                                    }
+                                }
+                            } catch (dlErr) {
+                                console.warn('[SEEDANCE-STATUS-KIE-BG] Download/upload notice:', dlErr.message);
+                            }
+                        }
+
+                        if (typeof saveLocalAsset === 'function' && userId) {
+                            saveLocalAsset({
+                                name: `seedance_${userId}_${Date.now()}.mp4`,
+                                type: 'video',
+                                url: persistentUrl,
+                                user_id: userId,
+                                project_id: targetProj,
+                                aspect: aspectRatio || '16:9',
+                                metadata: { folder: folder || 'generated', projectId: targetProj, prompt: req.query.prompt || '', engine: engine || 'Seedance' },
+                                prompt: req.query.prompt || '',
+                                engine: engine || 'Seedance'
+                            });
+                        }
+                    } catch (bgErr) {
+                        console.warn('[SEEDANCE-STATUS-KIE-BG] Background save error:', bgErr.message);
+                    }
+                })();
+
+                return;
             } else if (state === 'fail' || state === 'failed' || state === 'error') {
                 return res.json({ status: 'failed', error: sanitizeServerError(pollData.data?.failMsg || pollData.data?.failCode || 'Generation failed') });
             }

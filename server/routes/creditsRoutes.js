@@ -55,20 +55,28 @@ export default function createRouter(deps) {
             // 1. Fetch current balance (server-side, bypasses RLS intentionally)
             let { data: profile, error: fetchErr } = await client
                 .from('profiles')
-                .select('shorts_balance, brand_voice')
+                .select('shorts_balance, brand_voice, tier, role')
                 .eq('id', user.id)
                 .maybeSingle();
 
             if (!profile) {
-                const initialBal = user.email === 'premspaw@gmail.com' ? 15000 : 50;
+                const initialBal = user.email === 'premspaw@gmail.com' ? 15000 : 60;
+                const defaultBv = {
+                    free_tier: true,
+                    free_video_credits: 50,
+                    free_image_credits: 10,
+                    free_gpt_images_used: 0,
+                    max_free_gpt_images: 2
+                };
                 await client.from('profiles').upsert({
                     id: user.id,
                     email: user.email || null,
                     role: user.email === 'premspaw@gmail.com' ? 'admin' : 'user',
                     tier: user.email === 'premspaw@gmail.com' ? 'ADMIN_ENTERPRISE' : 'FREE',
-                    shorts_balance: initialBal
+                    shorts_balance: initialBal,
+                    brand_voice: defaultBv
                 });
-                profile = { shorts_balance: initialBal, brand_voice: {} };
+                profile = { shorts_balance: initialBal, brand_voice: defaultBv, tier: 'FREE', role: 'user' };
                 if (user.email) {
                     sendWelcomeEmail({
                         email: user.email,
@@ -91,16 +99,52 @@ export default function createRouter(deps) {
                 }
             }
 
+            // Free Tier division enforcement: 10⚡ for Images, 50⚡ for Video
+            const isFreeTier = (!profile?.tier || profile.tier === 'FREE' || profile.tier === 'free') && profile?.role !== 'admin' && user.email !== 'premspaw@gmail.com';
+            const isImageSpend = reason === 'cinematic_image_generation' || reason.includes('image');
+            const isVideoSpend = reason === 'cinematic_video_generation' || reason.includes('video');
+
+            let updatedBrandVoice = { ...brandVoice };
+
+            if (isFreeTier) {
+                if (isImageSpend) {
+                    const currentImgCredits = typeof brandVoice.free_image_credits === 'number'
+                        ? brandVoice.free_image_credits
+                        : Math.min(10, Math.max(0, currentBalance - 50));
+                    if (currentImgCredits < amount) {
+                        return res.status(402).json({
+                            error: 'Free image credits exhausted (10⚡ limit reached). Your remaining 50⚡ credits are reserved for 1 full Video generation! Please top up Shorts to unlock unlimited images.',
+                            balance: currentBalance,
+                            freeImageCredits: currentImgCredits
+                        });
+                    }
+                    updatedBrandVoice.free_image_credits = Math.max(0, Number((currentImgCredits - amount).toFixed(2)));
+                } else if (isVideoSpend) {
+                    const currentVidCredits = typeof brandVoice.free_video_credits === 'number'
+                        ? brandVoice.free_video_credits
+                        : Math.min(50, currentBalance);
+                    if (currentVidCredits < amount) {
+                        return res.status(402).json({
+                            error: 'Free video credits exhausted (50⚡ limit reached). Please top up Shorts to continue generating videos.',
+                            balance: currentBalance,
+                            freeVideoCredits: currentVidCredits
+                        });
+                    }
+                    updatedBrandVoice.free_video_credits = Math.max(0, Number((currentVidCredits - amount).toFixed(2)));
+                }
+            }
+
             const newTotalBalance = currentBalance - amount;
             const newIntBalance = Math.floor(newTotalBalance);
             const newFractBalance = Number((newTotalBalance - newIntBalance).toFixed(4));
+            updatedBrandVoice.fractional_shorts = newFractBalance;
 
             // 2. Deduct balance
             const { error: updateErr } = await client
                 .from('profiles')
                 .update({ 
                     shorts_balance: newIntBalance,
-                    brand_voice: { ...brandVoice, fractional_shorts: newFractBalance }
+                    brand_voice: updatedBrandVoice
                 })
                 .eq('id', user.id);
 
@@ -199,12 +243,21 @@ export default function createRouter(deps) {
             const newIntBalance = Math.floor(newTotalBalance);
             const newFractBalance = Number((newTotalBalance - newIntBalance).toFixed(4));
 
+            const isImageRefund = reason === 'cinematic_image_generation' || reason.includes('image');
+            const isVideoRefund = reason === 'cinematic_video_generation' || reason.includes('video');
+            let updatedBrandVoice = { ...brandVoice, fractional_shorts: newFractBalance };
+            if (isImageRefund && typeof brandVoice.free_image_credits === 'number') {
+                updatedBrandVoice.free_image_credits = Math.min(10, Number((brandVoice.free_image_credits + amount).toFixed(2)));
+            } else if (isVideoRefund && typeof brandVoice.free_video_credits === 'number') {
+                updatedBrandVoice.free_video_credits = Math.min(50, Number((brandVoice.free_video_credits + amount).toFixed(2)));
+            }
+
             // 3. Refund balance
             const { error: updateErr } = await client
                 .from('profiles')
                 .update({ 
                     shorts_balance: newIntBalance,
-                    brand_voice: { ...brandVoice, fractional_shorts: newFractBalance }
+                    brand_voice: updatedBrandVoice
                 })
                 .eq('id', user.id);
 

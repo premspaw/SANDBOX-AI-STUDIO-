@@ -3493,6 +3493,14 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     const shotSequence: string[] =
       SCENE_SEQUENCES[durationNum] ?? Array(splitScenes.length).fill('PAYOFF');
 
+    if (!currentUserId || currentUserId === 'anon' || currentUserId === 'local_user') {
+      const showModal = useAppStore.getState().setShowClaimCreditsModal;
+      if (showModal) {
+        showModal(true);
+        return;
+      }
+    }
+
     const totalCost = getCurrentCost(false) * splitScenes.length;
     if (!isAdmin && !isGlobalAdmin) {
       const spendRes = await spend('veo_fast', totalCost as any);
@@ -3979,6 +3987,14 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
   // ─────────────────────────────────────────────────────────────────────────
 
   const generateVideo = async (overridePrompt?: string, referenceImageUrl?: string, targetDuration?: number) => {
+    if (!currentUserId || currentUserId === 'anon' || currentUserId === 'local_user') {
+      const showModal = useAppStore.getState().setShowClaimCreditsModal;
+      if (showModal) {
+        showModal(true);
+        return;
+      }
+    }
+
     const unitCost = getCurrentCost(false);
     const spendReason = videoGenMode === 'seedance-2.5' ? 'seedance_2_5' : videoGenMode === 'seedance-fast' ? 'seedance_fast' : 'veo_fast';
     const isFreeVideoEligible = !isAdmin && !isGlobalAdmin && hasFreeVideoAvailable(currentUserId) && videoGenMode === 'omni-flash-1.1';
@@ -4264,7 +4280,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         if (!finalVideoUrl && sData.requestId) {
           const taskId = sData.requestId;
           const startTime = Date.now();
-          const maxPollMs = 15 * 60 * 1000;
+          const maxPollMs = 25 * 60 * 1000; // 25 minutes maximum for cloud render
           let isDone = false;
 
           while (!isDone && (Date.now() - startTime) < maxPollMs) {
@@ -4272,18 +4288,26 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             const elapsedSec = Math.round((Date.now() - startTime) / 1000);
             setVideoProgressMsg(`🎬 Rendering ${videoGenMode === 'seedance-2.5' ? 'Seedance 2.5 Pro' : 'Seedance 2.0 Fast'} (${elapsedSec}s)...`);
 
-            const pollRes = await fetch(
-              getApiUrl(`/api/seedance/status/${taskId}?userId=${currentUserId}&aspectRatio=${resolvedAspectRatio}&engine=${sData.engine || videoGenMode}`)
-            );
-            if (!pollRes.ok) continue;
+            try {
+              const pollRes = await fetch(
+                getApiUrl(`/api/seedance/status/${taskId}?userId=${currentUserId}&aspectRatio=${resolvedAspectRatio}&engine=${sData.engine || videoGenMode}`)
+              );
+              if (!pollRes.ok) continue;
 
-            const pollData = await pollRes.json();
-            if (pollData.status === 'completed') {
-              finalVideoUrl = pollData.url || pollData.videoUrl || pollData.resultUrl;
-              isDone = true;
-              break;
-            } else if (pollData.status === 'failed') {
-              throw new Error(pollData.error || pollData.message || 'Seedance generation failed.');
+              const pollData = await pollRes.json();
+              if (pollData.status === 'completed') {
+                finalVideoUrl = pollData.url || pollData.videoUrl || pollData.resultUrl;
+                isDone = true;
+                break;
+              } else if (pollData.status === 'failed') {
+                throw new Error(pollData.error || pollData.message || 'Seedance generation failed.');
+              }
+            } catch (pErr) {
+              if (pErr.message && !pErr.message.includes('fetch') && !pErr.message.includes('network') && (pErr.message.includes('failed') || pErr.message.includes('flagged'))) {
+                throw pErr;
+              }
+              // Transient network interruption: continue polling without aborting
+              console.warn('[UGC-POLL-NOTICE] Retrying status check...', pErr.message);
             }
           }
         }

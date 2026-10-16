@@ -25,6 +25,10 @@ function sanitizeServerError(rawMsg) {
         return '⚠️ Content Safety Policy Restriction: Your prompt or reference media was flagged by content safety filters. Any deducted Shorts credits have been refunded. Please adjust your prompt or media and try again.';
     }
 
+    if (lower.includes('free video credits') || lower.includes('free image credits')) {
+        return str;
+    }
+
     if (lower.includes('insufficient') && (lower.includes('shorts') || lower.includes('balance'))) {
         return 'Insufficient Shorts balance. Please top up your Shorts credits to continue.';
     }

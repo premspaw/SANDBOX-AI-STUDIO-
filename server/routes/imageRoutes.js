@@ -110,10 +110,58 @@ export default function createRouter(deps) {
                 requiredCredits = 1;
             }
 
+            const client = deps.supabaseAdmin || deps.supabase;
+            let profile = null;
+            if (client && targetUserId) {
+                const { data } = await client
+                    .from('profiles')
+                    .select('shorts_balance, brand_voice, tier, role, email')
+                    .eq('id', targetUserId)
+                    .maybeSingle();
+                profile = data;
+            }
+
+            const isFreeTier = (!profile?.tier || profile?.tier === 'FREE' || profile?.tier === 'free') && profile?.role !== 'admin' && profile?.email !== 'premspaw@gmail.com';
+            const isGptModel = modelLower.includes('gpt') || modelLower.includes('sunburst') || modelLower.includes('flare') || modelLower.includes('dall') || modelLower.includes('openai');
+
+            if (isFreeTier) {
+                const brandVoice = profile?.brand_voice || {};
+                const gptUsed = brandVoice.free_gpt_images_used || 0;
+                
+                if (isGptModel && gptUsed >= 2) {
+                    return res.status(403).json({
+                        error: "Free trial limit reached for GPT Image models (2 of 2 used). Please switch to Nano Banana or upgrade your plan to unlock more GPT image generations."
+                    });
+                }
+
+                const freeImgCredits = typeof brandVoice.free_image_credits === 'number'
+                    ? brandVoice.free_image_credits
+                    : Math.min(10, Math.max(0, (profile?.shorts_balance || 0) - 50));
+                
+                if (freeImgCredits < requiredCredits) {
+                    return res.status(402).json({
+                        error: "Free image credits exhausted (10⚡ limit reached). Your remaining 50⚡ credits are reserved for 1 full Video generation! Please top up Shorts to unlock unlimited images."
+                    });
+                }
+            }
+
             if (targetUserId) {
                 const creditReason = req.body.creditReason || 'cinematic_image_generation';
                 console.log(`[Generate Image] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} using model: ${model} (reason: ${creditReason})`);
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
+            }
+
+            if (isGptModel && isFreeTier && client && targetUserId) {
+                try {
+                    const latestBv = profile?.brand_voice || {};
+                    const newGptCount = (latestBv.free_gpt_images_used || 0) + 1;
+                    await client.from('profiles').update({
+                        brand_voice: { ...latestBv, free_gpt_images_used: newGptCount }
+                    }).eq('id', targetUserId);
+                    console.log(`[Generate Image] ✅ Free tier user ${targetUserId} used GPT image (${newGptCount}/2).`);
+                } catch (gptCountErr) {
+                    console.warn('[Generate Image] Failed to increment free_gpt_images_used:', gptCountErr.message);
+                }
             }
 
             if (modelLower.includes('gpt') || modelLower.includes('sunburst') || modelLower.includes('flare') || modelLower.includes('dall') || modelLower.includes('openai')) {

@@ -1858,22 +1858,30 @@ Return ONLY a valid JSON array containing exactly ${targetShotsCount} shot objec
             if (!taskId) throw new Error('No task ID returned.');
             const returnedEngine = json.engine || seedanceEngine;
 
-            // Poll task
-            for (let p = 0; p < 120; p++) {
+            // Poll task (up to 20 minutes)
+            for (let p = 0; p < 240; p++) {
                 await new Promise(r => setTimeout(r, 5000));
-                const statusResp = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId}&aspectRatio=${targetAspectRatio}&engine=${returnedEngine}`));
-                const statusJson = await statusResp.json();
-                if (statusJson.status === 'completed' && statusJson.url) {
-                    setShots(prev => prev.map((s, i) => i === shotIndex ? { ...s, status: 'completed', videoUrl: statusJson.url, progressMsg: '' } : s));
-                    refreshShorts();
-                    return;
+                try {
+                    const statusResp = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId}&aspectRatio=${targetAspectRatio}&engine=${returnedEngine}`));
+                    if (!statusResp.ok) continue;
+                    const statusJson = await statusResp.json();
+                    if (statusJson.status === 'completed' && statusJson.url) {
+                        setShots(prev => prev.map((s, i) => i === shotIndex ? { ...s, status: 'completed', videoUrl: statusJson.url, progressMsg: '' } : s));
+                        refreshShorts();
+                        return;
+                    }
+                    if (statusJson.status === 'failed' || statusJson.status === 'error') {
+                        throw new Error(statusJson.error || 'Seedance generation failed.');
+                    }
+                    setShots(prev => prev.map((s, i) => i === shotIndex ? { ...s, progressMsg: `Rendering frame sequence (${(p + 1) * 5}s)...` } : s));
+                } catch (pollErr) {
+                    if (pollErr.message && !pollErr.message.includes('fetch') && (pollErr.message.includes('failed') || pollErr.message.includes('error'))) {
+                        throw pollErr;
+                    }
                 }
-                if (statusJson.status === 'failed' || statusJson.status === 'error') {
-                    throw new Error(statusJson.error || 'Seedance generation failed.');
-                }
-                setShots(prev => prev.map((s, i) => i === shotIndex ? { ...s, progressMsg: `Rendering frame sequence (${(p + 1) * 5}s)...` } : s));
             }
-            throw new Error('Video generation timed out.');
+            setShots(prev => prev.map((s, i) => i === shotIndex ? { ...s, progressMsg: 'Cloud render in progress... Video will appear when complete.' } : s));
+            return;
 
         } catch (err) {
             console.error(`[DirectorAgent] Shot ${shotIndex + 1} generation failed:`, err);

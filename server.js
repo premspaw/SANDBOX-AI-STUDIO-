@@ -829,10 +829,10 @@ async function consumeCredits(userId, cost, reason = 'generation') {
 
     const client = supabaseAdmin || supabase;
 
-    // Fetch current profile with balance and brand_voice
+    // Fetch current profile with balance, brand_voice, tier, and role
     const { data: profile, error: fetchErr } = await client
         .from('profiles')
-        .select('shorts_balance, brand_voice')
+        .select('shorts_balance, brand_voice, tier, role')
         .eq('id', userId)
         .single();
 
@@ -852,16 +852,48 @@ async function consumeCredits(userId, cost, reason = 'generation') {
         throw err;
     }
 
+    // Free Tier division enforcement: 10⚡ for Images, 50⚡ for Video
+    const isFreeTier = (!profile?.tier || profile.tier === 'FREE' || profile.tier === 'free') && profile?.role !== 'admin';
+    const isImageSpend = reason === 'cinematic_image_generation' || reason.includes('image');
+    const isVideoSpend = reason === 'cinematic_video_generation' || reason.includes('video');
+
+    let updatedBrandVoice = { ...brandVoice };
+
+    if (isFreeTier) {
+        if (isImageSpend) {
+            const currentImgCredits = typeof brandVoice.free_image_credits === 'number'
+                ? brandVoice.free_image_credits
+                : Math.min(10, Math.max(0, currentBalance - 50));
+            if (currentImgCredits < cost) {
+                const err = new Error('Free image credits exhausted (10⚡ limit reached). Your remaining 50⚡ credits are reserved for 1 full Video generation! Please top up Shorts to unlock unlimited images.');
+                err.status = 402;
+                throw err;
+            }
+            updatedBrandVoice.free_image_credits = Math.max(0, Number((currentImgCredits - cost).toFixed(2)));
+        } else if (isVideoSpend) {
+            const currentVidCredits = typeof brandVoice.free_video_credits === 'number'
+                ? brandVoice.free_video_credits
+                : Math.min(50, currentBalance);
+            if (currentVidCredits < cost) {
+                const err = new Error('Free video credits exhausted (50⚡ limit reached). Please top up Shorts to continue generating videos.');
+                err.status = 402;
+                throw err;
+            }
+            updatedBrandVoice.free_video_credits = Math.max(0, Number((currentVidCredits - cost).toFixed(2)));
+        }
+    }
+
     const newTotalBalance = currentBalance - cost;
     const newIntBalance = Math.floor(newTotalBalance);
     const newFractBalance = Number((newTotalBalance - newIntBalance).toFixed(4));
+    updatedBrandVoice.fractional_shorts = newFractBalance;
 
     // Update profile
     const { error: updateErr } = await client
         .from('profiles')
         .update({ 
             shorts_balance: newIntBalance,
-            brand_voice: { ...brandVoice, fractional_shorts: newFractBalance }
+            brand_voice: updatedBrandVoice
         })
         .eq('id', userId);
 
@@ -2372,7 +2404,7 @@ app.post('/api/auth/welcome', async (req, res) => {
         const result = await sendWelcomeEmail({
             email,
             name: name || '',
-            shortsBalance: Number(shortsBalance) || 50
+            shortsBalance: Number(shortsBalance) || 60
         });
         res.json({ success: true, result });
     } catch (err) {

@@ -100,8 +100,15 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                     id: user.id,
                     email: user.email,
                     full_name: user.user_metadata?.full_name || '',
-                    shorts_balance: 50, // Default starting balance
-                    tier: 'FREE'
+                    shorts_balance: 60, // Default starting balance: 60 Free Shorts (50⚡ Video + 10⚡ Images)
+                    tier: 'FREE',
+                    brand_voice: {
+                        free_tier: true,
+                        free_video_credits: 50,
+                        free_image_credits: 10,
+                        free_gpt_images_used: 0,
+                        max_free_gpt_images: 2
+                    }
                 });
             }
         } catch (e) {

@@ -63,8 +63,13 @@ export function sanitizeUserErrorMessage(rawMsg, engineContext = 'generation') {
     return '⚠️ Policy Restriction: This content was flagged by safety policies. 100% of your Shorts credits have been refunded. Please try with a different prompt, a different reference image, or a different person/character.';
   }
 
-  // 2. Client-side input validation errors (keep intact for clear UX guidance)
+  // 2. Client-side input validation and Free Tier quota messages (keep intact for clear UX guidance)
   if (
+    lower.includes('free trial limit') ||
+    lower.includes('free image credits') ||
+    lower.includes('free video credits') ||
+    lower.includes('gpt image') ||
+    lower.includes('nano banana') ||
     lower.includes('please upload') ||
     lower.includes('please select') ||
     lower.includes('attach a file') ||
