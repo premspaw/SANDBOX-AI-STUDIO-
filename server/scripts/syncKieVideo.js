@@ -28,20 +28,82 @@ const args = process.argv.slice(2);
 if (args.length < 2) {
     console.error(`\n❌ Error: Missing required arguments.`);
     console.log(`\nUsage:`);
-    console.log(`  node server/scripts/syncKieVideo.js <user_email_or_id> <video_url> [prompt] [engine] [credits_to_deduct]\n`);
+    console.log(`  node server/scripts/syncKieVideo.js <user_email_or_id> <video_url_or_log_or_file> [prompt] [engine] [credits_to_deduct]\n`);
+    console.log(`Examples:`);
+    console.log(`  node server/scripts/syncKieVideo.js user@domain.com "https://tempfile.aiquickdraw.com/seedance/...mp4"`);
+    console.log(`  node server/scripts/syncKieVideo.js user@domain.com "path/to/kie_task.log"`);
+    console.log(`  node server/scripts/syncKieVideo.js user@domain.com '{"task_id":"123","video_url":"https://..."}'`);
     process.exit(1);
 }
 
-const [targetUserIdentifier, videoUrl, customPrompt, customEngine, customCredits] = args;
-const prompt = customPrompt || 'Seedance 2.0 Cinematic Video';
-const engine = customEngine || 'Seedance 2.0 Pro';
+const [targetUserIdentifier, rawInput, customPrompt, customEngine, customCredits] = args;
+
+// Smart KIE input parser: detects direct URL, JSON, log file path, or raw log text
+function extractKieVideoInfo(input) {
+    let text = String(input || '').trim();
+    let extractedUrl = '';
+    let extractedPrompt = '';
+    let extractedEngine = '';
+
+    // Check if input is a local file path
+    if (fs.existsSync(text)) {
+        try {
+            console.log(`📄 Reading log file: ${text}`);
+            text = fs.readFileSync(text, 'utf-8').trim();
+        } catch (e) {
+            console.warn(`⚠️ Could not read file ${text}:`, e.message);
+        }
+    }
+
+    // Try parsing as JSON
+    if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
+        try {
+            const parsed = JSON.parse(text);
+            const candidate = parsed.data || parsed;
+            extractedUrl = candidate.video_url || candidate.url || candidate.download_url || candidate.videoUrl || candidate.resultUrl || '';
+            extractedPrompt = candidate.prompt || candidate.text || '';
+            extractedEngine = candidate.model || candidate.engine || '';
+        } catch (_) {}
+    }
+
+    // Regex extraction if not found via JSON
+    if (!extractedUrl) {
+        const urlMatch = text.match(/https?:\/\/[^\s"'<>]+\.(?:mp4|mov|webm)[^\s"'<>]*/i) ||
+                         text.match(/https?:\/\/(?:tempfile\.aiquickdraw\.com|tempfile\.redpandaai\.co)[^\s"'<>]+/i);
+        if (urlMatch) {
+            extractedUrl = urlMatch[0];
+        }
+    }
+
+    // If text itself looks like a direct URL
+    if (!extractedUrl && text.startsWith('http')) {
+        extractedUrl = text;
+    }
+
+    return {
+        videoUrl: extractedUrl,
+        prompt: extractedPrompt,
+        engine: extractedEngine
+    };
+}
+
+const parsedInfo = extractKieVideoInfo(rawInput);
+const videoUrl = parsedInfo.videoUrl || rawInput;
+const prompt = customPrompt || parsedInfo.prompt || 'Seedance 2.0 Cinematic Video';
+const engine = customEngine || parsedInfo.engine || 'Seedance 2.0 Pro';
 const deductCredits = Number(customCredits) || 0;
+
+if (!videoUrl || !videoUrl.startsWith('http')) {
+    console.error(`\n❌ Error: Could not extract a valid video URL from the provided input.`);
+    console.error(`Received: ${rawInput.substring(0, 150)}...\n`);
+    process.exit(1);
+}
 
 async function main() {
     console.log(`\n🚀 ZeroLens Admin: Syncing Video to User Gallery`);
     console.log(`─────────────────────────────────────────────────`);
     console.log(`Target User:    ${targetUserIdentifier}`);
-    console.log(`Remote Video:   ${videoUrl}`);
+    console.log(`Extracted URL:  ${videoUrl}`);
     console.log(`Engine:         ${engine}`);
     console.log(`Prompt:         ${prompt}`);
     console.log(`Deduct Credits: ${deductCredits}⚡\n`);

@@ -1184,7 +1184,7 @@ export default function StudioPage() {
     const engineLabel = engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : engine.includes('2.5') ? 'Seedance 2.5 Pro' : 'Seedance 2.0 Pro';
     const targetProj = (activeProjectId === 'all' || !activeProjectId) ? 'default' : activeProjectId;
 
-    for (let i = 0; i < 240; i++) {
+    for (let i = 0; i < 300; i++) {
       await new Promise(r => setTimeout(r, 5000));
       try {
         const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId || ''}&aspectRatio=${encodeURIComponent(activeRatio)}&engine=${encodeURIComponent(engine)}&projectId=${encodeURIComponent(targetProj)}&prompt=${encodeURIComponent(activePrompt || '')}`));

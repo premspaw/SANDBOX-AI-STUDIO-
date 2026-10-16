@@ -49,8 +49,8 @@ export default function createRouter(deps) {
     const getHfClient = (credentials) => {
         return createHiggsfieldClient({
             credentials: credentials.trim(),
-            timeout: 900000,
-            maxPollTime: 900000,
+            timeout: 1800000,
+            maxPollTime: 1800000,
             pollInterval: 3000
         });
     };
@@ -58,7 +58,7 @@ export default function createRouter(deps) {
     // Configure Higgsfield credentials from environment
     const hfCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
     if (hfCredentials) {
-        console.log('[REMIX] ✅ Higgsfield client configured (15m polling timeout)');
+        console.log('[REMIX] ✅ Higgsfield client configured (30m polling timeout)');
     } else {
         console.warn('[REMIX] ⚠️ HF_CREDENTIALS not found in environment');
     }

@@ -278,7 +278,7 @@ export default function MotionControl() {
 
   // Poll Task Status
   const pollTask = async (taskId: string, type: 'kling' | 'seedance', tempId: string) => {
-    const maxAttempts = 100;
+    const maxAttempts = 250;
     const intervalMs = 6000;
     let attempt = 0;
     const engineLabel = type === 'kling' ? 'Kling 3.0' : 'Seedance 2.0';
@@ -294,6 +294,7 @@ export default function MotionControl() {
           : `/api/seedance/status/${taskId}?userId=${userId}&aspectRatio=16:9&engine=seedace`;
 
         const res = await fetch(getApiUrl(url));
+        if (!res.ok) return; // network retry
         const data = await res.json();
 
         if (data.status === 'completed' && data.url) {
@@ -320,21 +321,18 @@ export default function MotionControl() {
           refreshShorts();
         } else if (data.status === 'failed' || data.status === 'error') {
           clearInterval(interval);
-          throw new Error(data.error || 'Generation failed');
+          showToast(`${engineLabel} generation error: ${data.error || 'Generation failed'}`, 'error');
+          setIsGenerating(false);
+          setStatusMsg('');
+          refreshShorts();
         }
       } catch (err: any) {
-        clearInterval(interval);
-        showToast(`${engineLabel} generation error: ${err.message}`, 'error');
-        setGallery(prev => prev.filter(item => item.id !== tempId));
-        setIsGenerating(false);
-        setStatusMsg('');
-        refreshShorts();
+        console.warn(`[MotionControl] Transient poll check:`, err?.message);
       }
 
       if (attempt >= maxAttempts) {
         clearInterval(interval);
-        showToast(`${engineLabel} generation timed out.`, 'error');
-        setGallery(prev => prev.filter(item => item.id !== tempId));
+        showToast(`${engineLabel} still rendering on cloud. It will save to your gallery automatically.`, 'info');
         setIsGenerating(false);
         setStatusMsg('');
         refreshShorts();

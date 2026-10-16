@@ -130,7 +130,7 @@ export const Seedance15ProNode = memo(({ id, data }) => {
     // ── Poll ModelArk API ──
     const poll = async (taskId, engine) => {
         setStatus('polling')
-        for (let i = 0; i < 60; i++) {
+        for (let i = 0; i < 180; i++) {
             await new Promise(r => setTimeout(r, 10000)) // Byteplus advises 10s backoff
             try {
                 const statusUrl = getApiUrl(`/api/seedance/status/${encodeURIComponent(taskId)}?engine=${encodeURIComponent(engine)}&aspectRatio=${encodeURIComponent(ratio)}`)
@@ -154,8 +154,8 @@ export const Seedance15ProNode = memo(({ id, data }) => {
                 }
             } catch (_) { continue }
         }
-        setErrorMsg('Task compilation timed out.');
-        setStatus('error');
+        setErrorMsg('Compilation still in progress on cloud. It will automatically save to your gallery.');
+        setStatus('idle');
     }
 
     // ── Generate ──

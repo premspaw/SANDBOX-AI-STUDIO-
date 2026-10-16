@@ -137,9 +137,9 @@ export const SeedanceNode = memo(({ id, data }) => {
     // ── Poll kie.ai task ──
     const pollTask = async (taskId, engine) => {
         setStatus('polling')
-        for (let i = 0; i < 120; i++) {
+        for (let i = 0; i < 300; i++) {
             await new Promise(r => setTimeout(r, 5000))
-            setPollMsg(`Polling... ${Math.round((i + 1) * 5)}s`)
+            setPollMsg(`Rendering video... ${Math.round((i + 1) * 5)}s`)
             try {
                 const statusUrl = getApiUrl(`/api/seedance/status/${encodeURIComponent(taskId)}?engine=${encodeURIComponent(engine)}&aspectRatio=${encodeURIComponent(ratio)}`)
                 const res  = await fetch(statusUrl)
@@ -160,8 +160,8 @@ export const SeedanceNode = memo(({ id, data }) => {
                 if (st === 'failed' || st === 'error') { setStatus('error'); setPollMsg(''); return }
             } catch (_) { continue }
         }
-        setStatus('error')
-        setPollMsg('Timed out')
+        setStatus('idle')
+        setPollMsg('Still rendering on cloud. It will automatically save to your gallery.')
     }
 
     // ── Generate ──

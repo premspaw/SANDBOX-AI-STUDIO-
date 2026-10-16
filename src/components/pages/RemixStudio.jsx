@@ -46,7 +46,7 @@ import { AssetsLibrary } from '../panels/AssetsLibrary';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import { sanitizeUserErrorMessage } from '../../utils/errorSanitizer';
-import { resolveUrl } from '../../config/apiConfig';
+import { resolveUrl, getApiUrl } from '../../config/apiConfig';
 
 // Normalizes image and video preview URLs, ensuring images mistakenly stored with .mp4 or CDN MIME quirks render reliably across mobile Safari & Chrome
 const getMediaPreviewUrl = (url, isImage = false) => {
@@ -734,12 +734,12 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     setErrorMessage('');
   };
 
-  // Resilient Remix Status Polling Helper (tolerates upstream delay & network glitches up to ~17 mins)
+  // Resilient Remix Status Polling Helper (tolerates upstream delay & network glitches up to ~27 mins)
   const pollRemixStatus = async (requestId, { mode = 'motion-transfer', onProgress } = {}) => {
-    for (let attempt = 0; attempt < 250; attempt++) {
+    for (let attempt = 0; attempt < 400; attempt++) {
       await new Promise(r => setTimeout(r, 4000));
       try {
-        const resp = await fetch(`/api/remix/status/${requestId}`);
+        const resp = await fetch(getApiUrl(`/api/remix/status/${requestId}`));
         if (!resp.ok) {
           console.warn(`[RemixStudio Poll] HTTP ${resp.status}, continuing to wait...`);
           continue;

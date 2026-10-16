@@ -1858,8 +1858,8 @@ Return ONLY a valid JSON array containing exactly ${targetShotsCount} shot objec
             if (!taskId) throw new Error('No task ID returned.');
             const returnedEngine = json.engine || seedanceEngine;
 
-            // Poll task (up to 20 minutes)
-            for (let p = 0; p < 240; p++) {
+            // Poll task (up to 25 minutes)
+            for (let p = 0; p < 300; p++) {
                 await new Promise(r => setTimeout(r, 5000));
                 try {
                     const statusResp = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId}&aspectRatio=${targetAspectRatio}&engine=${returnedEngine}`));

@@ -686,6 +686,7 @@ export default function createRouter(deps) {
                 email,
                 userId,
                 videoUrl,
+                logContent,
                 prompt,
                 engine,
                 aspectRatio,
@@ -694,8 +695,33 @@ export default function createRouter(deps) {
                 deductCredits
             } = req.body;
 
-            if (!videoUrl || typeof videoUrl !== 'string' || !videoUrl.startsWith('http')) {
-                return res.status(400).json({ error: 'Valid videoUrl (http/https) is required.' });
+            let resolvedVideoUrl = videoUrl || logContent || '';
+            let resolvedPrompt = prompt;
+            let resolvedEngine = engine;
+
+            // Smart extraction from raw text or JSON if provided
+            if (resolvedVideoUrl) {
+                const text = String(resolvedVideoUrl).trim();
+                if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
+                    try {
+                        const parsed = JSON.parse(text);
+                        const candidate = parsed.data || parsed;
+                        resolvedVideoUrl = candidate.video_url || candidate.url || candidate.download_url || candidate.videoUrl || candidate.resultUrl || resolvedVideoUrl;
+                        if (!resolvedPrompt && candidate.prompt) resolvedPrompt = candidate.prompt;
+                        if (!resolvedEngine && (candidate.model || candidate.engine)) resolvedEngine = candidate.model || candidate.engine;
+                    } catch (_) {}
+                }
+                if (!resolvedVideoUrl.startsWith('http')) {
+                    const urlMatch = text.match(/https?:\/\/[^\s"'<>]+\.(?:mp4|mov|webm)[^\s"'<>]*/i) ||
+                                     text.match(/https?:\/\/(?:tempfile\.aiquickdraw\.com|tempfile\.redpandaai\.co)[^\s"'<>]+/i);
+                    if (urlMatch) {
+                        resolvedVideoUrl = urlMatch[0];
+                    }
+                }
+            }
+
+            if (!resolvedVideoUrl || typeof resolvedVideoUrl !== 'string' || !resolvedVideoUrl.startsWith('http')) {
+                return res.status(400).json({ error: 'Valid videoUrl or KIE log containing an http/https video link is required.' });
             }
 
             const dbClient = supabaseAdmin || supabase;
@@ -730,11 +756,11 @@ export default function createRouter(deps) {
                 targetUserId = 'local_user';
             }
 
-            console.log(`[ADMIN-SYNC-VIDEO] Syncing video for user: ${targetEmail || targetUserId} from URL: ${videoUrl}`);
+            console.log(`[ADMIN-SYNC-VIDEO] Syncing video for user: ${targetEmail || targetUserId} from URL: ${resolvedVideoUrl}`);
 
             // Download binary video buffer
-            console.log(`[ADMIN-SYNC-VIDEO] Downloading remote video: ${videoUrl}`);
-            const vidResp = await fetch(videoUrl, { signal: AbortSignal.timeout(60000) });
+            console.log(`[ADMIN-SYNC-VIDEO] Downloading remote video: ${resolvedVideoUrl}`);
+            const vidResp = await fetch(resolvedVideoUrl, { signal: AbortSignal.timeout(60000) });
             if (!vidResp.ok) {
                 throw new Error(`Failed to download video from URL: HTTP ${vidResp.status} ${vidResp.statusText}`);
             }
@@ -747,12 +773,12 @@ export default function createRouter(deps) {
             console.log(`[ADMIN-SYNC-VIDEO] Downloaded ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB. Uploading to permanent storage...`);
 
             const resolvedAspect = aspectRatio || '16:9';
-            const resolvedEngine = engine || 'Seedance 2.0 Pro';
-            const resolvedPrompt = prompt || 'Seedance 2.0 Cinematic Video';
+            const finalEngine = resolvedEngine || 'Seedance 2.0 Pro';
+            const finalPrompt = resolvedPrompt || 'Seedance 2.0 Cinematic Video';
             const targetFolder = folder || 'studio';
             const targetProj = projectId || 'default';
 
-            let permanentUrl = videoUrl;
+            let permanentUrl = resolvedVideoUrl;
 
             // Upload to Cloudflare R2 / GCS
             if (typeof uploadVideoToSupabase === 'function' && targetUserId !== 'local_user') {

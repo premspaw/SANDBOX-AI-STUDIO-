@@ -5,7 +5,7 @@ import { Video, Zap, CheckCircle2, AlertCircle, Loader2, Copy, ExternalLink, Ref
 
 export const SyncKieVideoManager = ({ setStatus }) => {
     const [userEmail, setUserEmail] = useState('');
-    const [videoUrl, setVideoUrl] = useState('');
+    const [rawInput, setRawInput] = useState('');
     const [prompt, setPrompt] = useState('');
     const [engine, setEngine] = useState('Seedance 2.0 Pro');
     const [aspectRatio, setAspectRatio] = useState('16:9');
@@ -14,6 +14,66 @@ export const SyncKieVideoManager = ({ setStatus }) => {
     const [syncResult, setSyncResult] = useState(null);
     const [errorMsg, setErrorMsg] = useState('');
     const [copied, setCopied] = useState(false);
+    const [parsedInfo, setParsedInfo] = useState({ videoUrl: '', detectedEngine: '', detectedPrompt: '' });
+
+    // Live smart extraction whenever user pastes raw input or uploads a file
+    const analyzeInput = (text) => {
+        const trimmed = String(text || '').trim();
+        let extUrl = '';
+        let extPrompt = '';
+        let extEngine = '';
+
+        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                const candidate = parsed.data || parsed;
+                extUrl = candidate.video_url || candidate.url || candidate.download_url || candidate.videoUrl || candidate.resultUrl || '';
+                extPrompt = candidate.prompt || candidate.text || '';
+                extEngine = candidate.model || candidate.engine || '';
+            } catch (_) {}
+        }
+
+        if (!extUrl) {
+            const urlMatch = trimmed.match(/https?:\/\/[^\s"'<>]+\.(?:mp4|mov|webm)[^\s"'<>]*/i) ||
+                             trimmed.match(/https?:\/\/(?:tempfile\.aiquickdraw\.com|tempfile\.redpandaai\.co)[^\s"'<>]+/i);
+            if (urlMatch) {
+                extUrl = urlMatch[0];
+            }
+        }
+
+        if (!extUrl && trimmed.startsWith('http')) {
+            extUrl = trimmed;
+        }
+
+        setParsedInfo({
+            videoUrl: extUrl,
+            detectedEngine: extEngine,
+            detectedPrompt: extPrompt
+        });
+
+        if (extPrompt && !prompt) setPrompt(extPrompt);
+        if (extEngine && extEngine.includes('Seedance') && engine === 'Seedance 2.0 Pro') setEngine(extEngine);
+    };
+
+    const handleInputChange = (e) => {
+        const val = e.target.value;
+        setRawInput(val);
+        analyzeInput(val);
+    };
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target?.result;
+            if (typeof content === 'string') {
+                setRawInput(content);
+                analyzeInput(content);
+            }
+        };
+        reader.readAsText(file);
+    };
 
     const handleSync = async (e) => {
         e?.preventDefault();
@@ -24,8 +84,10 @@ export const SyncKieVideoManager = ({ setStatus }) => {
             setErrorMsg('Please enter a user email or user ID.');
             return;
         }
-        if (!videoUrl.trim() || !videoUrl.startsWith('http')) {
-            setErrorMsg('Please enter a valid remote video URL (e.g. from KIE or tempfile).');
+
+        const effectiveUrl = parsedInfo.videoUrl || rawInput.trim();
+        if (!effectiveUrl || !effectiveUrl.startsWith('http')) {
+            setErrorMsg('Please provide a valid remote video URL or paste a KIE JSON/log containing a video link.');
             return;
         }
 
@@ -45,9 +107,10 @@ export const SyncKieVideoManager = ({ setStatus }) => {
                 headers,
                 body: JSON.stringify({
                     email: userEmail.trim(),
-                    videoUrl: videoUrl.trim(),
-                    prompt: prompt.trim() || 'Seedance 2.0 Cinematic Video',
-                    engine,
+                    videoUrl: effectiveUrl,
+                    logContent: rawInput.trim(),
+                    prompt: prompt.trim() || parsedInfo.detectedPrompt || 'Seedance 2.0 Cinematic Video',
+                    engine: engine || parsedInfo.detectedEngine,
                     aspectRatio,
                     deductCredits: Number(deductCredits) || 0
                 })
@@ -140,17 +203,44 @@ export const SyncKieVideoManager = ({ setStatus }) => {
                     </div>
 
                     <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">
-                            KIE Video URL (or tempfile URL) <span className="text-red-400">*</span>
-                        </label>
-                        <input
-                            type="url"
-                            value={videoUrl}
-                            onChange={(e) => setVideoUrl(e.target.value)}
-                            placeholder="https://tempfile.aiquickdraw.com/seedance/... or any .mp4 link"
-                            className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white text-xs outline-none focus:border-[#c8f135] transition-colors font-mono"
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                                KIE Video Link, Raw JSON, or Task Log <span className="text-red-400">*</span>
+                            </label>
+                            <label className="text-[10px] text-[#c8f135] hover:underline cursor-pointer flex items-center gap-1 font-semibold">
+                                <span>Upload .log / .json file</span>
+                                <input
+                                    type="file"
+                                    accept=".log,.json,.txt"
+                                    onChange={handleFileUpload}
+                                    className="hidden"
+                                />
+                            </label>
+                        </div>
+                        <textarea
+                            rows={3}
+                            value={rawInput}
+                            onChange={handleInputChange}
+                            placeholder="Paste direct .mp4 link (https://tempfile.aiquickdraw.com/...) OR paste full KIE response JSON / terminal log text"
+                            className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white text-xs outline-none focus:border-[#c8f135] transition-colors font-mono resize-y"
                             required
                         />
+                        {parsedInfo.videoUrl && (
+                            <div className="mt-2 p-2.5 rounded-xl bg-[#c8f135]/10 border border-[#c8f135]/30 flex flex-col gap-1 text-[11px]">
+                                <div className="flex items-center gap-1.5 text-[#c8f135] font-bold">
+                                    <CheckCircle2 size={13} />
+                                    <span>Detected Video URL:</span>
+                                </div>
+                                <div className="text-gray-300 font-mono truncate text-[10px] select-all">
+                                    {parsedInfo.videoUrl}
+                                </div>
+                                {parsedInfo.detectedPrompt && (
+                                    <div className="text-gray-400 text-[10px]">
+                                        Detected Prompt: <span className="text-white italic">"{parsedInfo.detectedPrompt}"</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

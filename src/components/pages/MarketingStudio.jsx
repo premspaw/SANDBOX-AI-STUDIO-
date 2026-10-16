@@ -614,7 +614,7 @@ export default function MarketingStudio() {
     const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine, folder = 'marketing') => {
         const engineLabel = engine.includes('fast') ? 'Seedance Fast' : 'Seedance 2.0';
 
-        for (let i = 0; i < 120; i++) {
+        for (let i = 0; i < 250; i++) {
             await new Promise(r => setTimeout(r, 6000));
             const elapsed = (i + 1) * 6;
             setPollMsg(`Rendering video... (${elapsed}s)`);
