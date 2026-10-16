@@ -10,7 +10,16 @@ import { SyncKieVideoManager } from './SyncKieVideoManager';
 export const AssetManager = () => {
     const [assets, setAssets] = useState(INITIAL_ASSETS);
     const [library, setLibrary] = useState([]);
-    const [activeTab, setActiveTab] = useState('config'); // 'config' or 'library'
+    const [activeTab, setActiveTab] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const sub = params.get('subtab') || params.get('tab');
+            if (sub && ['config', 'library', 'templates', 'hermes', 'hooks', 'sync'].includes(sub.toLowerCase())) {
+                return sub.toLowerCase();
+            }
+        }
+        return 'sync'; // Default directly to the Sync KIE Video & Audit tool!
+    });
     const [status, setStatus] = useState({ type: '', message: '' });
     const [isSaving, setIsSaving] = useState(false);
     const [isLibraryOpen, setIsLibraryOpen] = useState(false);
