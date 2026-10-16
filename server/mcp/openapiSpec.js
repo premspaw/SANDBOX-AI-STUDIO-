@@ -30,12 +30,33 @@ export function generateOpenAPISpec(baseUrl = (process.env.PUBLIC_APP_URL || 'ht
 
   const paths = {};
 
+  const TOOL_HINTS = {
+    search: { readOnlyHint: true, openWorldHint: true, destructiveHint: false, consequential: false },
+    fetch: { readOnlyHint: true, openWorldHint: true, destructiveHint: false, consequential: false },
+    generate_image: { readOnlyHint: false, openWorldHint: false, destructiveHint: false, consequential: true },
+    generate_video: { readOnlyHint: false, openWorldHint: false, destructiveHint: false, consequential: true },
+    check_generation: { readOnlyHint: true, openWorldHint: false, destructiveHint: false, consequential: false },
+    list_projects: { readOnlyHint: true, openWorldHint: false, destructiveHint: false, consequential: false },
+    get_project: { readOnlyHint: true, openWorldHint: false, destructiveHint: false, consequential: false },
+    get_usage: { readOnlyHint: true, openWorldHint: false, destructiveHint: false, consequential: false }
+  };
+
   uniqueTools.forEach(tool => {
+    const hints = TOOL_HINTS[tool.name] || { readOnlyHint: true, openWorldHint: false, destructiveHint: false, consequential: false };
     const pathName = `/api/mcp/action/${tool.name}`;
     paths[pathName] = {
       post: {
         summary: tool.description,
         operationId: tool.name,
+        'x-openai-isConsequential': hints.consequential,
+        readOnlyHint: hints.readOnlyHint,
+        openWorldHint: hints.openWorldHint,
+        destructiveHint: hints.destructiveHint,
+        'x-openai-hints': {
+          readOnlyHint: hints.readOnlyHint,
+          openWorldHint: hints.openWorldHint,
+          destructiveHint: hints.destructiveHint
+        },
         security: [
           { OAuth2: ['generate_image', 'generate_video', 'check_generation', 'list_projects', 'get_usage'] },
           { BearerAuth: [] }
