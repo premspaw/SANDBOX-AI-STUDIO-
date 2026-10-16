@@ -94,119 +94,167 @@ export async function handleAuthorizeGet(req, res, deps) {
   <title>Authorize ZeroLens for ChatGPT</title>
   <style>
     :root {
-      --bg: #090a0f;
-      --card-bg: rgba(20, 24, 35, 0.85);
-      --border: rgba(255, 255, 255, 0.1);
-      --accent: #f59e0b;
-      --accent-glow: rgba(245, 158, 11, 0.25);
-      --text: #f3f4f6;
-      --text-muted: #9ca3af;
+      --bg: #07090e;
+      --card-bg: rgba(15, 18, 26, 0.88);
+      --border: rgba(255, 255, 255, 0.08);
+      --lime: #c8f135;
+      --lime-glow: rgba(200, 241, 53, 0.28);
+      --openai: #10a37f;
+      --openai-glow: rgba(16, 163, 127, 0.3);
+      --text: #f4f5f7;
+      --text-muted: #94a3b8;
       --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background-color: var(--bg);
-      background-image: radial-gradient(circle at 50% 20%, rgba(245, 158, 11, 0.15), transparent 60%);
+      background-image: 
+        radial-gradient(circle at 30% 15%, rgba(200, 241, 53, 0.12), transparent 50%),
+        radial-gradient(circle at 70% 15%, rgba(16, 163, 127, 0.15), transparent 50%);
       color: var(--text);
       font-family: var(--font);
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      padding: 20px;
+      padding: 24px;
     }
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border);
-      backdrop-filter: blur(20px);
-      border-radius: 20px;
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border-radius: 24px;
       width: 100%;
-      max-width: 440px;
-      padding: 36px 32px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px var(--accent-glow);
+      max-width: 460px;
+      padding: 40px 34px;
+      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 0, 0, 0.5);
+      position: relative;
     }
-    .logo-row {
+    .brand-bridge {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 16px;
-      margin-bottom: 24px;
+      gap: 18px;
+      margin-bottom: 26px;
     }
-    .logo-badge {
-      width: 52px;
-      height: 52px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #1e293b, #0f172a);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+    .brand-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-container {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      position: relative;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .logo-container.zerolens {
+      background: radial-gradient(circle at 35% 30%, rgba(200, 241, 53, 0.18), rgba(15, 23, 42, 0.95));
+      border: 1.5px solid rgba(200, 241, 53, 0.4);
+      box-shadow: 0 0 24px var(--lime-glow);
+    }
+    .logo-container.chatgpt {
+      background: radial-gradient(circle at 35% 30%, rgba(16, 163, 127, 0.25), rgba(13, 27, 24, 0.95));
+      border: 1.5px solid rgba(16, 163, 127, 0.45);
+      box-shadow: 0 0 24px var(--openai-glow);
+    }
+    .brand-label {
+      font-size: 11px;
       font-weight: 800;
-      color: var(--accent);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #e2e8f0;
     }
-    .link-icon {
-      font-size: 18px;
+    .brand-label.zl { color: var(--lime); }
+    .brand-label.gpt { color: #34d399; }
+
+    .connector-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       color: var(--text-muted);
+      margin-bottom: 22px;
+      animation: pulseConnect 2.5s infinite ease-in-out;
     }
+    @keyframes pulseConnect {
+      0%, 100% { transform: scale(1); border-color: rgba(255, 255, 255, 0.12); }
+      50% { transform: scale(1.1); border-color: var(--lime); color: var(--lime); }
+    }
+
     h1 {
-      font-size: 22px;
-      font-weight: 700;
+      font-size: 23px;
+      font-weight: 800;
       text-align: center;
       margin-bottom: 8px;
+      letter-spacing: -0.4px;
     }
     p.subtitle {
-      font-size: 14px;
+      font-size: 13.5px;
       color: var(--text-muted);
       text-align: center;
-      line-height: 1.5;
+      line-height: 1.55;
       margin-bottom: 24px;
     }
     .permissions {
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255, 255, 255, 0.025);
       border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 12px;
-      padding: 16px;
+      border-radius: 14px;
+      padding: 16px 18px;
       margin-bottom: 24px;
       font-size: 13px;
     }
     .permission-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
+      gap: 12px;
+      margin-bottom: 11px;
+      color: #cbd5e1;
     }
     .permission-item:last-child { margin-bottom: 0; }
     .check {
-      color: #10b981;
-      font-weight: bold;
+      color: var(--lime);
+      font-size: 14px;
+      font-weight: 900;
+      flex-shrink: 0;
     }
     .form-group {
       margin-bottom: 16px;
     }
     label {
       display: block;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11.5px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.6px;
       color: var(--text-muted);
-      margin-bottom: 6px;
+      margin-bottom: 7px;
     }
     input {
       width: 100%;
-      padding: 12px 14px;
+      padding: 13px 15px;
       background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 11px;
       color: #fff;
       font-size: 14px;
       outline: none;
       transition: all 0.2s;
     }
     input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-glow);
+      border-color: var(--lime);
+      box-shadow: 0 0 0 3px var(--lime-glow);
+      background: rgba(255, 255, 255, 0.06);
     }
     .actions {
       display: flex;
@@ -215,19 +263,21 @@ export async function handleAuthorizeGet(req, res, deps) {
       margin-top: 24px;
     }
     button.btn-primary {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
+      background: linear-gradient(135deg, #c8f135, #a3d917);
       border: none;
-      color: #000;
-      font-weight: 700;
+      color: #0b0f02;
+      font-weight: 800;
       padding: 14px;
-      border-radius: 10px;
-      font-size: 14px;
+      border-radius: 11px;
+      font-size: 14.5px;
       cursor: pointer;
       transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.2px;
     }
     button.btn-primary:hover {
       opacity: 0.95;
       transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(200, 241, 53, 0.35);
     }
     a.btn-cancel {
       text-align: center;
@@ -235,23 +285,90 @@ export async function handleAuthorizeGet(req, res, deps) {
       font-size: 13px;
       text-decoration: none;
       padding: 8px;
+      transition: color 0.2s;
     }
     a.btn-cancel:hover { color: #fff; }
     .footer-note {
       text-align: center;
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 20px;
+      font-size: 11.5px;
+      color: #64748b;
+      margin-top: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="logo-row">
-      <div class="logo-badge">ZL</div>
-      <span class="link-icon">⇄</span>
-      <div class="logo-badge" style="background: linear-gradient(135deg, #10a37f, #0d8264); color: #fff;">GPT</div>
+    <div class="brand-bridge">
+      <!-- ZeroLens Official Aperture Logo -->
+      <div class="brand-box">
+        <div class="logo-container zerolens" title="ZeroLens AI Studio">
+          <svg width="44" height="44" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="zlGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <!-- Outer glowing aperture ring -->
+            <circle cx="80" cy="80" r="72" fill="none" stroke="#c8f135" stroke-width="5" filter="url(#zlGlow)"/>
+            <!-- 8 blade tick marks -->
+            <g stroke="#c8f135" stroke-width="1.6" opacity="0.45">
+              <line x1="80" y1="8" x2="80" y2="20"/>
+              <line x1="80" y1="140" x2="80" y2="152"/>
+              <line x1="8" y1="80" x2="20" y2="80"/>
+              <line x1="140" y1="80" x2="152" y2="80"/>
+              <line x1="30.7" y1="30.7" x2="39.2" y2="39.2"/>
+              <line x1="120.8" y1="120.8" x2="129.3" y2="129.3"/>
+              <line x1="129.3" y1="30.7" x2="120.8" y2="39.2"/>
+              <line x1="39.2" y1="120.8" x2="30.7" y2="129.3"/>
+            </g>
+            <!-- Inner aperture ring -->
+            <circle cx="80" cy="80" r="56" fill="none" stroke="#c8f135" stroke-width="1.2" opacity="0.3"/>
+            <!-- Hexagonal aperture blades -->
+            <g fill="none" stroke="#c8f135" stroke-width="1.2" opacity="0.25">
+              <path d="M80 24 A56 56 0 0 1 128.5 52"/>
+              <path d="M128.5 52 A56 56 0 0 1 128.5 108"/>
+              <path d="M128.5 108 A56 56 0 0 1 80 136"/>
+              <path d="M80 136 A56 56 0 0 1 31.5 108"/>
+              <path d="M31.5 108 A56 56 0 0 1 31.5 52"/>
+              <path d="M31.5 52 A56 56 0 0 1 80 24"/>
+            </g>
+            <!-- Iconic Z letterform -->
+            <line x1="50" y1="56" x2="110" y2="56" stroke="#c8f135" stroke-width="8.5" stroke-linecap="round"/>
+            <line x1="110" y1="56" x2="50" y2="104" stroke="#c8f135" stroke-width="8.5" stroke-linecap="round"/>
+            <line x1="50" y1="104" x2="110" y2="104" stroke="#c8f135" stroke-width="8.5" stroke-linecap="round"/>
+            <!-- Recording glint dot -->
+            <circle cx="116" cy="54" r="5.5" fill="#ef4444"/>
+          </svg>
+        </div>
+        <span class="brand-label zl">ZeroLens</span>
+      </div>
+
+      <!-- Connector icon -->
+      <div class="connector-badge" title="Secure OAuth 2.0 Connection">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+        </svg>
+      </div>
+
+      <!-- ChatGPT Official Emblem -->
+      <div class="brand-box">
+        <div class="logo-container chatgpt" title="ChatGPT by OpenAI">
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="#ffffff" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.8956zm16.0993 3.8558L12.5973 8.3829l2.02-1.1686a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.402-.6812zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.907 9.2297V6.8974a.0662.0662 0 0 1 .0331-.0615L14.7686 4.05a4.4992 4.4992 0 0 1 6.1408 1.6464 4.485 4.485 0 0 1 .5318 3.0315zM7.747 15.6324l-2.02-1.1686a.071.071 0 0 1-.038-.052V8.8292a4.4944 4.4944 0 0 1 7.3709-3.4536l-.142.0805-4.7783 2.7582a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3655l2.6024-1.4998 2.6025 1.4998v2.9997l-2.6025 1.4998-2.6024-1.4998z"/>
+          </svg>
+        </div>
+        <span class="brand-label gpt">ChatGPT</span>
+      </div>
     </div>
+
     <h1>Connect to ChatGPT</h1>
     <p class="subtitle">Allow ChatGPT to access your ZeroLens account to generate AI images, create videos, and check project renders.</p>
 
@@ -267,7 +384,6 @@ export async function handleAuthorizeGet(req, res, deps) {
       <div class="permission-item">
         <span class="check">✓</span>
         <span>View your projects and credit balance</span>
-      </div>
     </div>
 
     <form method="POST" action="/api/mcp/auth/authorize">
