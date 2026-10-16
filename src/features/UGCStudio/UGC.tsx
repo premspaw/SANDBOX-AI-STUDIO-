@@ -4302,12 +4302,13 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
               } else if (pollData.status === 'failed') {
                 throw new Error(pollData.error || pollData.message || 'Seedance generation failed.');
               }
-            } catch (pErr) {
-              if (pErr.message && !pErr.message.includes('fetch') && !pErr.message.includes('network') && (pErr.message.includes('failed') || pErr.message.includes('flagged'))) {
+            } catch (pErr: any) {
+              const errMsg = pErr instanceof Error ? pErr.message : String(pErr || '');
+              if (errMsg && !errMsg.includes('fetch') && !errMsg.includes('network') && (errMsg.includes('failed') || errMsg.includes('flagged'))) {
                 throw pErr;
               }
               // Transient network interruption: continue polling without aborting
-              console.warn('[UGC-POLL-NOTICE] Retrying status check...', pErr.message);
+              console.warn('[UGC-POLL-NOTICE] Retrying status check...', errMsg);
             }
           }
         }
