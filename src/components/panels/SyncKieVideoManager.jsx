@@ -30,7 +30,9 @@ export const SyncKieVideoManager = ({ setStatus }) => {
                 extUrl = candidate.video_url || candidate.url || candidate.download_url || candidate.videoUrl || candidate.resultUrl || '';
                 extPrompt = candidate.prompt || candidate.text || '';
                 extEngine = candidate.model || candidate.engine || '';
-            } catch (_) {}
+            } catch (_err) {
+                // Non-JSON input, fallback to regex extraction
+            }
         }
 
         if (!extUrl) {
