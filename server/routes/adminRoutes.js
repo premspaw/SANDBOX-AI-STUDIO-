@@ -28,7 +28,9 @@ export default function createRouter(deps) {
         supabaseRestGet,
         LOCAL_ASSETS_FILE,
         requireAuth,
-        openaiChat
+        openaiChat,
+        uploadVideoToSupabase,
+        saveLocalAsset
     } = deps;
 
     // Helper middleware to check if user has admin role
@@ -654,6 +656,204 @@ export default function createRouter(deps) {
         } catch (error) {
             console.error('Save Character Error:', error);
             res.status(error.status || 500).json({ error: error.message });
+        }
+    });
+
+    // POST /api/admin/sync-kie-video
+    // Syncs / imports a video generated in KIE or external server into a specific user's gallery
+    router.post('/admin/sync-kie-video', async (req, res) => {
+        try {
+            // Check admin authorization
+            let isAdmin = false;
+            try {
+                await requireAdmin(req);
+                isAdmin = true;
+            } catch (_) {
+                // Also allow admin secret header or dev mode
+                const adminSecret = req.headers['x-admin-secret'] || req.body.adminSecret;
+                if (adminSecret && (adminSecret === process.env.ADMIN_SECRET || adminSecret === process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+                    isAdmin = true;
+                } else if (process.env.NODE_ENV !== 'production') {
+                    isAdmin = true;
+                }
+            }
+
+            if (!isAdmin) {
+                return res.status(403).json({ error: 'Unauthorized: Admin privileges required.' });
+            }
+
+            const {
+                email,
+                userId,
+                videoUrl,
+                prompt,
+                engine,
+                aspectRatio,
+                folder,
+                projectId,
+                deductCredits
+            } = req.body;
+
+            if (!videoUrl || typeof videoUrl !== 'string' || !videoUrl.startsWith('http')) {
+                return res.status(400).json({ error: 'Valid videoUrl (http/https) is required.' });
+            }
+
+            const dbClient = supabaseAdmin || supabase;
+            let targetUserId = userId;
+            let targetEmail = email;
+
+            // Resolve User by email if email was provided
+            if (email && !targetUserId && dbClient) {
+                const cleanEmail = email.trim().toLowerCase();
+                const { data: prof } = await dbClient
+                    .from('profiles')
+                    .select('id, email, shorts_balance')
+                    .ilike('email', cleanEmail)
+                    .maybeSingle();
+
+                if (prof) {
+                    targetUserId = prof.id;
+                    targetEmail = prof.email;
+                } else {
+                    try {
+                        const { data: authData } = await dbClient.auth.admin.listUsers();
+                        const matching = authData?.users?.find(u => u.email?.toLowerCase() === cleanEmail);
+                        if (matching) {
+                            targetUserId = matching.id;
+                            targetEmail = matching.email;
+                        }
+                    } catch (_) {}
+                }
+            }
+
+            if (!targetUserId) {
+                targetUserId = 'local_user';
+            }
+
+            console.log(`[ADMIN-SYNC-VIDEO] Syncing video for user: ${targetEmail || targetUserId} from URL: ${videoUrl}`);
+
+            // Download binary video buffer
+            console.log(`[ADMIN-SYNC-VIDEO] Downloading remote video: ${videoUrl}`);
+            const vidResp = await fetch(videoUrl, { signal: AbortSignal.timeout(60000) });
+            if (!vidResp.ok) {
+                throw new Error(`Failed to download video from URL: HTTP ${vidResp.status} ${vidResp.statusText}`);
+            }
+            const arrayBuf = await vidResp.arrayBuffer();
+            const videoBuffer = Buffer.from(arrayBuf);
+            if (!videoBuffer || videoBuffer.length === 0) {
+                throw new Error('Downloaded video buffer is empty.');
+            }
+
+            console.log(`[ADMIN-SYNC-VIDEO] Downloaded ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB. Uploading to permanent storage...`);
+
+            const resolvedAspect = aspectRatio || '16:9';
+            const resolvedEngine = engine || 'Seedance 2.0 Pro';
+            const resolvedPrompt = prompt || 'Seedance 2.0 Cinematic Video';
+            const targetFolder = folder || 'studio';
+            const targetProj = projectId || 'default';
+
+            let permanentUrl = videoUrl;
+
+            // Upload to Cloudflare R2 / GCS
+            if (typeof uploadVideoToSupabase === 'function' && targetUserId !== 'local_user') {
+                try {
+                    permanentUrl = await uploadVideoToSupabase(
+                        videoBuffer,
+                        targetUserId,
+                        resolvedAspect,
+                        targetFolder,
+                        resolvedPrompt,
+                        resolvedEngine,
+                        { projectId: targetProj, project_id: targetProj, prompt: resolvedPrompt, engine: resolvedEngine }
+                    );
+                } catch (uploadErr) {
+                    console.warn('[ADMIN-SYNC-VIDEO] uploadVideoToSupabase warning:', uploadErr.message);
+                }
+            } else if (storageService && typeof storageService.uploadToGCS === 'function') {
+                const key = `users/${targetUserId}/generated/seedance_${Date.now()}.mp4`;
+                permanentUrl = await storageService.uploadToGCS(videoBuffer, key, 'video/mp4');
+            }
+
+            // Always save to local fallback database for fast retrieval in all studios
+            if (typeof saveLocalAsset === 'function') {
+                saveLocalAsset({
+                    name: `${resolvedEngine} Video`,
+                    type: 'video',
+                    url: permanentUrl,
+                    user_id: targetUserId,
+                    project_id: targetProj,
+                    aspect: resolvedAspect,
+                    metadata: {
+                        folder: targetFolder,
+                        projectId: targetProj,
+                        project_id: targetProj,
+                        prompt: resolvedPrompt,
+                        engine: resolvedEngine
+                    },
+                    prompt: resolvedPrompt,
+                    engine: resolvedEngine
+                });
+            }
+
+            // Save to Supabase assets table
+            if (dbClient && targetUserId !== 'local_user') {
+                try {
+                    await dbClient.from('assets').insert([{
+                        name: `${resolvedEngine} Video`,
+                        type: 'video',
+                        url: permanentUrl,
+                        user_id: targetUserId,
+                        created_at: new Date().toISOString(),
+                        model: resolvedEngine,
+                        metadata: {
+                            aspect: resolvedAspect,
+                            folder: targetFolder,
+                            projectId: targetProj,
+                            project_id: targetProj,
+                            prompt: resolvedPrompt,
+                            engine: resolvedEngine
+                        }
+                    }]);
+                    console.log(`[ADMIN-SYNC-VIDEO] Inserted asset into Supabase for ${targetUserId}`);
+                } catch (dbErr) {
+                    console.warn('[ADMIN-SYNC-VIDEO] Supabase asset insert warning:', dbErr.message);
+                }
+            }
+
+            // Optional credit debit if requested
+            const debitNum = Number(deductCredits) || 0;
+            if (debitNum > 0 && dbClient && targetUserId !== 'local_user') {
+                try {
+                    const { data: prof } = await dbClient.from('profiles').select('shorts_balance').eq('id', targetUserId).maybeSingle();
+                    if (prof) {
+                        const newBal = Math.max(0, (prof.shorts_balance || 0) - debitNum);
+                        await dbClient.from('profiles').update({ shorts_balance: newBal }).eq('id', targetUserId);
+                        await dbClient.from('shorts_transactions').insert({
+                            user_id: targetUserId,
+                            amount: -debitNum,
+                            action_type: 'spend_video_generation',
+                            reason: `Admin sync: ${resolvedEngine} video generation (${debitNum}⚡)`
+                        });
+                        console.log(`[ADMIN-SYNC-VIDEO] Debited ${debitNum} credits from user ${targetUserId}. New balance: ${newBal}`);
+                    }
+                } catch (creditErr) {
+                    console.warn('[ADMIN-SYNC-VIDEO] Credit deduction warning:', creditErr.message);
+                }
+            }
+
+            return res.json({
+                success: true,
+                message: `Video successfully synced to user gallery!`,
+                user: { id: targetUserId, email: targetEmail },
+                permanentUrl,
+                engine: resolvedEngine,
+                prompt: resolvedPrompt,
+                creditsDebited: debitNum
+            });
+
+        } catch (error) {
+            console.error('[ADMIN-SYNC-VIDEO-ERR]', error);
+            res.status(500).json({ error: error.message || 'Failed to sync video.' });
         }
     });
 

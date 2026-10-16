@@ -5,6 +5,7 @@ import { AssetsLibrary } from './AssetsLibrary';
 import { Search, Database, Image as ImageIcon, Video, Music, X, Upload, Trash2, CheckCircle2, Brain, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { HOOK_CATEGORIES, HOOK_TEMPLATES } from '../../features/UGCStudio/constants/hooksLibrary';
+import { SyncKieVideoManager } from './SyncKieVideoManager';
 
 export const AssetManager = () => {
     const [assets, setAssets] = useState(INITIAL_ASSETS);
@@ -395,18 +396,26 @@ export const AssetManager = () => {
                         >
                             Hooks (UGC)
                         </button>
+                        <button 
+                            onClick={() => setActiveTab('sync')}
+                            className={`text-xs font-bold tracking-widest uppercase pb-1 border-b-2 transition-all ${activeTab === 'sync' ? 'border-pink-500 text-pink-400' : 'border-transparent text-zinc-500 hover:text-white'}`}
+                        >
+                            Sync KIE Video
+                        </button>
                     </div>
                 </div>
-                <button
-                    onClick={saveChanges}
-                    disabled={isSaving}
-                    className={`px-6 py-2 rounded-full font-semibold transition-all ${isSaving
-                        ? 'bg-zinc-700 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-[#AADD00] to-purple-600 hover:scale-105 active:scale-95 shadow-lg shadow-purple-500/20'
-                        }`}
-                >
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                </button>
+                {activeTab === 'config' && (
+                    <button
+                        onClick={saveChanges}
+                        disabled={isSaving}
+                        className={`px-6 py-2 rounded-full font-semibold transition-all ${isSaving
+                            ? 'bg-zinc-700 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-[#AADD00] to-purple-600 hover:scale-105 active:scale-95 shadow-lg shadow-purple-500/20'
+                            }`}
+                    >
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                )}
             </div>
 
             {status.message && (
@@ -821,6 +830,10 @@ export const AssetManager = () => {
                 ) : activeTab === 'hooks' ? (
                     <section className="h-full overflow-y-auto pr-2 custom-scrollbar">
                         <HooksManager setStatus={setStatus} />
+                    </section>
+                ) : activeTab === 'sync' ? (
+                    <section className="h-full overflow-y-auto pr-2 custom-scrollbar">
+                        <SyncKieVideoManager setStatus={setStatus} />
                     </section>
                 ) : (
                     <section className="space-y-6">
