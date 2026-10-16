@@ -341,6 +341,7 @@ export const SidePanel = React.memo(({
   const [seedanceSubModel, setSeedanceSubModel] = useState('seedance-fast');
   const [seedanceImages, setSeedanceImages] = useState(Array(30).fill(''));
   const [seedanceVideos, setSeedanceVideos] = useState(['', '', '']);
+  const [seedanceVideoDurations, setSeedanceVideoDurations] = useState([0, 0, 0]);
   const [seedanceAudios, setSeedanceAudios] = useState(['', '', '']);
   const [seedanceFirstFrame, setSeedanceFirstFrame] = useState('');
   const [seedanceLastFrame, setSeedanceLastFrame] = useState('');
@@ -370,6 +371,11 @@ export const SidePanel = React.memo(({
     const next = [...seedanceVideos];
     next[slotIdx] = item.url;
     setSeedanceVideos(next);
+    setSeedanceVideoDurations(prev => {
+      const copy = [...prev];
+      copy[slotIdx] = Math.max(1, Math.round(dur * 10) / 10 || 5);
+      return copy;
+    });
     autoTagIfMissing(`@video${slotIdx + 1}`);
     setGalleryPickerSlot(null);
     const showToast = useAppStore.getState().showToast;
@@ -869,6 +875,11 @@ export const SidePanel = React.memo(({
       const next = [...seedanceVideos];
       next[slotIdx] = blobUrl;
       setSeedanceVideos(next);
+      setSeedanceVideoDurations(prev => {
+        const copy = [...prev];
+        copy[slotIdx] = Math.max(1, Math.round(dur * 10) / 10);
+        return copy;
+      });
       autoTagIfMissing(`@video${slotIdx + 1}`);
 
       const reader = new FileReader();
@@ -913,6 +924,11 @@ export const SidePanel = React.memo(({
     setSeedanceVideos(prev => {
       const next = [...prev];
       next[slotIdx] = '';
+      return next;
+    });
+    setSeedanceVideoDurations(prev => {
+      const next = [...prev];
+      next[slotIdx] = 0;
       return next;
     });
     if (seedanceVideoRefs[slotIdx]?.current) {
@@ -1501,9 +1517,14 @@ export const SidePanel = React.memo(({
       motionRefVideoDuration,
       extensionSourceVideo,
       extensionDuration,
-      seedanceSubModel
+      seedanceSubModel,
+      seedanceImages,
+      seedanceVideos,
+      seedanceVideoDurations,
+      firstFrameImage: seedanceFirstFrame || firstFrameImage || omniFirstFrameImage,
+      lastFrameImage: seedanceLastFrame || lastFrameImage || omniLastFrameImage
     });
-  }, [activeEngine, duration, resolution, generateAudio, activeTab, panelTab, transitionSubTab, remixEngine, motionEngine, motionMode, motionRefVideoDuration, extensionSourceVideo, extensionDuration, seedanceSubModel]);
+  }, [activeEngine, duration, resolution, generateAudio, activeTab, panelTab, transitionSubTab, remixEngine, motionEngine, motionMode, motionRefVideoDuration, extensionSourceVideo, extensionDuration, seedanceSubModel, seedanceImages, seedanceVideos, seedanceVideoDurations, seedanceFirstFrame, seedanceLastFrame, firstFrameImage, lastFrameImage, omniFirstFrameImage, omniLastFrameImage]);
 
   const triggerGenerateVeo = async () => {
     if (isCooldown || isBusy) return;
@@ -1749,7 +1770,9 @@ export const SidePanel = React.memo(({
       output_format: 'mp4',
       web_search: false,
       nsfw_checker: true,
-      creditCost: calculatedCredits
+      creditCost: calculatedCredits,
+      videoDurations: seedanceVideoDurations,
+      inputVideoDuration: seedanceVideoDurations.reduce((sum, d) => sum + (Number(d) || 0), 0)
     });
   };
 

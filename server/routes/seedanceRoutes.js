@@ -335,44 +335,79 @@ export default function createRouter(deps) {
 
             targetUserId = user ? user.id : userId;
 
-            // Deduct credits: dynamic duration-based cost with 30% margin (same as veo-3.1 style, rounded off)
+            // Deduct credits: dynamic duration-based cost with 20% margin over wholesale costs
             requiredCredits = 20; // fallback default
             const durationNum = Number(duration) || 5;
             const resLower = (resolution || '720p').toLowerCase();
-            const hasVideo = Boolean(
-                (reference_video_urls && reference_video_urls.length > 0) ||
-                (ref_videos && ref_videos.length > 0) ||
-                req.body.sourceVideo ||
+
+            // Check for attached video references and measure input video duration
+            const candidateVideos = [
+                ...(Array.isArray(reference_video_urls) ? reference_video_urls : []),
+                ...(Array.isArray(ref_videos) ? ref_videos : []),
+                ...(Array.isArray(req.body.seedanceVideos) ? req.body.seedanceVideos : []),
+                req.body.sourceVideo,
                 req.body.refVideo
-            );
+            ].filter(Boolean);
+
+            const hasVideo = candidateVideos.length > 0;
+
+            let inputVideoDuration = 0;
+            if (Array.isArray(req.body.videoDurations) && req.body.videoDurations.length > 0) {
+                inputVideoDuration = req.body.videoDurations.reduce((sum, d) => sum + (Number(d) || 0), 0);
+            } else if (Number(req.body.inputVideoDuration) > 0) {
+                inputVideoDuration = Number(req.body.inputVideoDuration);
+            } else if (hasVideo) {
+                inputVideoDuration = Math.max(5, candidateVideos.length * 5);
+            }
+
+            // Count image references: add +1 second extra per image beyond 3 images
+            const candidateImages = [
+                ...(Array.isArray(reference_image_urls) ? reference_image_urls : []),
+                ...(Array.isArray(identity_images) ? identity_images : []),
+                ...(Array.isArray(req.body.seedanceImages) ? req.body.seedanceImages : []),
+                req.body.firstFrame,
+                req.body.lastFrame,
+                first_frame_url,
+                last_frame_url
+            ].filter(Boolean);
+
+            const imageCount = candidateImages.length;
+            const extraImageSeconds = imageCount > 3 ? (imageCount - 3) : 0;
+            const effectiveDuration = (hasVideo ? (durationNum + inputVideoDuration) : durationNum) + extraImageSeconds;
 
             if (engine === 'seedance-fast' || engine === 'bytedance/seedance-2-fast') {
                 const costPerSec = hasVideo
-                    ? (resLower === '480p' ? 4 : 8.5)
-                    : (resLower === '480p' ? 7 : 14);
-                requiredCredits = Math.ceil(costPerSec * durationNum);
-            } else if (engine === 'seedace') {
-                const costPerSec = resLower === '4k' ? 140 : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
-                requiredCredits = Math.ceil(costPerSec * durationNum);
+                    ? (resLower === '480p' ? 4.0 : 8.7)
+                    : (resLower === '480p' ? 6.8 : 14.5);
+                requiredCredits = Math.ceil(costPerSec * effectiveDuration);
+            } else if (engine === 'seedace' || engine === 'bytedance/seedance-2' || engine === 'seedance-pro') {
+                let costPerSec = 24.0;
+                if (hasVideo) {
+                    costPerSec = resLower === '4k' ? 72.0 : (resLower === '1080p' ? 36.0 : (resLower === '480p' ? 6.7 : 14.5));
+                } else {
+                    costPerSec = resLower === '4k' ? 120.0 : (resLower === '1080p' ? 59.0 : (resLower === '480p' ? 11.0 : 24.0));
+                }
+                requiredCredits = Math.ceil(costPerSec * effectiveDuration);
             } else if (engine === 'seedance-mini' || engine === 'bytedance/seedance-2-mini') {
                 const costPerSec = hasVideo
-                    ? (resLower === '480p' ? 1.35 : 2.8)
-                    : (resLower === '480p' ? 2.1 : 4.6);
-                requiredCredits = Math.ceil(costPerSec * durationNum);
+                    ? (resLower === '480p' ? 1.4 : 2.9)
+                    : (resLower === '480p' ? 2.2 : 4.8);
+                requiredCredits = Math.ceil(costPerSec * effectiveDuration);
             } else if (engine === 'seedance-2.5' || engine === 'seedance-2-5' || engine === 'bytedance/seedance-2-5') {
                 const isMultiRef = Boolean(
-                    (reference_image_urls && reference_image_urls.length > 1) ||
-                    (identity_images && identity_images.length > 1) ||
+                    candidateImages.length > 1 ||
+                    candidateVideos.length > 1 ||
                     req.body.isMultiRef
                 );
                 const costPerSec = isMultiRef
-                    ? (resLower === '1080p' ? 105 : (resLower === '480p' ? 19 : 42))
-                    : (resLower === '1080p' ? 87 : (resLower === '480p' ? 16 : 33));
-                requiredCredits = Math.ceil(costPerSec * durationNum);
+                    ? (resLower === '1080p' ? 110 : (resLower === '480p' ? 20 : 65))
+                    : (resLower === '1080p' ? 92 : (resLower === '480p' ? 17 : 55));
+                requiredCredits = Math.ceil(costPerSec * effectiveDuration);
             }
 
             if (typeof req.body.creditCost === 'number' && req.body.creditCost > 0) {
-                requiredCredits = req.body.creditCost;
+                // Ensure client cannot artificially underpay compared to minimum formula
+                requiredCredits = Math.max(requiredCredits, req.body.creditCost);
             }
 
             if (targetUserId) {

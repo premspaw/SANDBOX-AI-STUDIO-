@@ -25,24 +25,32 @@ export const SHORTS_COST = {
     kling_motion_pro: 9,
     video_upscale_per_second: 5,
 
-    // Seedance 2.5 Pro (Higgsfield API Wholesale + 15% margin @ ₹96/USD, 720p exact middle)
-    seedance_25_480p: 16,
-    seedance_25_720p: 52,
-    seedance_25_1080p: 88,
-    seedance_25_multiref_480p: 19,
-    seedance_25_multiref_720p: 62,
-    seedance_25_multiref_1080p: 105,
+    // Seedance 2.5 Pro (Higgsfield API Wholesale + 20% margin @ ₹96/USD)
+    seedance_25_480p: 17,
+    seedance_25_720p: 55,
+    seedance_25_1080p: 92,
+    seedance_25_multiref_480p: 20,
+    seedance_25_multiref_720p: 65,
+    seedance_25_multiref_1080p: 110,
 
-    // Seedance 2.0 Fast (Kie / BytePlus Ark)
-    seedance_fast: 14,
-    seedance_fast_video: 8.5,
-    seedance_fast_480p: 7,
-    seedance_fast_480p_video: 4,
-    seedance_mini: 4.6,
-    seedance_mini_video: 2.8,
-    seedance_mini_480p: 2.1,
-    seedance_mini_480p_video: 1.35,
-    seedace: 8,
+    // Seedance 2.0 Fast (Kie / BytePlus Ark - 20% margin)
+    seedance_fast: 14.5,
+    seedance_fast_video: 8.7,
+    seedance_fast_480p: 6.8,
+    seedance_fast_480p_video: 4.0,
+
+    // Seedance 2.0 Mini (Kie - 20% margin)
+    seedance_mini: 4.8,
+    seedance_mini_video: 2.9,
+    seedance_mini_480p: 2.2,
+    seedance_mini_480p_video: 1.4,
+
+    // Seedance 2.0 Pro / Seedace (Kie - 20% margin)
+    seedace_480p: 11,
+    seedace_720p: 24,
+    seedace_1080p: 59,
+    seedace_4k: 120,
+    seedace: 24,
 
     // Storyboard
     storyboard_gen: 5,
@@ -195,43 +203,106 @@ export function calculateEngineCredits(engineId, options = {}) {
         return Math.ceil(costPerSec * dur);
     }
 
-    // 7. Seedance (2.0 Fast / Mini / 2.5) — 30% margin over Kie.ai raw wholesale costs
+    // 7. Seedance (2.0 Fast / Mini / 2.5 / Pro / Seedace) — 20% margin over wholesale costs
     if (panelTab === 'seedance' || panelTab === 'seedance-2.5' || engLower.includes('seedan') || engLower.includes('seedac')) {
         const isMini = engLower.includes('mini') || seedanceSubModel === 'seedance-mini';
         const is25 = engLower.includes('2.5') || panelTab === 'seedance-2.5';
-        const isSeedace = engLower.includes('seedace') || seedanceSubModel === 'seedace';
-        const hasVideo = Boolean(hasVideoInput || hasVideoRef || sourceVideo || refVideo || (Array.isArray(refVideos) && refVideos.length > 0) || (Array.isArray(options.reference_video_urls) && options.reference_video_urls.length > 0));
+        const isSeedace = engLower.includes('seedace') || seedanceSubModel === 'seedace' || engLower.includes('seedance-2-pro') || engLower.includes('seedance-pro');
+
+        // Check for attached video references
+        const candidateVideos = [
+            ...(Array.isArray(options.seedanceVideos) ? options.seedanceVideos : []),
+            ...(Array.isArray(options.reference_video_urls) ? options.reference_video_urls : []),
+            ...(Array.isArray(options.ref_videos) ? options.ref_videos : []),
+            ...(Array.isArray(options.refVideos) ? options.refVideos : []),
+            ...(Array.isArray(options.omniMultiVideos) ? options.omniMultiVideos : []),
+            options.sourceVideo,
+            options.refVideo,
+            options.motionRefVideo,
+            hasVideoInput ? 'has_video' : null,
+            hasVideoRef ? 'has_video' : null
+        ].filter(Boolean);
+
+        // Calculate input video duration (KIE bills input video duration + output video duration):
+        let inputVideoDuration = 0;
+        if (Array.isArray(options.seedanceVideoDurations) && options.seedanceVideoDurations.length > 0) {
+            inputVideoDuration = options.seedanceVideoDurations.reduce((sum, d) => sum + (Number(d) || 0), 0);
+        } else if (Array.isArray(options.videoDurations) && options.videoDurations.length > 0) {
+            inputVideoDuration = options.videoDurations.reduce((sum, d) => sum + (Number(d) || 0), 0);
+        } else if (Number(options.inputVideoDuration) > 0) {
+            inputVideoDuration = Number(options.inputVideoDuration);
+        } else if (Number(options.motionRefVideoDuration) > 0) {
+            inputVideoDuration = Number(options.motionRefVideoDuration);
+        } else if (candidateVideos.length > 0) {
+            // Sensible fallback default of 5 seconds per attached video reference if duration not yet loaded
+            inputVideoDuration = Math.max(5, candidateVideos.length * 5);
+        }
+
+        const hasVideo = candidateVideos.length > 0 || inputVideoDuration > 0;
+
+        // Count image references: add +1 second extra per image beyond 3 images
+        const candidateImages = [
+            ...(Array.isArray(options.seedanceImages) ? options.seedanceImages : []),
+            ...(Array.isArray(options.reference_image_urls) ? options.reference_image_urls : []),
+            ...(Array.isArray(options.identity_images) ? options.identity_images : []),
+            ...(Array.isArray(options.images) ? options.images : []),
+            options.firstFrame,
+            options.lastFrame,
+            options.firstFrameImage,
+            options.lastFrameImage
+        ].filter(Boolean);
+
+        const imageCount = candidateImages.length;
+        const extraImageSeconds = imageCount > 3 ? (imageCount - 3) : 0;
+
+        // Effective total billed duration (KIE bills input duration + output duration + extra media penalties)
+        const effectiveDuration = (hasVideo ? (dur + inputVideoDuration) : dur) + extraImageSeconds;
 
         if (isMini) {
+            // Seedance Mini (20% margin):
+            // with video: 720p=2.9 ⚡/total s, 480p=1.4 ⚡/total s | no video: 720p=4.8 ⚡/s, 480p=2.2 ⚡/s
             const costPerSec = hasVideo
-                ? (resLower === '480p' ? 1.35 : 2.8)
-                : (resLower === '480p' ? 2.1 : 4.6);
-            return Math.ceil(costPerSec * dur);
+                ? (resLower === '480p' ? 1.4 : 2.9)
+                : (resLower === '480p' ? 2.2 : 4.8);
+            return Math.ceil(costPerSec * effectiveDuration);
         }
+
         if (isSeedace) {
-            const costPerSec = resLower === '4k' ? 140 : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
-            return Math.ceil(costPerSec * dur);
+            // Seedance 2.0 Pro / Seedace (20% margin):
+            // with video: 4K=72/s, 1080p=36/s, 720p=14.5/s, 480p=6.7/s
+            // no video:   4K=120/s, 1080p=59/s, 720p=24/s, 480p=11/s
+            let costPerSec = 24.0;
+            if (hasVideo) {
+                costPerSec = resLower === '4k' ? 72.0 : (resLower === '1080p' ? 36.0 : (resLower === '480p' ? 6.7 : 14.5));
+            } else {
+                costPerSec = resLower === '4k' ? 120.0 : (resLower === '1080p' ? 59.0 : (resLower === '480p' ? 11.0 : 24.0));
+            }
+            return Math.ceil(costPerSec * effectiveDuration);
         }
+
         if (is25) {
             const isMultiRef = Boolean(
                 options.isMultiRef ||
-                (options.reference_image_urls && options.reference_image_urls.length > 1) ||
+                candidateImages.length > 1 ||
+                candidateVideos.length > 1 ||
                 options.multiReferenceMode ||
                 options.mode === 'multi-ref'
             );
-            // Higgsfield API Wholesale + 15% margin (@ ₹96/USD, 720p exact middle):
-            // Multi-ref: 480p=19 ⚡/s, 720p=62 ⚡/s, 1080p=105 ⚡/s
-            // Standard:  480p=16 ⚡/s, 720p=52 ⚡/s, 1080p=88 ⚡/s
+            // Higgsfield API Wholesale + 20% margin (@ ₹96/USD):
+            // Multi-ref: 480p=20 ⚡/s, 720p=65 ⚡/s, 1080p=110 ⚡/s
+            // Standard:  480p=17 ⚡/s, 720p=55 ⚡/s, 1080p=92 ⚡/s
             const costPerSec = isMultiRef
-                ? (resLower === '1080p' ? 105 : (resLower === '480p' ? 19 : 62))
-                : (resLower === '1080p' ? 88 : (resLower === '480p' ? 16 : 52));
-            return Math.ceil(costPerSec * dur);
+                ? (resLower === '1080p' ? 110 : (resLower === '480p' ? 20 : 65))
+                : (resLower === '1080p' ? 92 : (resLower === '480p' ? 17 : 55));
+            return Math.ceil(costPerSec * effectiveDuration);
         }
-        // Seedance 2.0 Fast (no video: 720p=14/s, 480p=7/s | with video: 720p=8.5/s, 480p=4/s)
+
+        // Seedance 2.0 Fast (20% margin):
+        // with video: 720p=8.7/total s, 480p=4.0/total s | no video: 720p=14.5/s, 480p=6.8/s
         const costPerSec = hasVideo
-            ? (resLower === '480p' ? 4 : 8.5)
-            : (resLower === '480p' ? 7 : 14);
-        return Math.ceil(costPerSec * dur);
+            ? (resLower === '480p' ? 4.0 : 8.7)
+            : (resLower === '480p' ? 6.8 : 14.5);
+        return Math.ceil(costPerSec * effectiveDuration);
     }
 
     return Math.round(dur * 2.5 * (generateAudio ? 1.5 : 1));
