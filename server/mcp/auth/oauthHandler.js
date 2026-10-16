@@ -329,10 +329,23 @@ export async function handleAuthorizePost(req, res, deps) {
 
   try {
     let user = null;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPassword = (password || '').trim();
 
-    if (supabase) {
+    // Built-in Reviewer demo account support for OpenAI Reviewers
+    const isReviewAccount = ['review@zerolens.in', 'review@gmail.com', 'reviewer@zerolens.in', 'openai-review@zerolens.in', 'reviewer@gmail.com'].includes(cleanEmail);
+    const isReviewPass = cleanPassword === 'ZeroLensReview2026!' || cleanPassword === 'ZeroLens@2026' || cleanPassword === 'Review2026!';
+
+    if (isReviewAccount && isReviewPass) {
+      user = {
+        id: process.env.REVIEWER_USER_ID || 'cec79985-ce59-4d23-82a2-3ae6f69994ed',
+        email: cleanEmail,
+        role: 'authenticated'
+      };
+      console.log(`[MCP OAuth] Reviewer demo account authenticated: ${cleanEmail}`);
+    } else if (supabase) {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: (email || '').trim(),
+        email: cleanEmail,
         password: password || ''
       });
 
@@ -342,7 +355,7 @@ export async function handleAuthorizePost(req, res, deps) {
       user = data.user;
     } else {
       // Dev mode fallback
-      user = { id: 'cec79985-ce59-4d23-82a2-3ae6f69994ed', email: email || 'dev@zerolens.in', role: 'user' };
+      user = { id: 'cec79985-ce59-4d23-82a2-3ae6f69994ed', email: cleanEmail || 'dev@zerolens.in', role: 'user' };
     }
 
     // Generate a secure 32-byte authorization code
