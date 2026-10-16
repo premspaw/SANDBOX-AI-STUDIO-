@@ -174,8 +174,18 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
             >
                 {navItems.filter(item => {
                     if (isAdmin) return true;
-                    // Regular users see UGC Engine, Avatar Studio, and Studio Generator
-                    const allowedForRegular = new Set(['ugc', 'avatar', 'studio']);
+                    // Regular users can access UGC, Avatar, Cinema Studio, Studio Generator, Marketing, 9:16 Templates, Remix Studio, Brand Voice, and Your Voice
+                    const allowedForRegular = new Set([
+                        'ugc',
+                        'avatar',
+                        'cinematic-studio',
+                        'studio',
+                        'marketing',
+                        'templates',
+                        'remix',
+                        'brand-voice',
+                        'yourvoice'
+                    ]);
                     return allowedForRegular.has(item.id);
                 }).map((item) => (
                     <SidebarNavItem
