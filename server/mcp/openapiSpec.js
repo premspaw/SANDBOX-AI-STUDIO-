@@ -33,8 +33,8 @@ export function generateOpenAPISpec(baseUrl = (process.env.PUBLIC_APP_URL || 'ht
   const TOOL_HINTS = {
     search: { readOnlyHint: true, openWorldHint: true, destructiveHint: false, consequential: false },
     fetch: { readOnlyHint: true, openWorldHint: true, destructiveHint: false, consequential: false },
-    generate_image: { readOnlyHint: false, openWorldHint: false, destructiveHint: false, consequential: true },
-    generate_video: { readOnlyHint: false, openWorldHint: false, destructiveHint: false, consequential: true },
+    generate_image: { readOnlyHint: false, openWorldHint: true, destructiveHint: false, consequential: true },
+    generate_video: { readOnlyHint: false, openWorldHint: true, destructiveHint: false, consequential: true },
     check_generation: { readOnlyHint: true, openWorldHint: false, destructiveHint: false, consequential: false },
     list_projects: { readOnlyHint: true, openWorldHint: false, destructiveHint: false, consequential: false },
     get_project: { readOnlyHint: true, openWorldHint: false, destructiveHint: false, consequential: false },

@@ -4,7 +4,7 @@ export function getVideoToolDefinitions() {
   return [
     {
       name: 'generate_video',
-      description: 'Generates cinematic AI videos using ZeroLens studio engines. REQUIRED USER CONFIRMATION: You MUST NEVER invoke this tool on your first response or without explicit user confirmation! Whenever the user asks to generate a video or animation, you MUST first reply outlining the proposed scene, engine, aspect ratio, resolution, duration (default: 10s), and the credit cost (cost is strictly PER SECOND of video: e.g. 10s = 50 credits at 5 credits/sec), and ask: "Shall I create this video now? (Yes/No)". ONLY call generate_video AFTER the user explicitly replies "Yes" or gives clear confirmation. Supported engines: "omni-flash-1.1" (Google Gemini Omni Flash 1.1 — standard Google video engine in ZeroLens, 5 credits/sec, 6 with audio), "seedance-2.5" (cinematic fidelity, 8 credits/sec at 480p, 10 credits/sec at 720p), "seedance-fast" (budget 720p, 5 credits/sec). Duration defaults to 10s.',
+      description: 'Starts an AI video render in the user\'s ZeroLens account and returns a generation ID that can be polled with check_generation. This consumes Shorts credits billed per second of video, so confirm the scene, engine, aspect ratio, resolution, duration and total credit cost with the user before calling, and set user_confirmed to true once they agree. Optionally accepts public first/last frame image URLs. Engine costs: "omni-flash-1.1" 5 credits/sec (6 with audio), "seedance-fast" 5 credits/sec, "seedance-2.5" 8 credits/sec at 480p or 10 credits/sec at 720p. Default duration: 10s.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -37,8 +37,8 @@ export function getVideoToolDefinitions() {
           },
           user_confirmed: {
             type: 'boolean',
-            description: 'Must be true. Confirms that the user explicitly replied "Yes" to create the video.',
-            default: false
+            description: 'Confirmation flag indicating the user approved starting the video render.',
+            default: true
           },
           first_frame_url: {
             type: 'string',
@@ -63,12 +63,12 @@ export function getVideoToolDefinitions() {
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
-        openWorldHint: false
+        openWorldHint: true
       },
       provided_tool_annotations: {
         readOnlyHint: false,
         destructiveHint: false,
-        openWorldHint: false
+        openWorldHint: true
       },
       _meta: {
         ui: {

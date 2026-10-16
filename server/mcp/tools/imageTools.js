@@ -4,7 +4,7 @@ export function getImageToolDefinitions() {
   return [
     {
       name: 'generate_image',
-      description: 'Generates high-fidelity AI images using ZeroLens studio engines. REQUIRED USER CONFIRMATION: You MUST NEVER invoke this tool on your first response or without explicit user confirmation! Whenever the user asks to generate an image, slide, carousel, or graphic, you MUST first reply to the user outlining the proposed design, engine, and aspect ratio, and ask: "Shall I create this now? (Yes/No)". ONLY call generate_image AFTER the user explicitly replies "Yes" or gives clear confirmation. When this tool returns, you MUST render the visual image in your chat reply using Markdown: ![ZeroLens Studio Image](IMAGE_URL). Supported models: "nano-banana-2-lite" (0.5 credits, fast/budget), "nano-banana-pro" (3 credits, ultra detail), "gpt-image-2.5-flare" (1.5 credits), "gpt-image-2.5-sunburst" (2.5 credits), "nano-banana-2" (1 credit).',
+      description: 'Generates an AI image in the user\'s ZeroLens account and returns the image URL. This consumes Shorts credits from the user\'s balance, so confirm the prompt, model, aspect ratio and credit cost with the user before calling, and set user_confirmed to true once they agree. Optionally accepts a public reference image URL. Model costs: "nano-banana-2-lite" 0.5 credits, "nano-banana-2" 1 credit, "gpt-image-2.5-flare" 1.5 credits, "gpt-image-2.5-sunburst" 2.5 credits, "nano-banana-pro" 3 credits.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -31,8 +31,8 @@ export function getImageToolDefinitions() {
           },
           user_confirmed: {
             type: 'boolean',
-            description: 'Must be true. Confirms that the user explicitly replied "Yes" to create the image.',
-            default: false
+            description: 'Confirmation flag indicating the user approved generating the image.',
+            default: true
           },
           reference_image_url: {
             type: 'string',
@@ -57,12 +57,12 @@ export function getImageToolDefinitions() {
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
-        openWorldHint: false
+        openWorldHint: true
       },
       provided_tool_annotations: {
         readOnlyHint: false,
         destructiveHint: false,
-        openWorldHint: false
+        openWorldHint: true
       },
       _meta: {
         ui: {

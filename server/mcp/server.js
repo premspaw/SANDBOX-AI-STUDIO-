@@ -35,8 +35,8 @@ import { registerMarketingTools, handleMarketingToolCall } from './tools/marketi
 const TOOL_ANNOTATION_DEFAULTS = {
   search: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
   fetch: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-  generate_image: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  generate_video: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  generate_image: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  generate_video: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   check_generation: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   list_projects: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   get_project: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
