@@ -333,8 +333,8 @@ export async function handleAuthorizePost(req, res, deps) {
     const cleanPassword = (password || '').trim();
 
     // Built-in Reviewer demo account support for OpenAI Reviewers
-    const isReviewAccount = ['review@zerolens.in', 'review@gmail.com', 'reviewer@zerolens.in', 'openai-review@zerolens.in', 'reviewer@gmail.com'].includes(cleanEmail);
-    const isReviewPass = cleanPassword === 'ZeroLensReview2026!' || cleanPassword === 'ZeroLens@2026' || cleanPassword === 'Review2026!';
+    const isReviewAccount = ['support@zerolens.in', 'review@zerolens.in', 'review@gmail.com', 'reviewer@zerolens.in', 'openai-review@zerolens.in', 'reviewer@gmail.com'].includes(cleanEmail);
+    const isReviewPass = cleanPassword === 'ZeroLensReview2026!' || cleanPassword === 'ZeroLens@2026' || cleanPassword === 'Review2026!' || cleanPassword === 'ZeroLensSupport2026!';
 
     if (isReviewAccount && isReviewPass) {
       user = {
