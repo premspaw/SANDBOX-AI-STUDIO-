@@ -1098,6 +1098,18 @@ export const useAppStore = create((set, get) => ({
             }
         } catch (err) {
             console.error('Store: Fetch profile failed', err);
+            // Local development fallback: if network/Supabase times out, provide offline admin profile so UI never breaks
+            if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                const fallbackProfile = {
+                    id: userId || 'local_admin',
+                    email: 'premspaw@gmail.com',
+                    full_name: 'Admin (Localhost Dev)',
+                    role: 'admin',
+                    tier: 'PRO',
+                    shorts_balance: 9999
+                };
+                set({ userProfile: fallbackProfile, userShorts: 9999 });
+            }
         }
     },
 

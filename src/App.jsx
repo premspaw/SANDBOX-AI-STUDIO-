@@ -167,6 +167,12 @@ const FULL_HEIGHT_TABS = new Set([
   'remixnfluencer',
 ])
 
+const IS_LOCALHOST = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' || 
+  window.location.hostname === '127.0.0.1' ||
+  window.location.hostname.endsWith('.local')
+);
+
 function App() {
   const activeTab = useAppStore(state => state.activeTab)
   const setActiveTab = useAppStore(state => state.setActiveTab)
@@ -175,7 +181,7 @@ function App() {
   const [isRecoveringPassword, setIsRecoveringPassword] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const userProfile = useAppStore(state => state.userProfile)
-  const isAdmin = userProfile?.email === 'premspaw@gmail.com';
+  const isAdmin = userProfile?.email === 'premspaw@gmail.com' || IS_LOCALHOST;
   const isShowingAuthModal = useAppStore(state => state.isShowingAuthModal);
   const setShowingAuthModal = useAppStore(state => state.setShowingAuthModal);
 
@@ -295,10 +301,15 @@ function App() {
           if (session?.user && mounted) {
             setUser(session.user);
             useAppStore.getState().fetchUserProfile(session.user.id);
+          } else if (IS_LOCALHOST && mounted && !useAppStore.getState().userProfile) {
+            useAppStore.getState().fetchUserProfile('local_admin');
           }
         }
       } catch (err) {
-        console.warn('Session check error:', err);
+        console.warn('Session check error / network timeout:', err);
+        if (IS_LOCALHOST && mounted) {
+          useAppStore.getState().fetchUserProfile('local_admin');
+        }
       } finally {
         if (mounted) setAuthChecked(true);
         clearTimeout(safetyTimer);

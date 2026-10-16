@@ -86,7 +86,12 @@ function SidebarNavItem({ item, activeTab, setActiveTab, isCollapsed, mouseY }) 
 export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }) {
     const mouseY = useMotionValue(Infinity);
     const { runtimeMode, apiKey, setApiKey, checkRuntimeMode, userProfile } = useAppStore();
-    const isAdmin = userProfile?.email === 'premspaw@gmail.com';
+    const isLocalhost = typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' || 
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.endsWith('.local')
+    );
+    const isAdmin = userProfile?.email === 'premspaw@gmail.com' || isLocalhost;
 
     useEffect(() => {
         checkRuntimeMode();
