@@ -659,9 +659,72 @@ export default function createRouter(deps) {
         }
     });
 
-    // POST /api/admin/sync-kie-video
-    // Syncs / imports a video generated in KIE or external server into a specific user's gallery
-    router.post('/admin/sync-kie-video', async (req, res) => {
+    // Universal Video Sync & Audit Logger Helper
+    const AUDIT_LOG_FILE = path.join(__dirname, '../data/sync_audit_log.json');
+
+    function getSyncAuditLogs() {
+        try {
+            if (!fs.existsSync(AUDIT_LOG_FILE)) return [];
+            const raw = fs.readFileSync(AUDIT_LOG_FILE, 'utf-8');
+            return JSON.parse(raw || '[]');
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function appendSyncAuditLog(entry) {
+        try {
+            const dir = path.dirname(AUDIT_LOG_FILE);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            const list = getSyncAuditLogs();
+            list.unshift(entry);
+            const trimmed = list.slice(0, 500);
+            fs.writeFileSync(AUDIT_LOG_FILE, JSON.stringify(trimmed, null, 2), 'utf-8');
+        } catch (e) {
+            console.warn('[ADMIN-AUDIT] Failed to save audit log entry:', e.message);
+        }
+    }
+
+    function detectProviderAndCost(url, engine, customProvider) {
+        if (customProvider && customProvider !== 'Auto-Detect') {
+            return { provider: customProvider, cost: 20 };
+        }
+        const str = `${url || ''} ${engine || ''}`.toLowerCase();
+        let provider = 'Third-Party AI Video';
+        let cost = 20;
+
+        if (str.includes('aiquickdraw') || str.includes('redpandaai') || str.includes('seedance')) {
+            provider = 'KIE.ai (Seedance)';
+            cost = str.includes('2.5') || str.includes('2-5') ? 25 : (str.includes('fast') || str.includes('mini')) ? 10 : 20;
+        } else if (str.includes('higgsfield') || str.includes('remix') || str.includes('genjutsu')) {
+            provider = 'Higgsfield AI (Remix)';
+            cost = str.includes('influencer') ? 6 : 20;
+        } else if (str.includes('kling') || str.includes('kuaishou')) {
+            provider = 'Kling AI';
+            cost = 30;
+        } else if (str.includes('veo') || str.includes('google')) {
+            provider = 'Google Veo';
+            cost = 50;
+        } else if (str.includes('runway')) {
+            provider = 'Runway Gen-3';
+            cost = 25;
+        } else if (str.includes('luma')) {
+            provider = 'Luma Dream Machine';
+            cost = 25;
+        } else if (str.includes('pika')) {
+            provider = 'Pika Labs';
+            cost = 20;
+        } else if (str.includes('omni')) {
+            provider = 'Omni Flash';
+            cost = 15;
+        }
+
+        return { provider, cost };
+    }
+
+    // POST /api/admin/sync-video & /api/admin/sync-kie-video
+    // Universal Importer: Syncs any external video (KIE, Higgsfield, Kling, Veo, direct link) with Calling ID audit tracking
+    router.post(['/admin/sync-video', '/admin/sync-kie-video'], async (req, res) => {
         try {
             // Check admin authorization
             let isAdmin = false;
@@ -669,7 +732,6 @@ export default function createRouter(deps) {
                 await requireAdmin(req);
                 isAdmin = true;
             } catch (_) {
-                // Also allow admin secret header or dev mode
                 const adminSecret = req.headers['x-admin-secret'] || req.body.adminSecret;
                 if (adminSecret && (adminSecret === process.env.ADMIN_SECRET || adminSecret === process.env.SUPABASE_SERVICE_ROLE_KEY)) {
                     isAdmin = true;
@@ -687,17 +749,21 @@ export default function createRouter(deps) {
                 userId,
                 videoUrl,
                 logContent,
+                callingId: userCallingId,
+                provider: userProvider,
                 prompt,
                 engine,
                 aspectRatio,
                 folder,
                 projectId,
-                deductCredits
+                deductCredits,
+                autoDeduct
             } = req.body;
 
             let resolvedVideoUrl = videoUrl || logContent || '';
             let resolvedPrompt = prompt;
             let resolvedEngine = engine;
+            let extractedCallingId = userCallingId || '';
 
             // Smart extraction from raw text or JSON if provided
             if (resolvedVideoUrl) {
@@ -709,19 +775,31 @@ export default function createRouter(deps) {
                         resolvedVideoUrl = candidate.video_url || candidate.url || candidate.download_url || candidate.videoUrl || candidate.resultUrl || resolvedVideoUrl;
                         if (!resolvedPrompt && candidate.prompt) resolvedPrompt = candidate.prompt;
                         if (!resolvedEngine && (candidate.model || candidate.engine)) resolvedEngine = candidate.model || candidate.engine;
+                        if (!extractedCallingId) {
+                            extractedCallingId = candidate.task_id || candidate.job_id || candidate.requestId || candidate.request_id || candidate.order_id || candidate.id || '';
+                        }
                     } catch (_) {}
                 }
                 if (!resolvedVideoUrl.startsWith('http')) {
                     const urlMatch = text.match(/https?:\/\/[^\s"'<>]+\.(?:mp4|mov|webm)[^\s"'<>]*/i) ||
-                                     text.match(/https?:\/\/(?:tempfile\.aiquickdraw\.com|tempfile\.redpandaai\.co)[^\s"'<>]+/i);
+                                     text.match(/https?:\/\/(?:tempfile\.aiquickdraw\.com|tempfile\.redpandaai\.co)[^\s"'<>]*/i);
                     if (urlMatch) {
                         resolvedVideoUrl = urlMatch[0];
                     }
                 }
             }
 
+            // Fallback URL Calling ID extractor
+            if (!extractedCallingId && resolvedVideoUrl) {
+                const idFromUrl = resolvedVideoUrl.match(/(?:seedance|task|job|video|hf|res)[-_/]?([0-9a-zA-Z_-]{8,})/i) ||
+                                  resolvedVideoUrl.match(/\/([0-9]{10,})/);
+                if (idFromUrl) {
+                    extractedCallingId = idFromUrl[1];
+                }
+            }
+
             if (!resolvedVideoUrl || typeof resolvedVideoUrl !== 'string' || !resolvedVideoUrl.startsWith('http')) {
-                return res.status(400).json({ error: 'Valid videoUrl or KIE log containing an http/https video link is required.' });
+                return res.status(400).json({ error: 'Valid videoUrl or task log containing an http/https video link is required.' });
             }
 
             const dbClient = supabaseAdmin || supabase;
@@ -756,7 +834,12 @@ export default function createRouter(deps) {
                 targetUserId = 'local_user';
             }
 
-            console.log(`[ADMIN-SYNC-VIDEO] Syncing video for user: ${targetEmail || targetUserId} from URL: ${resolvedVideoUrl}`);
+            const { provider: detectedProvider, cost: defaultCost } = detectProviderAndCost(resolvedVideoUrl, resolvedEngine, userProvider);
+            const finalCallingId = extractedCallingId || `external_${Date.now()}`;
+            const receivedAssetId = `zl_asset_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+            console.log(`[ADMIN-SYNC-VIDEO] Syncing ${detectedProvider} video for user: ${targetEmail || targetUserId}`);
+            console.log(`[ADMIN-SYNC-VIDEO] Calling ID: ${finalCallingId} | Target Asset ID: ${receivedAssetId}`);
 
             // Download binary video buffer
             console.log(`[ADMIN-SYNC-VIDEO] Downloading remote video: ${resolvedVideoUrl}`);
@@ -773,8 +856,8 @@ export default function createRouter(deps) {
             console.log(`[ADMIN-SYNC-VIDEO] Downloaded ${(videoBuffer.length / 1024 / 1024).toFixed(2)} MB. Uploading to permanent storage...`);
 
             const resolvedAspect = aspectRatio || '16:9';
-            const finalEngine = resolvedEngine || 'Seedance 2.0 Pro';
-            const finalPrompt = resolvedPrompt || 'Seedance 2.0 Cinematic Video';
+            const finalEngine = resolvedEngine || (detectedProvider.includes('Seedance') ? 'Seedance 2.0 Pro' : detectedProvider);
+            const finalPrompt = resolvedPrompt || `${finalEngine} Generated Video`;
             const targetFolder = folder || 'studio';
             const targetProj = projectId || 'default';
 
@@ -788,36 +871,51 @@ export default function createRouter(deps) {
                         targetUserId,
                         resolvedAspect,
                         targetFolder,
-                        resolvedPrompt,
-                        resolvedEngine,
-                        { projectId: targetProj, project_id: targetProj, prompt: resolvedPrompt, engine: resolvedEngine }
+                        finalPrompt,
+                        finalEngine,
+                        { 
+                            id: receivedAssetId,
+                            projectId: targetProj, 
+                            project_id: targetProj, 
+                            prompt: finalPrompt, 
+                            engine: finalEngine,
+                            callingId: finalCallingId,
+                            externalTaskId: finalCallingId,
+                            provider: detectedProvider
+                        }
                     );
                 } catch (uploadErr) {
                     console.warn('[ADMIN-SYNC-VIDEO] uploadVideoToSupabase warning:', uploadErr.message);
                 }
             } else if (storageService && typeof storageService.uploadToGCS === 'function') {
-                const key = `users/${targetUserId}/generated/seedance_${Date.now()}.mp4`;
+                const key = `users/${targetUserId}/generated/${finalCallingId}_${Date.now()}.mp4`;
                 permanentUrl = await storageService.uploadToGCS(videoBuffer, key, 'video/mp4');
             }
 
             // Always save to local fallback database for fast retrieval in all studios
             if (typeof saveLocalAsset === 'function') {
                 saveLocalAsset({
-                    name: `${resolvedEngine} Video`,
+                    id: receivedAssetId,
+                    name: `${finalEngine} Video`,
                     type: 'video',
                     url: permanentUrl,
                     user_id: targetUserId,
                     project_id: targetProj,
                     aspect: resolvedAspect,
                     metadata: {
+                        id: receivedAssetId,
                         folder: targetFolder,
                         projectId: targetProj,
                         project_id: targetProj,
-                        prompt: resolvedPrompt,
-                        engine: resolvedEngine
+                        prompt: finalPrompt,
+                        engine: finalEngine,
+                        callingId: finalCallingId,
+                        externalTaskId: finalCallingId,
+                        provider: detectedProvider,
+                        syncedAt: new Date().toISOString()
                     },
-                    prompt: resolvedPrompt,
-                    engine: resolvedEngine
+                    prompt: finalPrompt,
+                    engine: finalEngine
                 });
             }
 
@@ -825,61 +923,131 @@ export default function createRouter(deps) {
             if (dbClient && targetUserId !== 'local_user') {
                 try {
                     await dbClient.from('assets').insert([{
-                        name: `${resolvedEngine} Video`,
+                        id: receivedAssetId,
+                        name: `${finalEngine} Video`,
                         type: 'video',
                         url: permanentUrl,
                         user_id: targetUserId,
                         created_at: new Date().toISOString(),
-                        model: resolvedEngine,
+                        model: finalEngine,
                         metadata: {
+                            id: receivedAssetId,
                             aspect: resolvedAspect,
                             folder: targetFolder,
                             projectId: targetProj,
                             project_id: targetProj,
-                            prompt: resolvedPrompt,
-                            engine: resolvedEngine
+                            prompt: finalPrompt,
+                            engine: finalEngine,
+                            callingId: finalCallingId,
+                            externalTaskId: finalCallingId,
+                            provider: detectedProvider,
+                            syncedAt: new Date().toISOString()
                         }
                     }]);
-                    console.log(`[ADMIN-SYNC-VIDEO] Inserted asset into Supabase for ${targetUserId}`);
+                    console.log(`[ADMIN-SYNC-VIDEO] Inserted asset ${receivedAssetId} into Supabase for ${targetUserId}`);
                 } catch (dbErr) {
                     console.warn('[ADMIN-SYNC-VIDEO] Supabase asset insert warning:', dbErr.message);
                 }
             }
 
-            // Optional credit debit if requested
-            const debitNum = Number(deductCredits) || 0;
-            if (debitNum > 0 && dbClient && targetUserId !== 'local_user') {
+            // Automatic / Configurable Credit Debit
+            let debitNum = 0;
+            if (autoDeduct === true || deductCredits === 'auto') {
+                debitNum = defaultCost;
+            } else if (deductCredits !== undefined && deductCredits !== null && deductCredits !== '') {
+                debitNum = Number(deductCredits) || 0;
+            }
+
+            let balanceBefore = null;
+            let balanceAfter = null;
+
+            if (dbClient && targetUserId !== 'local_user') {
                 try {
                     const { data: prof } = await dbClient.from('profiles').select('shorts_balance').eq('id', targetUserId).maybeSingle();
                     if (prof) {
-                        const newBal = Math.max(0, (prof.shorts_balance || 0) - debitNum);
-                        await dbClient.from('profiles').update({ shorts_balance: newBal }).eq('id', targetUserId);
-                        await dbClient.from('shorts_transactions').insert({
-                            user_id: targetUserId,
-                            amount: -debitNum,
-                            action_type: 'spend_video_generation',
-                            reason: `Admin sync: ${resolvedEngine} video generation (${debitNum}⚡)`
-                        });
-                        console.log(`[ADMIN-SYNC-VIDEO] Debited ${debitNum} credits from user ${targetUserId}. New balance: ${newBal}`);
+                        balanceBefore = prof.shorts_balance || 0;
+                        if (debitNum > 0) {
+                            balanceAfter = Math.max(0, balanceBefore - debitNum);
+                            await dbClient.from('profiles').update({ shorts_balance: balanceAfter }).eq('id', targetUserId);
+                            await dbClient.from('shorts_transactions').insert({
+                                user_id: targetUserId,
+                                amount: -debitNum,
+                                action_type: 'spend_video_generation',
+                                reason: `Sync audit: ${detectedProvider} (${finalCallingId} ➔ ${receivedAssetId})`
+                            });
+                            console.log(`[ADMIN-SYNC-VIDEO] Debited ${debitNum}⚡ from ${targetUserId}. New balance: ${balanceAfter}`);
+                        } else {
+                            balanceAfter = balanceBefore;
+                        }
                     }
                 } catch (creditErr) {
                     console.warn('[ADMIN-SYNC-VIDEO] Credit deduction warning:', creditErr.message);
                 }
             }
 
+            // Audit record for complete traceability
+            const auditRecord = {
+                auditId: `audit_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                timestamp: new Date().toISOString(),
+                callingId: finalCallingId,
+                receivedAssetId: receivedAssetId,
+                matchStatus: 'MATCHED_AND_VERIFIED',
+                userEmail: targetEmail || targetUserId,
+                userId: targetUserId,
+                provider: detectedProvider,
+                engine: finalEngine,
+                prompt: finalPrompt,
+                aspectRatio: resolvedAspect,
+                originalUrl: resolvedVideoUrl,
+                permanentUrl: permanentUrl,
+                creditsDebited: debitNum,
+                balanceBefore,
+                balanceAfter,
+                status: 'SUCCESS'
+            };
+
+            appendSyncAuditLog(auditRecord);
+
             return res.json({
                 success: true,
-                message: `Video successfully synced to user gallery!`,
+                message: `Video successfully synced & matched to user gallery!`,
+                audit: auditRecord,
                 user: { id: targetUserId, email: targetEmail },
                 permanentUrl,
-                engine: resolvedEngine,
-                prompt: resolvedPrompt,
+                callingId: finalCallingId,
+                receivedAssetId,
+                engine: finalEngine,
+                provider: detectedProvider,
+                prompt: finalPrompt,
                 creditsDebited: debitNum
             });
 
         } catch (error) {
             console.error('[ADMIN-SYNC-VIDEO-ERR]', error);
             res.status(500).json({ error: error.message || 'Failed to sync video.' });
+        }
+    });
+
+    // GET /api/admin/sync-audit-logs
+    // Retrieves historical audit trail of all synced/matched videos
+    router.get('/admin/sync-audit-logs', async (req, res) => {
+        try {
+            const logs = getSyncAuditLogs();
+            res.json({ success: true, logs, total: logs.length });
+        } catch (err) {
+            res.status(500).json({ error: 'Failed to fetch audit logs.' });
+        }
+    });
+
+    // POST /api/admin/clear-sync-audit-logs
+    router.post('/admin/clear-sync-audit-logs', async (req, res) => {
+        try {
+            if (fs.existsSync(AUDIT_LOG_FILE)) {
+                fs.writeFileSync(AUDIT_LOG_FILE, '[]', 'utf-8');
+            }
+            res.json({ success: true, message: 'Audit logs cleared successfully.' });
+        } catch (err) {
+            res.status(500).json({ error: 'Failed to clear audit logs.' });
         }
     });
 

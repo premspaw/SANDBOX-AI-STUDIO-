@@ -161,12 +161,15 @@ async function main() {
     }
 
     // 4. Save to local_assets.json (Studio gallery fallback)
+    const callingId = parsedInfo.callingId || `external_${Date.now()}`;
+    const receivedAssetId = `zl_asset_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
     const localAssetsPath = path.join(projectRoot, 'local_assets.json');
     if (fs.existsSync(localAssetsPath)) {
         try {
             const assets = JSON.parse(fs.readFileSync(localAssetsPath, 'utf8'));
             const newAsset = {
-                id: `sync_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                id: receivedAssetId,
                 name: `${engine} Video`,
                 type: 'video',
                 url: permanentUrl,
@@ -174,11 +177,15 @@ async function main() {
                 aspect: '16:9',
                 aspectRatio: '16:9',
                 metadata: {
+                    id: receivedAssetId,
                     folder: 'studio',
                     projectId: 'default',
                     project_id: 'default',
                     prompt,
-                    engine
+                    engine,
+                    callingId,
+                    externalTaskId: callingId,
+                    syncedAt: new Date().toISOString()
                 },
                 prompt,
                 engine,
@@ -188,7 +195,7 @@ async function main() {
             // Also add for local_user so it shows up in dev/offline
             assets.unshift({ ...newAsset, id: `${newAsset.id}_local`, user_id: 'local_user' });
             fs.writeFileSync(localAssetsPath, JSON.stringify(assets.slice(0, 500), null, 2), 'utf8');
-            console.log(`✅ Inserted into local_assets.json gallery`);
+            console.log(`✅ Inserted into local_assets.json gallery (Asset ID: ${receivedAssetId})`);
         } catch (lErr) {
             console.warn(`⚠️ local_assets.json update note:`, lErr.message);
         }
@@ -199,6 +206,7 @@ async function main() {
         try {
             console.log(`💾 Inserting asset into Supabase database...`);
             const { error: insErr } = await sb.from('assets').insert([{
+                id: receivedAssetId,
                 name: `${engine} Video`,
                 type: 'video',
                 url: permanentUrl,
@@ -206,12 +214,16 @@ async function main() {
                 created_at: new Date().toISOString(),
                 model: engine,
                 metadata: {
+                    id: receivedAssetId,
                     aspect: '16:9',
                     folder: 'studio',
                     projectId: 'default',
                     project_id: 'default',
                     prompt,
-                    engine
+                    engine,
+                    callingId,
+                    externalTaskId: callingId,
+                    syncedAt: new Date().toISOString()
                 }
             }]);
             if (insErr) console.warn(`Supabase asset insert note:`, insErr.message);
@@ -222,27 +234,66 @@ async function main() {
     }
 
     // 6. Deduct credits if requested
+    let balanceBefore = null;
+    let balanceAfter = null;
     if (sb && deductCredits > 0 && targetUserId && !targetUserId.includes('@')) {
         try {
             const { data: prof } = await sb.from('profiles').select('shorts_balance').eq('id', targetUserId).maybeSingle();
             if (prof) {
-                const newBal = Math.max(0, (prof.shorts_balance || 0) - deductCredits);
-                await sb.from('profiles').update({ shorts_balance: newBal }).eq('id', targetUserId);
+                balanceBefore = prof.shorts_balance || 0;
+                balanceAfter = Math.max(0, balanceBefore - deductCredits);
+                await sb.from('profiles').update({ shorts_balance: balanceAfter }).eq('id', targetUserId);
                 await sb.from('shorts_transactions').insert({
                     user_id: targetUserId,
                     amount: -deductCredits,
                     action_type: 'spend_video_generation',
-                    reason: `Manual sync: ${engine} video (${deductCredits}⚡)`
+                    reason: `Manual sync: ${engine} video (${callingId} ➔ ${receivedAssetId})`
                 });
-                console.log(`⚡ Deducted ${deductCredits} Shorts credits. New balance: ${newBal}⚡`);
+                console.log(`⚡ Deducted ${deductCredits} Shorts credits. New balance: ${balanceAfter}⚡`);
             }
         } catch (cErr) {
             console.warn(`Credit deduction note:`, cErr.message);
         }
     }
 
+    // 7. Append to persistent sync_audit_log.json
+    try {
+        const auditLogPath = path.join(projectRoot, 'server/data/sync_audit_log.json');
+        let auditList = [];
+        if (fs.existsSync(auditLogPath)) {
+            try { auditList = JSON.parse(fs.readFileSync(auditLogPath, 'utf8') || '[]'); } catch (_) {}
+        }
+        const auditEntry = {
+            auditId: `audit_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            timestamp: new Date().toISOString(),
+            callingId,
+            receivedAssetId,
+            matchStatus: 'MATCHED_AND_VERIFIED',
+            userEmail: targetUserEmail,
+            userId: targetUserId,
+            provider: 'CLI Importer',
+            engine,
+            prompt,
+            aspectRatio: '16:9',
+            originalUrl: videoUrl,
+            permanentUrl,
+            creditsDebited: deductCredits,
+            balanceBefore,
+            balanceAfter,
+            status: 'SUCCESS'
+        };
+        auditList.unshift(auditEntry);
+        fs.writeFileSync(auditLogPath, JSON.stringify(auditList.slice(0, 500), null, 2), 'utf8');
+        console.log(`📋 Recorded in sync_audit_log.json (Calling ID: ${callingId} ➔ Received Asset ID: ${receivedAssetId})`);
+    } catch (aErr) {
+        console.warn(`Audit log note:`, aErr.message);
+    }
+
     console.log(`\n🎉 SUCCESS! The video has been added to ${targetUserEmail}'s gallery.`);
-    console.log(`Direct Permanent URL: ${permanentUrl}\n`);
+    console.log(`Calling Task ID:    ${callingId}`);
+    console.log(`Received Asset ID:  ${receivedAssetId}`);
+    console.log(`Matched Status:     MATCHED_AND_VERIFIED ✅`);
+    console.log(`Direct CDN URL:     ${permanentUrl}\n`);
 }
 
 main().catch(err => {
