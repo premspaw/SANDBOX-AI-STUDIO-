@@ -360,7 +360,7 @@ export const SidePanel = React.memo(({
   };
 
   const handlePickSeedanceVideo = (item, slotIdx) => {
-    const dur = Number(item.duration) || 0;
+    let dur = Number(item.duration) || 0;
     if (dur > 15.05) {
       const showToast = useAppStore.getState().showToast;
       const msg = `Seedance video reference must be 15s or shorter (${Math.round(dur * 10) / 10}s detected).`;
@@ -376,6 +376,24 @@ export const SidePanel = React.memo(({
       copy[slotIdx] = Math.max(1, Math.round(dur * 10) / 10 || 5);
       return copy;
     });
+
+    // If item.duration wasn't pre-saved in DB metadata, probe the video header immediately
+    if (!dur && item.url) {
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.src = item.url;
+      v.onloadedmetadata = () => {
+        if (v.duration && v.duration > 0) {
+          const probed = Math.max(1, Math.round(v.duration * 10) / 10);
+          setSeedanceVideoDurations(prev => {
+            const copy = [...prev];
+            copy[slotIdx] = probed;
+            return copy;
+          });
+        }
+      };
+    }
+
     autoTagIfMissing(`@video${slotIdx + 1}`);
     setGalleryPickerSlot(null);
     const showToast = useAppStore.getState().showToast;
