@@ -1,3 +1,5 @@
+import { createAuthenticatedFetch } from './authenticatedFetch.js'
+import { API_BASE_URL } from '../config/apiConfig.js'
 import { createClient } from '@supabase/supabase-js'
 
 const getEnv = (key) => {
@@ -71,39 +73,14 @@ if (!client) {
     };
 }
 
-// Global fetch interceptor to automatically attach Supabase session token
+// Attach browser sessions only to configured first-party API destinations.
 if (typeof window !== 'undefined') {
-    const originalFetch = window.fetch;
-    window.fetch = async (url, options = {}) => {
-        const urlStr = typeof url === 'string' ? url : (url?.toString() || '');
-        // Only attach if it's an internal API endpoint
-        if (client && (urlStr.includes('/api/') || urlStr.includes('/api/ugc'))) {
-            try {
-                const { data: { session } } = await client.auth.getSession();
-                if (session?.access_token) {
-                    options.headers = options.headers || {};
-                    if (typeof options.headers.set === 'function') {
-                        if (!options.headers.has('Authorization')) {
-                            options.headers.set('Authorization', `Bearer ${session.access_token}`);
-                        }
-                    } else if (Array.isArray(options.headers)) {
-                        const hasAuth = options.headers.some(([k]) => k.toLowerCase() === 'authorization');
-                        if (!hasAuth) {
-                            options.headers.push(['Authorization', `Bearer ${session.access_token}`]);
-                        }
-                    } else {
-                        const hasAuth = !!(options.headers['Authorization'] || options.headers['authorization']);
-                        if (!hasAuth) {
-                            options.headers['Authorization'] = `Bearer ${session.access_token}`;
-                        }
-                    }
-                }
-            } catch (err) {
-                console.warn('[FETCH INTERCEPTOR] Failed to attach authorization token:', err);
-            }
-        }
-        return originalFetch(url, options);
-    };
+    window.fetch = createAuthenticatedFetch({
+        fetch: window.fetch.bind(window),
+        getSession: () => client.auth.getSession(),
+        origin: window.location.origin,
+        apiBaseUrl: API_BASE_URL
+    });
 }
 
 export const supabase = client

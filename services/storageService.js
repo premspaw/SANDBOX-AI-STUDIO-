@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
@@ -198,7 +199,7 @@ export const uploadToGCS = async (data, fileName, contentType = 'image/png', tar
 
         // Final fallback: local storage
         try {
-            const baseName = path.basename(fileName);
+            const baseName = `${createHash('sha256').update(fileName).digest('hex')}${path.extname(fileName).replace(/[^.a-zA-Z0-9]/g, '')}`;
             const publicAssetsDir = path.join(process.cwd(), 'public', 'assets');
             if (!fs.existsSync(publicAssetsDir)) {
                 fs.mkdirSync(publicAssetsDir, { recursive: true });
@@ -327,7 +328,7 @@ export const deleteAssetFromStorage = async (fileName, targetBucket) => {
         
         // Try local file delete fallback
         try {
-            const baseName = path.basename(fileName);
+            const baseName = `${createHash('sha256').update(fileName).digest('hex')}${path.extname(fileName).replace(/[^.a-zA-Z0-9]/g, '')}`;
             const localFilePath = path.join(process.cwd(), 'public', 'assets', baseName);
             if (fs.existsSync(localFilePath)) {
                 fs.unlinkSync(localFilePath);

@@ -610,11 +610,124 @@ const FONT_PAIRINGS = {
 // Enhanced font getter with art direction support
 function getFonts(style, artDirection = null) {
   // Prioritize art direction matching
-  if (artDirection && FONT_PAIRINGS[artDirection.toLowerCase()]) {
-    return FONT_PAIRINGS[artDirection.toLowerCase()];
+  const directionKey = typeof artDirection === 'string' ? artDirection.toLowerCase() : '';
+  if (Object.hasOwn(FONT_PAIRINGS, directionKey)) {
+    return FONT_PAIRINGS[directionKey];
   }
-  // Fall back to style mapping
-  return FONT_PAIRINGS[(style || 'modern').toLowerCase()] || FONT_PAIRINGS.modern;
+  // Only use own, server-defined pairings, never Object.prototype properties.
+  const styleKey = typeof style === 'string' ? style.toLowerCase() : 'modern';
+  return Object.hasOwn(FONT_PAIRINGS, styleKey) ? FONT_PAIRINGS[styleKey] : FONT_PAIRINGS.modern;
+}
+
+// All slide templates expect plain text. Keep this boundary in front of every
+// template, including nested features/steps, rather than trusting model output.
+const CAROUSEL_DIRECTIONS = new Set([
+  'cinematic', 'luxury', 'apple', 'streetwear', 'tech', 'futuristic', 'editorial', 'minimal',
+]);
+const CAROUSEL_SLIDE_TYPES = new Set(['hero', 'problem', 'solution', 'features', 'details', 'howto']);
+const FONT_STYLESHEET_URLS = new Set(Object.values(FONT_PAIRINGS).map(fonts => new URL(fonts.url).href));
+const CAROUSEL_CSP = "default-src 'none'; script-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+
+function invalidCarousel(message) {
+  return Object.assign(new Error(message), { status: 400, code: 'INVALID_CAROUSEL' });
+}
+
+function carouselText(value, field) {
+  if (value == null) return '';
+  if (typeof value !== 'string' || value.length > 2000) {
+    throw invalidCarousel(`${field} must be text of at most 2000 characters`);
+  }
+  return value.replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[char]);
+}
+
+function carouselRecord(value, field) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw invalidCarousel(`${field} must be an object`);
+  }
+  return value;
+}
+
+function carouselList(value, field, mapper) {
+  if (value == null) return [];
+  if (!Array.isArray(value) || value.length > 20) {
+    throw invalidCarousel(`${field} must be an array of at most 20 entries`);
+  }
+  return value.map(mapper);
+}
+
+function normalizeCarouselData(data) {
+  carouselRecord(data, 'carouselData');
+  const sourceBrand = carouselRecord(data.brand, 'brand');
+  if (typeof sourceBrand.name !== 'string' || !sourceBrand.name.trim()) {
+    throw invalidCarousel('brand.name is required');
+  }
+  if (!Array.isArray(data.slides) || data.slides.length < 1 || data.slides.length > 20) {
+    throw invalidCarousel('slides must contain 1 to 20 entries');
+  }
+  const brand = {};
+  for (const field of ['name', 'handle', 'tag', 'hook', 'subhook', 'ctaHeadline', 'ctaBody']) {
+    brand[field] = carouselText(sourceBrand[field], `brand.${field}`);
+  }
+  brand.initial = carouselText(sourceBrand.name.charAt(0).toUpperCase(), 'brand.initial');
+  brand.color = typeof sourceBrand.color === 'string' && /^#?[a-f0-9]{6}$/i.test(sourceBrand.color)
+    ? sourceBrand.color : '#6366f1';
+  brand.fontStyle = typeof sourceBrand.fontStyle === 'string' ? sourceBrand.fontStyle :
+    (typeof sourceBrand.style === 'string' ? sourceBrand.style : 'modern');
+
+  const slides = data.slides.map((entry, index) => {
+    const source = carouselRecord(entry, `slides[${index}]`);
+    const slide = { id: CAROUSEL_SLIDE_TYPES.has(source.id) ? source.id : 'details' };
+    for (const field of ['headline', 'body', 'quote']) {
+      slide[field] = carouselText(source[field], `slides[${index}].${field}`);
+    }
+    slide.points = carouselList(source.points, 'points', value => carouselText(value, 'point'));
+    for (const field of ['features', 'steps']) {
+      slide[field] = carouselList(source[field], field, value => {
+        const item = carouselRecord(value, field);
+        return { title: carouselText(item.title, `${field}.title`), desc: carouselText(item.desc, `${field}.desc`) };
+      });
+    }
+    return slide;
+  });
+  return { brand, slides, ctaText: carouselText(data.ctaText, 'ctaText') };
+}
+
+// These templates have no external images. Permit only the fixed Google Fonts
+// stylesheets and their font binaries; no navigation, arbitrary hosts, or ports.
+function isAllowedCarouselRequest(request) {
+  if (request.method() !== 'GET' || request.isNavigationRequest()) return false;
+  try {
+    const url = new URL(request.url());
+    if (url.protocol !== 'https:' || url.username || url.password || url.port || url.hash) return false;
+    if (request.resourceType() === 'stylesheet') return FONT_STYLESHEET_URLS.has(url.href);
+    return request.resourceType() === 'font' && url.hostname === 'fonts.gstatic.com' &&
+      !url.search && /^\/s\/[a-z0-9_/-]+\.(?:woff2?|ttf|otf)$/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+async function routeCarouselRequest(route) {
+  if (!isAllowedCarouselRequest(route.request())) return route.abort('blockedbyclient');
+  let response;
+  try {
+    // Never follow redirects in the server-side fetch. A trusted initial URL
+    // must not become a request to an internal host or another provider.
+    response = await route.fetch({ maxRedirects: 0, timeout: 10000 });
+    const contentType = response.headers()['content-type'] || '';
+    const isStyle = route.request().resourceType() === 'stylesheet';
+    const validType = isStyle ? /^text\/css(?:;|$)/i.test(contentType) :
+      /^(?:font\/|application\/(?:font-|x-font-|octet-stream|vnd\.ms-fontobject))/i.test(contentType);
+    if (!response.ok() || !validType) return await route.abort('blockedbyclient');
+    await route.fulfill({ response });
+  } catch {
+    // Font/network failure falls back to the existing system fonts.
+    await route.abort('blockedbyclient').catch(() => {});
+  } finally {
+    if (response) await response.dispose();
+  }
 }
 
 // Font weight helper for dynamic typography scaling
@@ -939,6 +1052,8 @@ function buildCarouselHTML({ brand, slides, palette, fonts, ctaText, artDirectio
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="${CAROUSEL_CSP}">
+<meta name="referrer" content="no-referrer">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="${fonts.url}" rel="stylesheet">
@@ -1099,7 +1214,7 @@ function buildCarouselHTML({ brand, slides, palette, fonts, ctaText, artDirectio
 <div class="ig-frame">
   <!-- IG Header -->
   <div class="ig-header ig-chrome">
-    <div class="ig-avatar">${brand.name.charAt(0).toUpperCase()}</div>
+    <div class="ig-avatar">${brand.initial}</div>
     <div>
       <div class="ig-handle">@${handle}</div>
       <div class="ig-sub">${brand.name}</div>
@@ -1128,21 +1243,7 @@ function buildCarouselHTML({ brand, slides, palette, fonts, ctaText, artDirectio
   <div class="ig-caption ig-chrome"><strong>@${handle}</strong> ${brand.hook || ''}</div>
   <div class="ig-time ig-chrome">Just now</div>
 </div>
-<script>
-  let cur = 0;
-  const track   = document.getElementById('track');
-  const dots    = document.querySelectorAll('.ig-dot');
-  const total   = ${total};
-  let startX = 0;
-  document.getElementById('viewport').addEventListener('mousedown', e => { startX = e.clientX; });
-  document.getElementById('viewport').addEventListener('mouseup', e => {
-    const dx = e.clientX - startX;
-    if (dx < -30 && cur < total - 1) cur++;
-    if (dx >  30 && cur > 0)         cur--;
-    track.style.transform = 'translateX(' + (-cur * 420) + 'px)';
-    dots.forEach((d, i) => d.classList.toggle('active', i === cur));
-  });
-</script>
+
 </body>
 </html>`;
 }
@@ -1152,22 +1253,31 @@ function buildCarouselHTML({ brand, slides, palette, fonts, ctaText, artDirectio
 async function exportSlidesToPNG(html, totalSlides) {
   const { chromium } = await import('playwright');
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'carousel-'));
-  fs.writeFileSync(path.join(tmpDir, 'carousel.html'), html, 'utf8');
 
   const VIEW_W = 420;
   const VIEW_H = 525;
   const SCALE  = 1080 / 420; // → 1080px output without reflowing layout
 
   const outputPaths = [];
-  const browser = await chromium.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-
+  let browser;
   try {
-    const page = await browser.newPage({
+    fs.writeFileSync(path.join(tmpDir, 'carousel.html'), html, 'utf8');
+    // Root-based deployment currently requires Chromium's sandbox disabled.
+    // Only escaped, server-owned templates may enter this isolated context.
+    browser = await chromium.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+      serviceWorkers: 'block',
+      acceptDownloads: false,
+      permissions: [],
       viewport: { width: VIEW_W, height: VIEW_H },
       deviceScaleFactor: SCALE,
     });
 
-    await page.setContent(html, { waitUntil: 'networkidle' });
+    await context.route('**/*', routeCarouselRequest);
+    const page = await context.newPage();
+    page.setDefaultTimeout(15000);
+    await page.setContent(html, { waitUntil: 'networkidle', timeout: 15000 });
     await page.waitForTimeout(3000); // wait for Google Fonts
 
     // Strip IG chrome — hide header, dots, actions, caption, timestamp
@@ -1193,8 +1303,12 @@ async function exportSlidesToPNG(html, totalSlides) {
       outputPaths.push(outPath);
       console.log(`[Carousel] Exported slide ${i + 1}/${totalSlides}`);
     }
+  } catch (error) {
+    // Callers never receive tmpDir if rendering fails, so cleanup belongs here.
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    throw error;
   } finally {
-    await browser.close();
+    if (browser) await browser.close().catch(() => {});
   }
 
   return { outputPaths, tmpDir };
@@ -1203,7 +1317,9 @@ async function exportSlidesToPNG(html, totalSlides) {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 async function generateCarousel(carouselData, artDirection = null) {
-  const { brand, slides, ctaText } = carouselData;
+  const { brand, slides, ctaText } = normalizeCarouselData(carouselData);
+  const directionKey = typeof artDirection === 'string' ? artDirection.toLowerCase() : '';
+  artDirection = CAROUSEL_DIRECTIONS.has(directionKey) ? directionKey : 'cinematic';
 
   const palette = buildPalette(brand.color || '#6366f1');
   const fonts   = getFonts(brand.fontStyle || brand.style || 'modern', artDirection);
