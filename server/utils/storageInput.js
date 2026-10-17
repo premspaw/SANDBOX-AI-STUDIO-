@@ -26,3 +26,14 @@ export function isLocalAssetUrl(value) {
         return !basename.includes('?') && !basename.includes('#');
     } catch { return false; }
 }
+
+// This branch stores a reference only. Download allowlists belong at fetch sites,
+// not here: provider completion URLs need not be mirrored to our storage first.
+export function validateStoredAssetUrl(value) {
+    let parsed;
+    try { parsed = new URL(value); } catch { throw bad('Invalid asset URL'); }
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+        throw bad('Unsupported asset URL');
+    }
+    return parsed;
+}

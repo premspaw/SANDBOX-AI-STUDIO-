@@ -1,4 +1,4 @@
-import { storageSegment, storageUserId, assertSafeMediaContentType, assertOrdinaryAssetType, isLocalAssetUrl } from '../utils/storageInput.js';
+import { storageSegment, storageUserId, assertSafeMediaContentType, assertOrdinaryAssetType, isLocalAssetUrl, validateStoredAssetUrl } from '../utils/storageInput.js';
 // Storage Routes Handler
 import express from 'express';
 import { fetchAllowedProxyResponse, readProxyBody, validateProxyUrl, createProxyByteLimit } from '../utils/safeProxy.js';
@@ -222,7 +222,7 @@ export default function createRouter(deps) {
             if (!/^(?:https?:\/\/|data:)/.test(imageData) && !isLocalAssetUrl(imageData)) throw Object.assign(new Error("Unsupported asset source"), { status: 400 });
 
             if (/^https?:\/\//.test(imageData) || isLocalAssetUrl(imageData)) {
-                if (!isLocalAssetUrl(imageData)) await validateProxyUrl(imageData);
+                if (!isLocalAssetUrl(imageData)) validateStoredAssetUrl(imageData);
                 const isGCS = imageData.startsWith('https://storage.googleapis.com/');
                 console.log(`[SAVE-ASSET] ${isGCS ? 'GCS' : 'Public'} URL detected, saving to DB only`);
                 
