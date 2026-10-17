@@ -15,3 +15,8 @@ export function syncPreviewPlayback(video, shouldPlay) {
         }).catch(() => {});
     }
 }
+
+/** Ignore empty-source/aborted loads while lazy previews acquire a playback slot. */
+export function hasPreviewMediaError(video) {
+    return Boolean(video?.currentSrc && video?.error && video.error.code !== 1);
+}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useInView, useReducedMotion } from 'framer-motion';
-import { syncPreviewPlayback } from '../../lib/previewPlayback';
+import { syncPreviewPlayback, hasPreviewMediaError } from '../../lib/previewPlayback';
 import { landingVideoPoster } from '../../config/landingMedia';
 import { observePreviewSlot } from '../../lib/previewBudget';
 
@@ -55,8 +55,8 @@ export default function ViewportVideo({ src, muted = true, loop = true, style, p
             loop={loop}
             playsInline
             preload="metadata"
-            onCanPlay={() => syncPreviewPlayback(ref.current, shouldPlay && (!playbackGroup || slotGrantedRef.current))}
-            onError={() => setFailed(true)}
+            onCanPlay={() => { setFailed(false); syncPreviewPlayback(ref.current, shouldPlay && (!playbackGroup || slotGrantedRef.current)); }}
+            onError={() => { if (hasPreviewMediaError(ref.current)) setFailed(true); }}
             style={style}
         />
         {failed && <span role="status" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#aaa', background: '#111', fontSize: 12 }}>Preview unavailable</span>}

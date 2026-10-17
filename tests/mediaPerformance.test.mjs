@@ -6,7 +6,7 @@ import path from 'node:path';
 import express from 'express';
 import { staticAssetOptions } from '../server/http/staticAssets.js';
 import { compatibleLandingVideo, landingVideoPoster } from '../src/config/landingMedia.js';
-import { syncPreviewPlayback } from '../src/lib/previewPlayback.js';
+import { syncPreviewPlayback, hasPreviewMediaError } from '../src/lib/previewPlayback.js';
 
 test('static handler caches only hashed build chunks indefinitely, keeps HTML fresh and supports video ranges', async t => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'zerolens-static-'));
@@ -61,4 +61,17 @@ test('production handler is configured once before the SPA fallback', async () =
     const source = await fs.readFile(new URL('../server.js', import.meta.url), 'utf8');
     assert.equal((source.match(/app\.use\(express\.static\(path\.join\(__dirname, 'dist'\)/g) || []).length, 1);
     assert.match(source, /staticAssetOptions\(path\.join\(__dirname, 'dist'\)\)/);
+});
+
+test('lazy preview errors require a current source and real non-aborted media error', () => {
+    assert.equal(hasPreviewMediaError(null), false);
+    assert.equal(hasPreviewMediaError({ currentSrc: '', error: { code: 4 } }), false);
+    assert.equal(hasPreviewMediaError({ currentSrc: 'fixture.mp4', error: null }), false);
+    assert.equal(hasPreviewMediaError({ currentSrc: 'fixture.mp4', error: { code: 1 } }), false);
+    for (const code of [2,3,4]) assert.equal(hasPreviewMediaError({ currentSrc: 'fixture.mp4', error: { code } }), true);
+});
+
+test('successful preview load clears any stale fallback state', async () => {
+    const source=await fs.readFile(new URL('../src/components/common/ViewportVideo.jsx',import.meta.url),'utf8');
+    assert.match(source, /onCanPlay=\{\(\) => \{ setFailed\(false\)/);
 });
