@@ -512,13 +512,16 @@ function App() {
             
             <button 
               onClick={() => setShowingAuthModal(false)}
+              aria-label="Close sign in"
               className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors z-[100]"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="w-full flex-1 overflow-y-auto max-h-[85vh]">
-              <AuthPage onAuthSuccess={(u) => { setShowingAuthModal(false); setUser(u); }} isModal={true} />
+              <Suspense fallback={<StudioLoader />}>
+                <AuthPage onAuthSuccess={(u) => { setShowingAuthModal(false); setUser(u); }} isModal={true} />
+              </Suspense>
             </div>
 
           </div>
