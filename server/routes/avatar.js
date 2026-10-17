@@ -3,8 +3,11 @@ import { v4 as uuidv4 } from 'uuid';
 import fetch from 'node-fetch';
 import { buildBoardPrompt } from '../services/avatarPromptBuilder.js';
 
+import { createUtilityAuth } from '../utils/utilityAuth.js';
+
 export default function createRouter(deps) {
     const router = express.Router();
+    const utilityAuth = createUtilityAuth(deps.requireAuth);
     const {
         supabaseAdmin,
         supabase,
@@ -51,7 +54,7 @@ export default function createRouter(deps) {
      * Body: { image: string (base64), userId: string }
      * Uploads the user reference image to Cloudflare R2
      */
-    router.post(['/avatar/upload-ref', '/upload-ref'], async (req, res) => {
+    router.post(['/avatar/upload-ref', '/upload-ref'], utilityAuth, async (req, res) => {
         try {
             const { image, userId } = req.body;
             if (!image) {

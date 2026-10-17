@@ -4,6 +4,7 @@ import { Check, Shield, Zap, Sparkles, Coins, ArrowRight, ChevronDown, ChevronUp
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store';
 import MarketingPromoBanner from '../common/MarketingPromoBanner';
+import { optimizedPricingArtwork } from '../../config/pricingArtwork';
 
 const PricingPage = () => {
     const [isYearly] = useState(false);
@@ -397,11 +398,20 @@ const PricingPage = () => {
                             {plan.image && (
                                 <div className="mb-4 sm:mb-5 rounded-xl overflow-hidden aspect-[16/10] bg-white/[0.03] border border-white/5 relative group flex items-center justify-center w-full">
                                     <img 
-                                        src={plan.image} 
+                                        src={optimizedPricingArtwork(plan.image)}
+                                        loading="lazy"
+                                        decoding="async"
+                                        width={480}
+                                        height={480}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                                         alt={plan.name}
                                         onError={(e) => {
                                             const target = e.target;
+                                            if (optimizedPricingArtwork(plan.image) !== plan.image && target.dataset.originalArtworkTried !== 'true') {
+                                                target.dataset.originalArtworkTried = 'true';
+                                                target.src = plan.image;
+                                                return;
+                                            }
                                             target.style.display = 'none';
                                             if (target.parentElement) {
                                                 target.parentElement.classList.add('bg-gradient-to-br', 'from-white/[0.05]', 'to-transparent');

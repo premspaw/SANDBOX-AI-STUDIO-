@@ -33,6 +33,8 @@ import { supabase } from '../../lib/supabase';
 import { useAppStore, inferStudioFolder } from '../../store';
 import { getApiUrl, API_BASE_URL, resolveUrl } from '../../config/apiConfig';
 import { LANDING_ASSETS } from '../../config/landingAssets';
+import ViewportVideo from '../common/ViewportVideo';
+import { paginateMedia } from '../../lib/mediaPagination';
 
 const getStudioBadge = (item) => {
     const s = item?.studio || inferStudioFolder(item);
@@ -429,6 +431,8 @@ function Lightbox({ item, onClose }) {
 
 export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab: setAppTab, defaultTab = 'all' }) {
     const [activeTab, setActiveTab] = useState(defaultTab);
+    const [mediaPage, setMediaPage] = useState(1);
+    const galleryTopRef = React.useRef(null);
     const [selectedStudio, setSelectedStudio] = useState('all'); // 'all' | 'cinema' | 'ugc' | 'marketing' | 'remix' | 'avatar'
     const [viewMode, setViewMode] = useState('grid');
     const [isConnectedToDrive, setIsConnectedToDrive] = useState(false);
@@ -979,6 +983,13 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         });
     }, [activeMediaItems, selectedStudio]);
 
+    const mediaPagination = paginateMedia(displayedItems, mediaPage);
+    React.useEffect(() => { setMediaPage(1); }, [activeTab, selectedStudio, searchQuery]);
+    const changeMediaPage = (page) => {
+        setMediaPage(page);
+        galleryTopRef.current?.scrollIntoView({ block: 'start' });
+    };
+
     const tabs = [
         { id: 'all', label: 'All Media', icon: Layers },
         { id: 'images', label: 'Images', icon: ImageIcon },
@@ -1267,7 +1278,8 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                         <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Sector_Null // No_Assets_Located</span>
                     </div>
                 ) : (
-                    <div className={['all', 'images', 'videos'].includes(activeTab)
+                    <>
+                    <div ref={galleryTopRef} className={['all', 'images', 'videos'].includes(activeTab)
                         ? (compact 
                             ? "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 md:gap-3"
                             : "grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 md:gap-4")
@@ -1275,7 +1287,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                             ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4"
                             : "grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-8")
                     }>
-                        {displayedItems.map(item => (
+                        {mediaPagination.items.map(item => (
                             <div 
                                 key={item.id || item.url} 
                                 onClick={() => setLightboxItem(item)}
@@ -1297,13 +1309,12 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
 
                                 {item.type === 'video' ? (
                                     <div className="w-full h-full bg-black relative flex items-center justify-center group/video">
-                                        <video
+                                        <ViewportVideo
                                             src={resolveUrl(item.url)}
+                                            poster={item.thumbnail_url || item.thumbnailUrl || item.metadata?.thumbnail_url}
                                             className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
-                                            muted
-                                            loop
-                                            onMouseEnter={(e) => e.target.play()}
-                                            onMouseLeave={(e) => e.target.pause()}
+                                            autoPlay={false}
+                                            playOnHover
                                         />
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity">
                                             <Film className="w-12 h-12 text-white/20" />
@@ -1398,6 +1409,14 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                             </div>
                         ))}
                     </div>
+                    {mediaPagination.pageCount > 1 && (
+                        <nav aria-label="Media gallery pages" className="flex items-center justify-center gap-4 py-6 text-xs text-white/70">
+                            <button type="button" disabled={mediaPagination.page === 1} onClick={() => changeMediaPage(mediaPagination.page - 1)} className="px-4 py-2 rounded-lg border border-white/20 disabled:opacity-30">Previous</button>
+                            <span>Page {mediaPagination.page} of {mediaPagination.pageCount}</span>
+                            <button type="button" disabled={mediaPagination.page === mediaPagination.pageCount} onClick={() => changeMediaPage(mediaPagination.page + 1)} className="px-4 py-2 rounded-lg border border-white/20 disabled:opacity-30">Next</button>
+                        </nav>
+                    )}
+                    </>
                 )
             }</div>
             {lightboxItem && (

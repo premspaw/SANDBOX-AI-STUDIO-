@@ -1,8 +1,11 @@
 import express from 'express';
 
 
+import { createUtilityAuth } from '../utils/utilityAuth.js';
+
 export default function createRouter(deps) {
     const router = express.Router();
+    const utilityAuth = createUtilityAuth(deps.requireAuth);
     const {
         consumeCredits,
         claimOrCreateSpend,
@@ -447,7 +450,7 @@ export default function createRouter(deps) {
     });
 
     // Analyze Frames
-    router.post('/analyze-frames', async (req, res) => {
+    router.post('/analyze-frames', utilityAuth, async (req, res) => {
         try {
             const { frames } = req.body;
             if (!frames || !frames.length) {
@@ -463,7 +466,7 @@ export default function createRouter(deps) {
     });
 
     // OpenAI Canvas: Copy Generation
-    router.post('/canvas/copy', async (req, res) => {
+    router.post('/canvas/copy', utilityAuth, async (req, res) => {
         try {
             try {
                 await requireAuth(req);
@@ -487,7 +490,7 @@ export default function createRouter(deps) {
     });
 
     // OpenAI Canvas: Image Generation (DALL-E 3)
-    router.post('/canvas/image', async (req, res) => {
+    router.post('/canvas/image', utilityAuth, async (req, res) => {
         try {
             try {
                 await requireAuth(req);
@@ -519,7 +522,7 @@ export default function createRouter(deps) {
     });
 
     // OpenAI Canvas: AI Director Analysis
-    router.post('/canvas/analyze', async (req, res) => {
+    router.post('/canvas/analyze', utilityAuth, async (req, res) => {
         try {
             try {
                 await requireAuth(req);
@@ -547,7 +550,7 @@ export default function createRouter(deps) {
     });
 
     // Marketing Studio: GPT-4o Prompt Generation
-    router.post('/marketing/generate-prompt', async (req, res) => {
+    router.post('/marketing/generate-prompt', utilityAuth, async (req, res) => {
         try {
             try {
                 await requireAuth(req);

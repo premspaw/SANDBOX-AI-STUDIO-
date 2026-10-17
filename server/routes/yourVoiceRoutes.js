@@ -1,9 +1,12 @@
 import express from 'express';
+import { createUtilityAuth } from '../utils/utilityAuth.js';
 import { v4 as uuidv4 } from 'uuid';
 import fetch from 'node-fetch';
 
 export default function createRouter(deps) {
     const router = express.Router();
+    const utilityAuth = createUtilityAuth(deps.requireAuth);
+    const previewVoices = new Set(['Achernar', 'Achird', 'Algenib', 'Algieba', 'Alnilam', 'Aoede', 'Autonoe', 'Callirrhoe', 'Charon', 'Despina', 'Enceladus', 'Erinome', 'Fenrir', 'Gacrux', 'Iapetus', 'Kore', 'Laomedeia', 'Leda', 'Orus', 'Puck', 'Pulcherrima', 'Rasalgethi', 'Sadachbia', 'Sadaltager', 'Schedar', 'Sulafat', 'Umbriel', 'Vindemiatrix', 'Zephyr', 'Zubenelgenubi']);
     const {
         consumeCredits,
         requireAuth,
@@ -40,10 +43,10 @@ export default function createRouter(deps) {
     }
 
     // Dynamic voice preview with permanent in-memory and storage caching
-    router.get('/preview-voice', async (req, res) => {
+    router.get('/preview-voice', utilityAuth, async (req, res) => {
         const { voiceName } = req.query;
-        if (!voiceName) {
-            return res.status(400).json({ error: 'voiceName is required.' });
+        if (!previewVoices.has(voiceName)) {
+            return res.status(400).json({ error: 'Select a supported preview voice.' });
         }
 
         try {
@@ -57,11 +60,7 @@ export default function createRouter(deps) {
 
             const fileName = `voices/previews/preview-${voiceName.toLowerCase()}.wav`;
             
-            let user;
-            try {
-                user = await requireAuth(req);
-            } catch (_) {}
-            const targetUserId = user ? user.id : req.query.userId;
+            const targetUserId = req.utilityUser.id;
             const rawApiKey = await resolveGoogleApiKey(req, targetUserId);
             const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent?key=${apiKey}`;

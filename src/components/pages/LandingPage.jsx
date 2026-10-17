@@ -8,6 +8,8 @@ import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { LANDING_ASSETS as INITIAL_ASSETS } from '../../config/landingAssets';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import BrandLogo from '../common/BrandLogo';
+import ViewportVideo from '../common/ViewportVideo';
+import { compatibleLandingVideo, landingVideoPoster } from '../../config/landingMedia';
 import { useAppStore } from '../../store';
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────
@@ -88,7 +90,7 @@ function SectionEye({ children }) {
 
 const resolveAsset = (url) => {
   if (!url) return url;
-  return resolveUrl(url);
+  return compatibleLandingVideo(url) || resolveUrl(url);
 };
 
 
@@ -234,10 +236,10 @@ function HeroTitle({ isMobile }) {
 // ═══════════════════════════════════════════════════════════════
 //  VIDEO PLACEHOLDER CELL
 // ═══════════════════════════════════════════════════════════════
-function VCell({ cell, style = {}, onClick, aspectRatio = '3/4' }) {
+function VCell({ cell, style = {}, onClick, aspectRatio = '3/4', playbackGroup, previewPaused = false }) {
   const [hovered, setHovered] = useState(false);
   const ref = useRef(null);
-  const inView = useInView(ref, { margin: '200px' });
+  const inView = useInView(ref, { once: true, margin: '200px' });
 
   return (
     <div
@@ -259,10 +261,12 @@ function VCell({ cell, style = {}, onClick, aspectRatio = '3/4' }) {
       }}>
         {cell.src && inView ? (
           <>
-            <video
+            <ViewportVideo
               key={cell.src}
-              autoPlay muted loop playsInline preload="metadata"
               src={resolveAsset(cell.src)}
+              poster={cell.poster || cell.thumbnail || landingVideoPoster(cell.src)}
+              playbackGroup={playbackGroup}
+              autoPlay={!previewPaused}
               style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 1 }}
             />
             {/* Hover Darken Overlay */}
@@ -386,9 +390,8 @@ function UGCCard({ card, assets, index }) {
       {/* Media or Placeholder */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
         {videoSrc ? (
-          <video
+          <ViewportVideo
             key={videoSrc}
-            autoPlay muted loop playsInline preload="none"
             src={resolveAsset(videoSrc)}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
@@ -1054,6 +1057,8 @@ export default function LandingPage({ onEnter, onPricing }) {
                   .map((cell, i) => (
                     <VCell 
                       key={`hero-cell-${i}`} 
+                      playbackGroup="landing-gallery"
+                      previewPaused={!!playingVideo}
                       cell={cell} 
                       onClick={setPlayingVideo} 
                       style={isMobile ? { width: 'calc(50vw - 12px)', flexShrink: 0 } : {}}
@@ -1193,6 +1198,8 @@ export default function LandingPage({ onEnter, onPricing }) {
                 .map((cell, i) => (
                   <VCell 
                     key={i} 
+                    playbackGroup="landing-gallery"
+                    previewPaused={!!playingVideo}
                     cell={cell} 
                     onClick={setPlayingVideo}
                     style={isMobile ? { width: 'calc(50vw - 12px)', flexShrink: 0 } : {}}
@@ -1468,13 +1475,9 @@ function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
     <div ref={ref} style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
       {inView ? (
         <>
-          <video
+          <ViewportVideo
             key={src}
-            autoPlay
             muted={isMuted}
-            loop
-            playsInline
-            preload="metadata"
             src={resolveAsset(src)}
             style={{ width: '100%', height: '100%', objectFit, objectPosition }}
           />
@@ -1519,8 +1522,8 @@ function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
 // ─────────────────────────────────────────────────────────────
 
 function MobileStackSection({ assets, isMobile, onPlayVideo }) {
-  const ugcVideos = assets?.ugcAssets || [];
-  const productVideos = assets?.productAssets || [];
+  const ugcVideos = (assets?.ugcAssets || []).filter(video => video.src);
+  const productVideos = (assets?.productAssets || []).filter(video => video.src);
   const cinemaVideo = assets?.cinemaAssets?.[0];
 
   const sectionStyle = {
@@ -1735,8 +1738,8 @@ function MobileStackSection({ assets, isMobile, onPlayVideo }) {
 // ═══════════════════════════════════════════════════════════════
 function StackSection({ assets, isMobile, onPlayVideo }) {
   // Use section-specific assets from the config
-  const ugcVideos = assets?.ugcAssets || [];
-  const productVideos = assets?.productAssets || [];
+  const ugcVideos = (assets?.ugcAssets || []).filter(video => video.src);
+  const productVideos = (assets?.productAssets || []).filter(video => video.src);
   const cinemaVideo = assets?.cinemaAssets?.[0];
 
   const fallbackDesktopUgc = [

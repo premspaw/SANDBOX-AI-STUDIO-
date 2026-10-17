@@ -1,8 +1,11 @@
 import express from 'express';
 import * as cacheService from '../../services/cacheService.js';
 
+import { createUtilityAuth } from '../utils/utilityAuth.js';
+
 export default function createRouter(deps) {
     const router = express.Router();
+    const utilityAuth = createUtilityAuth(deps.requireAuth);
     const APP_ORIGIN = (process.env.APP_ORIGIN || process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
     const {
         geminiService,
@@ -18,7 +21,7 @@ export default function createRouter(deps) {
     router.get('/health', (req, res) => res.json({ status: 'Forge API is Live' }));
 
     // Analyze Identity
-    router.post('/analyze', async (req, res) => {
+    router.post('/analyze', utilityAuth, async (req, res) => {
         try {
             const { image } = req.body;
             if (!image) throw new Error('No image provided');
@@ -31,7 +34,7 @@ export default function createRouter(deps) {
     });
 
     // Cache Neural Universe Bible Context
-    router.post('/cache-bible', async (req, res) => {
+    router.post('/cache-bible', utilityAuth, async (req, res) => {
         try {
             const { bibleContext } = req.body;
             if (!bibleContext) throw new Error('No bibleContext provided');
@@ -113,7 +116,7 @@ export default function createRouter(deps) {
     };
 
     // Refine Prompt Narrative & Storyboard Breakdown (Powered by Selected AI Model & Astra)
-    router.post('/refine-narrative', async (req, res) => {
+    router.post('/refine-narrative', utilityAuth, async (req, res) => {
         try {
             const { text, type = "general", scenario = "", format = "video", aiModel = "gemini-2.5-flash" } = req.body;
             if (!text) return res.status(400).json({ error: "Text is required" });
@@ -209,7 +212,7 @@ ${antiMorphingRules}
     });
 
     // Dedicated Prompt & Scenario Writer
-    router.post('/write-prompt', async (req, res) => {
+    router.post('/write-prompt', utilityAuth, async (req, res) => {
         try {
             const { prompt, scenario = "", type = "video", style = "", character = "", location = "", aiModel = "gemini-2.5-flash" } = req.body;
             if (!prompt && !scenario) return res.status(400).json({ error: "Prompt or scenario is required" });
@@ -330,7 +333,7 @@ Write the ultimate, high-fidelity prompt for this scenario.`;
     });
 
     // 🎬 Interactive Director: Generate Complete Script from Concept/Idea
-    router.post('/director/generate-script', async (req, res) => {
+    router.post('/director/generate-script', utilityAuth, async (req, res) => {
         try {
             const { idea, duration = '60 sec', genre = 'Commercial', directorStyle = 'Christopher Nolan', character = '', location = '', aiModel = 'gemini-2.5-flash' } = req.body;
             if (!idea) return res.status(400).json({ error: "Idea or logline is required" });
@@ -418,7 +421,7 @@ Generate the complete shooting script now.`;
     });
 
     // 🎬 Interactive "Vibe Directing" Co-Pilot Chat (Live Natural Language Storyboard & Settings Tweaks)
-    router.post('/director/chat', async (req, res) => {
+    router.post('/director/chat', utilityAuth, async (req, res) => {
         try {
             const { message, currentShots = [], currentSettings = {}, scriptText = '', activeScene = null, activeShot = null, activeShotIndex = null, aiModel = 'gemini-2.5-flash' } = req.body;
             if (!message) return res.status(400).json({ error: "Message is required" });
@@ -568,7 +571,7 @@ Modify the storyboard, settings, or shots according to the user's command and re
     });
 
     // Suggest Dialogue Alternatives
-    router.post('/suggest-dialogue', async (req, res) => {
+    router.post('/suggest-dialogue', utilityAuth, async (req, res) => {
         try {
             const { currentScript, context = "" } = req.body;
             if (!currentScript) return res.status(400).json({ error: "currentScript is required" });
@@ -654,7 +657,7 @@ Modify the storyboard, settings, or shots according to the user's command and re
     });
 
     // Generate Character Image (Bypassing geminiService for direct REST stability using handleGoogle)
-    router.post('/generate', async (req, res) => {
+    router.post('/generate', utilityAuth, async (req, res) => {
         try {
             const { prompt, references, identity_images, aspect_ratio, modelEngine, quality, system_instruction, userId } = req.body;
             
@@ -688,7 +691,7 @@ Modify the storyboard, settings, or shots according to the user's command and re
     });
 
     // Semantic Search (PHASE 4)
-    router.post('/influencer/semantic-search', async (req, res) => {
+    router.post('/influencer/semantic-search', utilityAuth, async (req, res) => {
         try {
             const { query } = req.body;
             if (!query) throw new Error('No query provided');
@@ -721,7 +724,7 @@ Modify the storyboard, settings, or shots according to the user's command and re
     });
 
     // Research Agent (Google Search)
-    router.post('/director/research', async (req, res) => {
+    router.post('/director/research', utilityAuth, async (req, res) => {
         try {
             const { query } = req.body;
             if (!query) throw new Error('No query provided');
@@ -735,7 +738,7 @@ Modify the storyboard, settings, or shots according to the user's command and re
     });
 
     // Thinking Mode Sequence Generation
-    router.post('/director/thinking-sequence', async (req, res) => {
+    router.post('/director/thinking-sequence', utilityAuth, async (req, res) => {
         try {
             const { narrative, bible } = req.body;
             if (!narrative) throw new Error('No narrative provided');
@@ -749,7 +752,7 @@ Modify the storyboard, settings, or shots according to the user's command and re
     });
 
     // Hermes chat route
-    router.post('/hermes/chat', async (req, res) => {
+    router.post('/hermes/chat', utilityAuth, async (req, res) => {
         try {
             const { message, userId, sessionId, reset, carouselType, artDirection, typography, brandName } = req.body;
             if (!message) {

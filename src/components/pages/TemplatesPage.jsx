@@ -914,7 +914,8 @@ export default function TemplatesPage() {
 function TemplateCard({ template, onRemix, onPreview }) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
-  const [isInView, setIsInView] = useState(false);
+  const [hasEnteredView, setHasEnteredView] = useState(false);
+  const isInViewRef = useRef(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [liveDuration, setLiveDuration] = useState(template.duration || '');
@@ -926,8 +927,9 @@ function TemplateCard({ template, onRemix, onPreview }) {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
+        isInViewRef.current = entry.isIntersecting;
         if (entry.isIntersecting) {
-          setIsInView(true);
+          setHasEnteredView(true);
           // Play automatically when in viewport
           if (videoRef.current) {
             videoRef.current.play()
@@ -953,7 +955,7 @@ function TemplateCard({ template, onRemix, onPreview }) {
 
   const handleCanPlay = () => {
     setIsLoaded(true);
-    if (isInView && videoRef.current) {
+    if (isInViewRef.current && videoRef.current) {
       videoRef.current.play()
         .then(() => setIsPlaying(true))
         .catch(() => {});
@@ -1012,11 +1014,10 @@ function TemplateCard({ template, onRemix, onPreview }) {
         )}
 
         {/* Background Video — ONLY rendered & loaded when in viewport */}
-        {isInView && (
+        {hasEnteredView && (
           <video
             ref={videoRef}
             src={cleanVideoUrl}
-            autoPlay
             loop
             muted
             playsInline

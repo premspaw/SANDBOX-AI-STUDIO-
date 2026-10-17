@@ -5,6 +5,7 @@ import path from 'path';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
+import { saveOwnedRecord } from '../utils/ownedRecord.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,8 +18,11 @@ const adminLoginLimiter = rateLimit({
     legacyHeaders: false
 });
 
+import { createUtilityAuth } from '../utils/utilityAuth.js';
+
 export default function createRouter(deps) {
     const router = express.Router();
+    const utilityAuth = createUtilityAuth(deps.requireAuth);
     const {
         supabase,
         supabaseAdmin,
@@ -641,10 +645,7 @@ export default function createRouter(deps) {
                 timestamp: new Date().toISOString()
             };
 
-            const { data, error } = await supabase
-                .from('characters')
-                .upsert([finalChar], { onConflict: 'id' })
-                .select();
+            const { data, error } = await saveOwnedRecord(supabase, 'characters', finalChar, user, () => requireAdmin(req));
 
             if (error) throw error;
             res.json({ success: true, character: data?.[0] || finalChar });
@@ -1027,22 +1028,24 @@ export default function createRouter(deps) {
     // Retrieves historical audit trail of all synced/matched videos
     router.get('/admin/sync-audit-logs', async (req, res) => {
         try {
+            await requireAdmin(req);
             const logs = getSyncAuditLogs();
             res.json({ success: true, logs, total: logs.length });
         } catch (err) {
-            res.status(500).json({ error: 'Failed to fetch audit logs.' });
+            res.status(err.status || 500).json({ error: err.status === 401 || err.status === 403 ? 'Verified administrator access required' : 'Failed to fetch audit logs.' });
         }
     });
 
     // POST /api/admin/clear-sync-audit-logs
     router.post('/admin/clear-sync-audit-logs', async (req, res) => {
         try {
+            await requireAdmin(req);
             if (fs.existsSync(AUDIT_LOG_FILE)) {
                 fs.writeFileSync(AUDIT_LOG_FILE, '[]', 'utf-8');
             }
             res.json({ success: true, message: 'Audit logs cleared successfully.' });
         } catch (err) {
-            res.status(500).json({ error: 'Failed to clear audit logs.' });
+            res.status(err.status || 500).json({ error: err.status === 401 || err.status === 403 ? 'Verified administrator access required' : 'Failed to clear audit logs.' });
         }
     });
 
@@ -1595,7 +1598,7 @@ export default function createRouter(deps) {
     });
 
     // Marketing Analyze Image (unsecured fallback support since front-end doesn't send JWT)
-    router.post('/marketing/analyze-image', async (req, res) => {
+    router.post('/marketing/analyze-image', utilityAuth, async (req, res) => {
         try {
             const { image } = req.body;
             if (!image) {
@@ -1669,10 +1672,7 @@ The response MUST be a JSON object with the following fields:
                 storyboard.user_id = user.id;
             }
 
-            const { data, error } = await supabase
-                .from('storyboards')
-                .upsert([storyboard], { onConflict: 'id' })
-                .select();
+            const { data, error } = await saveOwnedRecord(supabase, 'storyboards', storyboard, user, () => requireAdmin(req));
             if (error) throw error;
             res.json({ success: true, storyboard: data?.[0] || storyboard });
         } catch (error) {

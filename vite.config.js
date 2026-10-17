@@ -21,7 +21,13 @@ export default defineConfig({
             if (id.includes('@ffmpeg') || id.includes('pdfjs-dist')) {
               return 'vendor-heavy-media';
             }
-            if (id.includes('reactflow') || id.includes('@dnd-kit')) {
+            if (id.includes('@google/genai') || id.includes('@google/generative-ai')) {
+              return 'vendor-generative-ai';
+            }
+            if (id.includes('@dnd-kit')) {
+              return 'vendor-dnd';
+            }
+            if (id.includes('reactflow')) {
               return 'vendor-canvas';
             }
             if (id.includes('@supabase')) {

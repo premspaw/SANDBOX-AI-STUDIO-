@@ -66,8 +66,12 @@ async function stripAudioFromBuffer(inputBuffer) {
     }
 }
 
+import { createUtilityAuth } from '../utils/utilityAuth.js';
+import { getVerifiedVideoIdentity } from '../auth/videoIdentity.js';
+
 export default function createRouter(deps) {
     const router = express.Router();
+    const utilityAuth = createUtilityAuth(deps.requireAuth);
     const {
         getJobStatus,
         findVideoInResponse,
@@ -104,47 +108,21 @@ export default function createRouter(deps) {
     // Veo Image-to-Video: Animate a keyframe image into a clip
     const handleVeoGenerate = async (req, res) => {
         try {
-            let user;
+            let identity;
             try {
-                user = await requireAuth(req);
-            } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate video.' });
-                }
+                identity = await getVerifiedVideoIdentity(req, requireAuth, deps.supabaseAdmin || deps.supabase);
+            } catch (authError) {
+                const status = authError.status === 503 ? 503 : 401;
+                return res.status(status).json({ error: status === 503 ? 'Authentication service unavailable' : 'Authentication required to generate video.' });
             }
-
+            const { user, isAdmin } = identity;
+            const targetUserId = user.id;
+            // Bind persistence and provider ownership to the verified session.
+            req.body.userId = targetUserId;
             const { image, motionPrompt, prompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '720p', model } = req.body;
             const modelName = model || '';
             const textPrompt = motionPrompt || prompt;
             if (!textPrompt) throw new Error('No motion prompt provided');
-
-            const targetUserId = user ? user.id : userId;
-
-            const adminPassword = req?.headers?.['x-admin-password'] || '';
-            const isHeaderAdmin = adminPassword === 'admin123' || adminPassword === '10000';
-            let isAdmin = isHeaderAdmin || req.body?.isAdmin === true || req.headers?.['x-is-admin'] === 'true';
-            if (!isAdmin && user) {
-                if (user.role === 'admin' || (user.email && (user.email.startsWith('premspaw') || user.email.includes('admin')))) {
-                    isAdmin = true;
-                }
-            }
-            if (!isAdmin && targetUserId) {
-                const adminClient = deps.supabaseAdmin || deps.supabase;
-                if (adminClient) {
-                    try {
-                        const { data: profile } = await adminClient
-                            .from('profiles')
-                            .select('role, email')
-                            .eq('id', targetUserId)
-                            .single();
-                        if (profile?.role === 'admin' || (profile?.email && (profile.email.startsWith('premspaw') || profile.email.includes('admin')))) {
-                            isAdmin = true;
-                        }
-                    } catch (err) {
-                        console.warn('[VEO-I2V] Role lookup failed:', err.message);
-                    }
-                }
-            }
 
             const apiKey = await resolveGoogleApiKey(req, targetUserId, true);
             const token = await getVertexToken();
@@ -566,7 +544,7 @@ export default function createRouter(deps) {
     router.post('/generate', handleVeoGenerate);
 
     // MusicFX Score Generation
-    router.post('/music/generate', async (req, res) => {
+    router.post('/music/generate', utilityAuth, async (req, res) => {
         try {
             const { prompt, style, duration } = req.body;
             broadcastProgress('music-gen', 1, 2, `Composing ${style} score...`);

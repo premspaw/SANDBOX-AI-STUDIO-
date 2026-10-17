@@ -12,8 +12,11 @@ import { fetchAllowedProxyResource } from '../utils/safeProxy.js';
 import { isValidUuid } from '../utils/validateUuid.js';
 import { validateExportInput } from '../utils/exportTemp.js';
 
+import { createUtilityAuth } from '../utils/utilityAuth.js';
+
 export default function createRouter(deps) {
     const router = express.Router();
+    const utilityAuth = createUtilityAuth(deps.requireAuth);
     const {
         consumeCredits,
         claimOrCreateSpend,
@@ -340,7 +343,7 @@ export default function createRouter(deps) {
     });
 
     // UGC speech
-    router.post('/speech', async (req, res) => {
+    router.post('/speech', utilityAuth, async (req, res) => {
         try {
             const {
                 text, voice = 'Kore',
@@ -483,7 +486,7 @@ ${transcript}`;
         'audio/webm', 'video/mp4', 'video/webm', 'video/quicktime',
     ]);
 
-    router.post('/analyze-voice', upload.single('audio'), async (req, res) => {
+    router.post('/analyze-voice', utilityAuth, upload.single('audio'), async (req, res) => {
         try {
             if (!req.file) return res.status(400).json({ error: 'No audio file uploaded' });
 
@@ -497,7 +500,7 @@ ${transcript}`;
             }
 
             const audioBase64 = req.file.buffer.toString('base64');
-            const apiKey = await resolveGoogleApiKey(req, req.body.userId);
+            const apiKey = await resolveGoogleApiKey(req, req.utilityUser.id);
             const gemini = getGeminiClient(apiKey);
 
             const audioPart = { inlineData: { mimeType, data: audioBase64 } };
@@ -545,7 +548,7 @@ Output ONLY the style description — no preamble, no headings.`,
     });
 
     // Generate Hook
-    router.post('/generate-hook', async (req, res) => {
+    router.post('/generate-hook', utilityAuth, async (req, res) => {
         try {
             const { characterName, niche, hookStyle, script } = req.body;
             broadcastProgress('ugc-hook', 1, 3, 'Generating viral hook script...');
@@ -593,7 +596,7 @@ Return ONLY valid JSON.`
     });
 
     // Generate Avatar
-    router.post('/generate-avatar', async (req, res) => {
+    router.post('/generate-avatar', utilityAuth, async (req, res) => {
         try {
             const { characterName, script, style, ratio } = req.body;
             broadcastProgress('ugc-avatar', 1, 3, 'Composing avatar render prompt...');
@@ -618,7 +621,7 @@ Return ONLY valid JSON.`
     });
 
     // Generate Captions
-    router.post('/generate-captions', async (req, res) => {
+    router.post('/generate-captions', utilityAuth, async (req, res) => {
         try {
             const { script, style } = req.body;
             broadcastProgress('ugc-captions', 1, 2, 'Generating caption overlays...');
@@ -667,7 +670,7 @@ Return ONLY valid JSON.`
     });
 
     // Batch hooks
-    router.post('/generate-hooks-batch', async (req, res) => {
+    router.post('/generate-hooks-batch', utilityAuth, async (req, res) => {
         try {
             const { synergy, niche, tone, directive } = req.body;
             console.log(`[SERVER] Generating batch hooks for re-ranking...`);
@@ -680,7 +683,7 @@ Return ONLY valid JSON.`
     });
 
     // Ad Engine
-    router.post('/ad-engine', async (req, res) => {
+    router.post('/ad-engine', utilityAuth, async (req, res) => {
         try {
             const {
                 characterImage,
@@ -749,7 +752,7 @@ Return ONLY valid JSON.`
     });
 
     // Product Analysis
-    router.post('/analyze-product', async (req, res) => {
+    router.post('/analyze-product', utilityAuth, async (req, res) => {
         const safeBody = (req.body && typeof req.body === 'object') ? req.body : {};
         const nodeId = safeBody.nodeId ?? Date.now();
         const taskId = `product - analysis - ${nodeId} `;
@@ -780,13 +783,13 @@ Return ONLY valid JSON.`
     });
 
     // Wardrobe Analysis
-    router.post('/wardrobe/analyze', wardrobeUploadMiddleware, analyzeWardrobeRoute);
+    router.post('/wardrobe/analyze', utilityAuth, wardrobeUploadMiddleware, analyzeWardrobeRoute);
 
     // Location Analysis
-    router.post('/analyze-location', locationUploadMiddleware, analyzeLocationRoute);
+    router.post('/analyze-location', utilityAuth, locationUploadMiddleware, analyzeLocationRoute);
 
     // Mood board analysis
-    router.post('/analyze-mood', async (req, res) => {
+    router.post('/analyze-mood', utilityAuth, async (req, res) => {
         try {
             const { images } = req.body;
             if (!images || !Array.isArray(images) || images.length === 0) {
@@ -907,7 +910,7 @@ Return ONLY valid JSON.`
 
 
 
-    router.post('/proxy-image', async (req, res) => {
+    router.post('/proxy-image', utilityAuth, async (req, res) => {
         try {
             const { url } = req.body;
             if (!url) return res.status(400).json({ error: 'URL is required' });
@@ -923,7 +926,7 @@ Return ONLY valid JSON.`
     });
 
     // UGC preview scene (fuses Character + Product, then animates with Veo)
-    router.post('/preview-scene', async (req, res) => {
+    router.post('/preview-scene', utilityAuth, async (req, res) => {
         const { characterImage, productImage, scene, analysis, aspectRatio = '9:16', duration = 6, nodeId, userId } = req.body;
         const taskId = nodeId ? `ugc-preview-${nodeId}` : 'ugc-preview';
         let user;
@@ -1338,7 +1341,7 @@ Return ONLY valid JSON.`
     });
 
     // UGC Context Analysis (synergy between creator + product) / General Gemini Proxy
-    router.post('/ai/analyze-ugc', async (req, res) => {
+    router.post('/ai/analyze-ugc', utilityAuth, async (req, res) => {
         try {
             const { parts, model, generationConfig, characterImage, productImage, characterMetadata, productMetadata, userId } = req.body;
 
@@ -1577,7 +1580,7 @@ Return ONLY valid JSON.`
     });
 
     // ── Generic Text Generation (server-side, uses SDK/Service Account) ──
-    router.post('/generate-text', async (req, res) => {
+    router.post('/generate-text', utilityAuth, async (req, res) => {
         try {
             const { prompt, model, responseSchema, userId, parts } = req.body;
             if (!prompt && !parts) return res.status(400).json({ error: 'prompt or parts is required' });

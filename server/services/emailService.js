@@ -11,6 +11,8 @@
 
 import nodemailer from 'nodemailer';
 
+const escapeEmailText = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+
 const FROM_EMAIL = process.env.SUPPORT_EMAIL || 'ZeroLens AI <support@zerolens.in>';
 
 // Hostinger SMTP Transporter (smtp.hostinger.com:465)
@@ -112,7 +114,7 @@ async function sendEmail({ to, subject, html, text }) {
  * 1. Welcome Email (Triggered upon new user signup / first login)
  */
 export async function sendWelcomeEmail({ email, name, shortsBalance = 60 }) {
-  const displayName = name ? name.split(' ')[0] : 'Creator';
+  const displayName = escapeEmailText(name ? String(name).split(' ')[0] : 'Creator');
   const subject = `Welcome to ZeroLens AI Studio 🎬 (${shortsBalance} Free Shorts Credited)`;
 
   const html = `
@@ -281,7 +283,7 @@ export async function sendPaymentSuccessEmail({
   newBalance = 0,
   transactionId = 'N/A'
 }) {
-  const displayName = name ? name.split(' ')[0] : 'Creator';
+  const displayName = escapeEmailText(name ? String(name).split(' ')[0] : 'Creator');
   const subject = `Payment Confirmed: ${creditsAdded.toLocaleString()} Shorts Credited to Your Account ⚡`;
 
   const html = `

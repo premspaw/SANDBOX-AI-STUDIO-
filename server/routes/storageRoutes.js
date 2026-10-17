@@ -4,8 +4,11 @@ import express from 'express';
 import { fetchAllowedProxyResponse, readProxyBody, validateProxyUrl, createProxyByteLimit } from '../utils/safeProxy.js';
 import { isValidUuid } from '../utils/validateUuid.js';
 
+import { createUtilityAuth } from '../utils/utilityAuth.js';
+
 export default function createRouter(deps) {
     const router = express.Router();
+    const utilityAuth = createUtilityAuth(deps.requireAuth);
     const {
         storage,
         BUCKET_NAME,
@@ -345,7 +348,7 @@ export default function createRouter(deps) {
     });
 
     // Proxy TTS
-    router.post('/proxy/tts', async (req, res) => {
+    router.post('/proxy/tts', utilityAuth, async (req, res) => {
         try {
             const { text, voiceId } = req.body;
             if (!text) throw new Error('No text provided');
@@ -365,7 +368,7 @@ export default function createRouter(deps) {
     });
 
     // Proxy STT
-    router.post('/proxy/stt', async (req, res) => {
+    router.post('/proxy/stt', utilityAuth, async (req, res) => {
         try {
             const { audio } = req.body;
             if (!audio) throw new Error('No audio data provided');
@@ -379,7 +382,7 @@ export default function createRouter(deps) {
     });
 
     // Workspace Script Import
-    router.post('/workspace/import-doc', async (req, res) => {
+    router.post('/workspace/import-doc', utilityAuth, async (req, res) => {
         try {
             const { docId } = req.body;
             if (!docId) throw new Error('No Doc ID provided');

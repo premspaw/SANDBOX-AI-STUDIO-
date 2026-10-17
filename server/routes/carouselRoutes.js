@@ -3,8 +3,11 @@ import { readFileSync, rmSync } from 'fs';
 import { generateCarousel as generateCarouselHTML } from '../../services/carouselGenerator.js';
 import { isValidUuid } from '../utils/validateUuid.js';
 
+import { createUtilityAuth } from '../utils/utilityAuth.js';
+
 export default function createRouter(deps) {
     const router = express.Router();
+    const utilityAuth = createUtilityAuth(deps.requireAuth);
     const {
         uploadImageToSupabase,
         saveLocalAsset,
@@ -60,7 +63,7 @@ export default function createRouter(deps) {
     const IMAGE_GEN_TIMEOUT = 120000; // 120 seconds max per image
     const MAX_RETRIES = 2; // Retry up to 2 times on timeout
 
-    router.post('/carousel/generate-images', async (req, res) => {
+    router.post('/carousel/generate-images', utilityAuth, async (req, res) => {
         try {
             const { prompts, userId, brand, model: modelEngine } = req.body;
             if (!Array.isArray(prompts) || prompts.length === 0)
@@ -380,7 +383,7 @@ export default function createRouter(deps) {
     });
 
     // ── Carousel Chat: AI conversation to design Instagram carousel ──────────────
-    router.post('/carousel/chat', async (req, res) => {
+    router.post('/carousel/chat', utilityAuth, async (req, res) => {
         try {
             const { history, systemPrompt } = req.body;
             if (!Array.isArray(history) || history.length === 0) {
@@ -436,7 +439,7 @@ export default function createRouter(deps) {
     });
 
     // ── Creative Direction: New AI Creative Director endpoint ──────────────
-    router.post('/creative-direction/generate', async (req, res) => {
+    router.post('/creative-direction/generate', utilityAuth, async (req, res) => {
         try {
             const { topic, brandName, audience, emotionalGoal, artDirection, userId, brandColor } = req.body;
             

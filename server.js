@@ -18,6 +18,7 @@ import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import compression from 'compression';
+import { staticAssetOptions } from './server/http/staticAssets.js';
 
 import nodeFetch from 'node-fetch';
 import { createGoogleProviderFetch } from './server/utils/providerFetch.js';
@@ -120,6 +121,7 @@ import OpenAI from 'openai';
 import { Storage } from '@google-cloud/storage';
 import crypto from 'crypto'; // For Razorpay webhook HMAC-SHA256 verification
 import { sendPaymentSuccessEmail, sendWelcomeEmail } from './server/services/emailService.js';
+import { createWelcomeEmailHandler } from './server/services/welcomeEmailHandler.js';
 
 // ─────────────────────────────────────────────────────────────
 // VERTEX AI & GCS AUTH via Service Account
@@ -668,6 +670,7 @@ app.use('/assets', express.static(path.join(__dirname, 'public', 'assets'), {
         res.set('Access-Control-Allow-Origin', '*');
         res.set('Cross-Origin-Resource-Policy', 'cross-origin');
         res.set('Accept-Ranges', 'bytes');
+        res.set('Content-Security-Policy', "default-src 'none'; sandbox");
     }
 }));
 
@@ -2340,23 +2343,9 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // ── Automated Welcome Email Endpoint (support@zerolens.in) ─────────
-app.post('/api/auth/welcome', async (req, res) => {
-    try {
-        const { email, name, shortsBalance } = req.body || {};
-        if (!email) {
-            return res.status(400).json({ error: 'Email is required' });
-        }
-        const result = await sendWelcomeEmail({
-            email,
-            name: name || '',
-            shortsBalance: Number(shortsBalance) || 60
-        });
-        res.json({ success: true, result });
-    } catch (err) {
-        console.error('[API_AUTH_WELCOME_ERROR]:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
+app.post('/api/auth/welcome', createWelcomeEmailHandler({
+    requireAuth, db: supabaseAdmin || supabase, sendWelcomeEmail
+}));
 
 
 
@@ -2367,13 +2356,13 @@ app.get('/.well-known/openai-apps-challenge', (req, res) => {
 });
 
 // Niche SEO Static Pages Handlers
-app.get('/real-estate', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'real-estate', 'index.html')));
-app.get('/fashion', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'fashion', 'index.html')));
-app.get('/food', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'food', 'index.html')));
-app.get('/cinema', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'cinema', 'index.html')));
+app.get('/real-estate', (req, res) => res.set('Cache-Control', 'no-cache, no-store, must-revalidate').sendFile(path.join(__dirname, 'dist', 'real-estate', 'index.html')));
+app.get('/fashion', (req, res) => res.set('Cache-Control', 'no-cache, no-store, must-revalidate').sendFile(path.join(__dirname, 'dist', 'fashion', 'index.html')));
+app.get('/food', (req, res) => res.set('Cache-Control', 'no-cache, no-store, must-revalidate').sendFile(path.join(__dirname, 'dist', 'food', 'index.html')));
+app.get('/cinema', (req, res) => res.set('Cache-Control', 'no-cache, no-store, must-revalidate').sendFile(path.join(__dirname, 'dist', 'cinema', 'index.html')));
 
-// Production static serving
-app.use(express.static(path.join(__dirname, 'dist')));
+// Production static serving. Apply cache policy at the FIRST static handler.
+app.use(express.static(path.join(__dirname, 'dist'), staticAssetOptions(path.join(__dirname, 'dist'))));
 
 // -------------------------------------------------------------
 // MODULE MOUNTINGS (Passing Dependencies Object)
@@ -2509,20 +2498,6 @@ app.use('/api', createYourVoiceRouter(deps));
 app.use('/api/remix', createRemixRouter(deps));
 app.use('/api', createRemixRouter(deps));
 
-// Serve production static assets from dist directory with proper MIME types & caching
-app.use(express.static(path.join(__dirname, 'dist'), {
-    maxAge: '1d',
-    setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.html')) {
-            // Never cache index.html so browsers always get fresh bundle hashes on deploy
-            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        } else if (filePath.includes('/assets/')) {
-            // Immutable cache for hashed JS/CSS chunks
-            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        }
-    }
-}));
-
 // Explicit JSON 404 handler for any unhandled /api requests so they never return HTML
 app.use('/api', (req, res) => {
     res.status(404).json({ error: `API endpoint not found: ${req.method} ${req.originalUrl}` });
@@ -2535,6 +2510,7 @@ app.get(/^\/(?!api).*/, (req, res) => {
         return res.status(404).send('Asset not found');
     }
     
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     const indexPath = path.join(__dirname, 'dist', 'index.html');
     if (!fs.existsSync(indexPath)) {
         return res.status(404).send('Application build not found. Please run npm run build.');

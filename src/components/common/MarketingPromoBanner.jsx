@@ -30,7 +30,13 @@ export default function MarketingPromoBanner({ onCtaClick, className = '' }) {
       {/* Banner Graphic Image Container */}
       <div className="relative w-full aspect-[1536/900] sm:aspect-[1536/860] max-h-[460px] overflow-hidden bg-black">
         <img
-          src="/pricing/season-discount-banner.jpg"
+          src="/pricing/optimized/season-discount-banner-1200.webp"
+          decoding="async"
+          width={1200}
+          height={800}
+          onError={(e) => {
+            if (e.currentTarget.src.endsWith('.webp')) e.currentTarget.src = '/pricing/season-discount-banner.jpg';
+          }}
           alt="ZeroLens AI Studio - Viral UGC Ads at ₹30 - 30% OFF Season Sale"
           className="w-full h-full object-cover object-center transform transition-transform duration-700 ease-out group-hover:scale-[1.015]"
           loading="eager"
