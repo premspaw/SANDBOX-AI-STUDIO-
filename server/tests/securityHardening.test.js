@@ -137,3 +137,17 @@ test('save-asset accepts trusted local fallback URLs but rejects local path trav
     assert.equal((await post(base+'/save-asset',{url:'/assets/%2e%2e%2fprivate.png'})).status,400);
   });
 });
+
+
+test('save-asset records provider completion references without DNS or download allowlist restrictions', async () => {
+  const saved=[]; const router=createStorageRouter({requireAuth:async()=>owner,saveLocalAsset:x=>saved.push(x)});
+  await withApp(router,async base=>{
+    const url='https://provider-cdn.example.invalid/completed/remix.mp4';
+    const response=await post(base+'/save-asset',{url,type:'video',userId:owner.id});
+    assert.equal(response.status,200);assert.equal(saved[0].url,url);assert.equal(saved[0].user_id,owner.id);
+    for(const badUrl of ['https://user:secret@provider-cdn.example.invalid/a.mp4','https://[invalid/a.mp4','javascript:alert(1)','file:///private/a.mp4']) {
+      assert.equal((await post(base+'/save-asset',{url:badUrl,type:'video'})).status,400);
+    }
+    assert.equal(saved.length,1);
+  });
+});
