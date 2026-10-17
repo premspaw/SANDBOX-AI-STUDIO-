@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import nodeFetch from 'node-fetch';
+import { fetchAllowedProxyResource } from '../server/utils/safeProxy.js';
+import { createExportTempDirectory, validateExportInput } from '../server/utils/exportTemp.js';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import { fileURLToPath } from 'url';
@@ -21,19 +22,10 @@ ffmpeg.setFfmpegPath(ffmpegStatic);
  * 4. Uploads final export to Supabase/GCS.
  */
 export const compileUGCAd = async (taskId, script, sceneVideos, bgMusicPath, progressCallback) => {
-    const tempDir = path.join(__dirname, 'temp', taskId);
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-    const cleanup = () => {
-        try {
-            if (fs.existsSync(tempDir)) {
-                fs.rmSync(tempDir, { recursive: true, force: true });
-                console.log(`[EXPORT] Cleaned up temp directory: ${tempDir}`);
-            }
-        } catch (e) {
-            console.error(`[EXPORT] Cleanup failed:`, e);
-        }
-    };
+    validateExportInput({ script, sceneVideos, bgMusicPath });
+    const temporary = createExportTempDirectory(path.join(__dirname, 'temp'));
+    const tempDir = temporary.directory;
+    const cleanup = () => temporary.cleanup();
 
     try {
         console.log(`[EXPORT] Starting Ad Compilation for Task: ${taskId}`);
@@ -56,8 +48,7 @@ export const compileUGCAd = async (taskId, script, sceneVideos, bgMusicPath, pro
             const localPath = path.join(tempDir, `scene_${i}.mp4`);
 
             console.log(`[EXPORT] Downloading scene ${i}: ${url}`);
-            const res = await nodeFetch(url);
-            const buffer = await res.buffer();
+            const { buffer } = await fetchAllowedProxyResource(url, { maxBytes: 100 * 1024 * 1024 });
             fs.writeFileSync(localPath, buffer);
             videoPaths.push(localPath);
         }

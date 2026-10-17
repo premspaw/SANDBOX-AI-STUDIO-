@@ -276,14 +276,14 @@ export default function TemplatesPage() {
       };
 
       // Save to Backend API / Supabase DB
-      try {
-        await fetch(getApiUrl('/api/remix/templates'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newTemplate)
-        });
-      } catch (apiSaveErr) {
-        console.warn('[API template save warning]:', apiSaveErr);
+      const saveRes = await fetch(getApiUrl('/api/remix/templates'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTemplate)
+      });
+      if (!saveRes.ok) {
+        const saveError = await saveRes.json().catch(() => ({}));
+        throw new Error(saveError.error || 'Template could not be saved. Please check your session and admin access.');
       }
 
       // Save to localStorage for instant local availability

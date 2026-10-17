@@ -10,6 +10,7 @@ import * as moodBoardService from '../../services/moodBoardService.js';
 import * as masterExportService from '../../services/masterExportService.js';
 import { fetchAllowedProxyResource } from '../utils/safeProxy.js';
 import { isValidUuid } from '../utils/validateUuid.js';
+import { validateExportInput } from '../utils/exportTemp.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -716,7 +717,9 @@ Return ONLY valid JSON.`
     // Compile Ad
     router.post('/compile-ad', async (req, res) => {
         try {
+            await requireAuth(req);
             const { script, sceneVideos, bgMusicPath, nodeId } = req.body;
+            validateExportInput({ script, sceneVideos, bgMusicPath, nodeId });
             if (!script || !sceneVideos || !sceneVideos.length) {
                 throw new Error("Missing script or scene videos for compilation");
             }
@@ -741,7 +744,7 @@ Return ONLY valid JSON.`
             res.json({ success: true, taskId });
         } catch (error) {
             console.error('UGC Compile Error:', error);
-            res.status(500).json({ error: error.message });
+            res.status(error.status || 500).json({ error: error.message });
         }
     });
 

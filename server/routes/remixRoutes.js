@@ -853,9 +853,22 @@ export default function createRouter(deps) {
         }
     });
 
+    async function requireTemplateAdmin(req, res, next) {
+        try {
+            const user = await requireAuth(req);
+            const client = supabaseAdmin || supabase;
+            if (!client) return res.status(503).json({ error: 'Database unavailable' });
+            const { data, error } = await client.from('profiles').select('role').eq('id', user.id).single();
+            if (error || data?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+            next();
+        } catch (error) {
+            res.status(error.status || 401).json({ error: 'Authentication required' });
+        }
+    }
+
     // ── 9:16 Remix Video Templates API ────────────────────────────────────────
     // Cloudflare R2 Video Upload
-    router.post('/templates/upload', uploadMiddleware.single('file'), async (req, res) => {
+    router.post('/templates/upload', requireTemplateAdmin, uploadMiddleware.single('file'), async (req, res) => {
         try {
             let buffer = null;
             let mimeType = 'video/mp4';
@@ -993,7 +1006,7 @@ export default function createRouter(deps) {
         }
     });
 
-    router.post('/templates', async (req, res) => {
+    router.post('/templates', requireTemplateAdmin, async (req, res) => {
         try {
             const { title, video_url, thumbnail_url, prompt, category, aspect_ratio, duration, created_by } = req.body;
             if (!title || !video_url) {
@@ -1059,13 +1072,13 @@ export default function createRouter(deps) {
         }
     });
 
-    router.delete('/templates/:id', async (req, res) => {
+    router.delete('/templates/:id', requireTemplateAdmin, async (req, res) => {
         try {
             const { id } = req.params;
             const client = supabaseAdmin || supabase;
             if (client) {
                 try { await client.from('remix_templates').delete().eq('id', id); } catch (_) {}
-                try { await client.from('assets').delete().eq('id', id); } catch (_) {}
+                try { await client.from('assets').delete().eq('id', id).eq('type', 'remix_template'); } catch (_) {}
             }
             return res.json({ success: true, id });
         } catch (err) {

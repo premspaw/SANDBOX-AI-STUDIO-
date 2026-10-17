@@ -21,12 +21,15 @@ export default function createRouter(deps) {
 
     // ── Carousel HTML → Playwright → Supabase PNG pipeline ───────────────────────
     router.post('/carousel/generate', async (req, res) => {
-        const { carouselData, userId, artDirection } = req.body;
+        const { carouselData, artDirection } = req.body;
+        let userId;
         if (!carouselData?.brand || !carouselData?.slides) {
             return res.status(400).json({ error: 'Missing carouselData.brand or carouselData.slides' });
         }
         let tmpDir = null;
         try {
+            const user = await requireAuth(req);
+            userId = user.id;
             console.log('[Carousel] Starting HTML generation for', carouselData.brand.name, '— artDirection:', artDirection || 'cinematic');
             const result = await generateCarouselHTML(carouselData, artDirection || 'cinematic');
             tmpDir = result.tmpDir;
@@ -45,7 +48,7 @@ export default function createRouter(deps) {
             });
         } catch (err) {
             console.error('[Carousel] Generation failed:', err);
-            res.status(500).json({ error: err.message || 'Carousel generation failed' });
+            res.status(err.status || 500).json({ error: err.message || 'Carousel generation failed' });
         } finally {
             if (tmpDir) {
                 try { rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}

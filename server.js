@@ -1,3 +1,4 @@
+import { requireAppUser } from './server/auth/requireAppUser.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -19,6 +20,7 @@ import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 
 import nodeFetch from 'node-fetch';
+import { createGoogleProviderFetch } from './server/utils/providerFetch.js';
 import { decode } from 'base64-arraybuffer';
 import multer from 'multer';
 import { Jimp } from 'jimp';
@@ -77,41 +79,9 @@ const isOriginAllowed = (origin) => {
 // MUST be defined BEFORE any SDKs are imported.
 // -------------------------------------------------------------
 const originalFetch = nodeFetch || globalThis.fetch;
-globalThis.fetch = (url, options = {}) => {
-    const urlStr = url.toString();
-    if (urlStr.includes('googleapis.com')) {
-        options.headers = options.headers || {};
-        const referer = `${APP_ORIGIN}/`;
-        
-        // Detect if request already has an Authorization header (Vertex AI / OAuth2)
-        let hasAuth = false;
-        let hasApiKey = urlStr.includes('key=') || urlStr.includes('?key=') || urlStr.includes('&key=');
-
-        if (typeof options.headers.has === 'function') {
-            hasAuth = options.headers.has('Authorization') || options.headers.has('authorization');
-            hasApiKey = hasApiKey || options.headers.has('x-goog-api-key') || options.headers.has('X-Goog-Api-Key');
-        } else {
-            hasAuth = !!(options.headers['Authorization'] || options.headers['authorization']);
-            hasApiKey = hasApiKey || !!(options.headers['x-goog-api-key'] || options.headers['X-Goog-Api-Key']);
-        }
-
-        if (typeof options.headers.set === 'function') {
-            options.headers.set('Referer', referer);
-            if (!hasAuth && !hasApiKey && process.env.GOOGLE_API_KEY) {
-                options.headers.set('X-Goog-Api-Key', process.env.GOOGLE_API_KEY.trim());
-            }
-        } else {
-            options.headers = {
-                ...options.headers,
-                'Referer': referer
-            };
-            if (!hasAuth && !hasApiKey && process.env.GOOGLE_API_KEY) {
-                options.headers['X-Goog-Api-Key'] = process.env.GOOGLE_API_KEY.trim();
-            }
-        }
-    }
-    return originalFetch(url, options);
-};
+globalThis.fetch = createGoogleProviderFetch(originalFetch, {
+    apiKey: process.env.GOOGLE_API_KEY, appOrigin: APP_ORIGIN
+});
 
 
 import { GoogleGenAI } from '@google/genai';
@@ -771,32 +741,7 @@ async function supabaseRestGet(tablePath, timeoutMs = 15000) {
 // SECURE CREDITS HELPER (S3 Fix)
 // ─────────────────────────────────────────────────────────────
 async function requireAuth(req) {
-    const authHeader = req.headers['authorization'] || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) {
-        if (process.env.NODE_ENV !== 'production') {
-            console.log('[requireAuth] Dev Mode: Bypassing auth, using mock user.');
-            return { id: 'cec79985-ce59-4d23-82a2-3ae6f69994ed', email: 'premspaw@gmail.com', role: 'admin' };
-        }
-        throw Object.assign(new Error('Missing Authorization header'), { status: 401 });
-    }
-
-    const adminClient = supabaseAdmin || supabase;
-    if (!adminClient) {
-        if (process.env.NODE_ENV !== 'production') {
-            return { id: 'cec79985-ce59-4d23-82a2-3ae6f69994ed', email: 'premspaw@gmail.com', role: 'admin' };
-        }
-        throw Object.assign(new Error('Database not configured'), { status: 503 });
-    }
-
-    const { data, error } = await adminClient.auth.getUser(token);
-    if (error || !data?.user) {
-        if (process.env.NODE_ENV !== 'production') {
-            return { id: 'cec79985-ce59-4d23-82a2-3ae6f69994ed', email: 'premspaw@gmail.com', role: 'admin' };
-        }
-        throw Object.assign(new Error('Invalid session token'), { status: 401 });
-    }
-    return data.user;
+    return requireAppUser(req, supabaseAdmin || supabase);
 }
 
 async function resolveGoogleApiKey(req, userId, forceVertex = false) {

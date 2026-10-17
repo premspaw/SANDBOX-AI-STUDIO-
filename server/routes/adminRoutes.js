@@ -1,3 +1,4 @@
+import { fetchAllowedProxyResource } from '../utils/safeProxy.js';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -493,10 +494,7 @@ export default function createRouter(deps) {
                 }
             }
             
-            const imgResp = await fetch(imageUrl);
-            if (!imgResp.ok) throw new Error(`Could not fetch image: HTTP ${imgResp.status}`);
-            const buffer = Buffer.from(await imgResp.arrayBuffer());
-            const contentType = imgResp.headers.get('content-type') || 'image/jpeg';
+            const { buffer, contentType } = await fetchAllowedProxyResource(imageUrl);
             const ext = contentType.includes('png') ? 'png' : 'jpg';
             const fileName = `characters/${imageName || characterId}_${Date.now()}.${ext}`;
 
@@ -557,10 +555,7 @@ export default function createRouter(deps) {
                 throw new Error("No valid external image to mirror");
             }
 
-            const imgResp = await fetch(imageUrl);
-            if (!imgResp.ok) throw new Error(`Could not fetch image: HTTP ${imgResp.status}`);
-            const buffer = Buffer.from(await imgResp.arrayBuffer());
-            const contentType = imgResp.headers.get('content-type') || 'image/jpeg';
+            const { buffer, contentType } = await fetchAllowedProxyResource(imageUrl);
             const ext = contentType.includes('png') ? 'png' : 'jpg';
             const fileName = `characters/${characterId}_${Date.now()}.${ext}`;
 

@@ -1,6 +1,7 @@
+import { storageSegment, storageUserId, assertSafeMediaContentType, assertOrdinaryAssetType, isLocalAssetUrl } from '../utils/storageInput.js';
 // Storage Routes Handler
 import express from 'express';
-import { fetchAllowedProxyResource, validateProxyUrl } from '../utils/safeProxy.js';
+import { fetchAllowedProxyResponse, readProxyBody, validateProxyUrl, createProxyByteLimit } from '../utils/safeProxy.js';
 import { isValidUuid } from '../utils/validateUuid.js';
 
 export default function createRouter(deps) {
@@ -15,7 +16,8 @@ export default function createRouter(deps) {
         audioService,
         workspaceService,
         geminiService,
-        saveLocalAsset
+        saveLocalAsset,
+        requireAuth
     } = deps;
 
     // Image/Video proxy — fetches R2/GCS/Supabase remote assets server-side and returns with CORS + Range headers
@@ -79,9 +81,9 @@ export default function createRouter(deps) {
             let lastErr;
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                    upstream = await fetch(finalUrl, {
+                    upstream = await fetchAllowedProxyResponse(finalUrl, {
                         headers: upstreamHeaders,
-                        redirect: 'follow',
+                        maxBytes: 200 * 1024 * 1024,
                         signal: abortController.signal
                     });
                     if (upstream.ok || upstream.status === 206) {
@@ -110,6 +112,8 @@ export default function createRouter(deps) {
             res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges, ETag');
 
             const ct = upstream.headers.get('content-type') || (isVideo ? 'video/mp4' : 'application/octet-stream');
+            assertSafeMediaContentType(ct);
+            res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
             res.setHeader('Content-Type', ct);
 
             // Force download if requested via query parameter
@@ -147,22 +151,21 @@ export default function createRouter(deps) {
                         }
                     });
 
-                    nodeStream.pipe(res);
+                    const sourceStream = nodeStream;
+                    const limitedStream = sourceStream.pipe(createProxyByteLimit(200 * 1024 * 1024));
+                    limitedStream.on('error', () => {
+                        abortController.abort();
+                        sourceStream.destroy();
+                        if (!res.writableEnded) res.destroy();
+                    });
+                    nodeStream = limitedStream;
+                    limitedStream.pipe(res);
                 } else {
                     res.end();
                 }
             } else {
                 // Images / small assets — buffer and send
-                let buffer;
-                if (upstream.body && typeof upstream.body.pipe === 'function') {
-                    const chunks = [];
-                    for await (const chunk of upstream.body) {
-                        chunks.push(chunk);
-                    }
-                    buffer = Buffer.concat(chunks);
-                } else {
-                    buffer = Buffer.from(await upstream.arrayBuffer());
-                }
+                const buffer = await readProxyBody(upstream);
 
                 // Auto-detect image MIME type from binary signature if Content-Type was octet-stream or video/mp4
                 let finalCt = ct;
@@ -193,14 +196,16 @@ export default function createRouter(deps) {
     // Save Asset (Universal for Image/Video, Local/Remote)
     router.post('/save-asset', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             if (!req.body || typeof req.body !== 'object') {
                 return res.status(400).json({ error: "Invalid request: missing JSON body or Content-Type header." });
             }
 
             const imageData = req.body.imageData || req.body.url || req.body.imageUrl;
-            const userId = req.body.userId || req.body.user_id;
+            const userId = storageUserId(req.body, user);
             const type = req.body.type || 'image';
-            const fileName = req.body.fileName || `asset_${Date.now()}.png`;
+            assertOrdinaryAssetType(type);
+            const fileName = storageSegment(req.body.fileName || `asset_${Date.now()}.png`, 'filename', { filename: true });
             
             const aspect = req.body.aspect || req.body.aspectRatio || req.body.aspect_ratio || '16:9';
             const prompt = req.body.prompt || req.body.promptText || '';
@@ -213,9 +218,11 @@ export default function createRouter(deps) {
                 projectId
             };
             
-            if (!imageData) throw new Error("No asset data provided");
+            if (typeof imageData !== "string" || !imageData) throw new Error("No asset data provided");
+            if (!/^(?:https?:\/\/|data:)/.test(imageData) && !isLocalAssetUrl(imageData)) throw Object.assign(new Error("Unsupported asset source"), { status: 400 });
 
-            if (imageData.startsWith('https://storage.googleapis.com/') || (imageData.startsWith('http') && !imageData.includes('localhost'))) {
+            if (/^https?:\/\//.test(imageData) || isLocalAssetUrl(imageData)) {
+                if (!isLocalAssetUrl(imageData)) await validateProxyUrl(imageData);
                 const isGCS = imageData.startsWith('https://storage.googleapis.com/');
                 console.log(`[SAVE-ASSET] ${isGCS ? 'GCS' : 'Public'} URL detected, saving to DB only`);
                 
@@ -333,7 +340,7 @@ export default function createRouter(deps) {
             res.json({ success: true, path: gcsPath, url: publicUrl, id: insertedId });
         } catch (err) {
             console.error('[BACKEND_SAVE_ERROR]:', err);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
@@ -388,12 +395,16 @@ export default function createRouter(deps) {
     // Upload asset
     router.post('/upload-asset', async (req, res) => {
         try {
+            const user = await requireAuth(req);
+            const userId = storageUserId(req.body, user);
             const image = req.body.image || req.body.data || req.body.imageData;
-            const { userId, type = 'image', filename, folder } = req.body;
+            const { type = 'image', filename, folder } = req.body;
+            assertOrdinaryAssetType(type);
             if (!image) throw new Error("No image data provided");
 
             const mimeMatch = image.match(/^data:(image\/[a-zA-Z+]+|video\/[a-zA-Z0-9]+);base64,/);
             const mimeType = mimeMatch ? mimeMatch[1] : (type === 'video' ? 'video/mp4' : 'image/png');
+            assertSafeMediaContentType(mimeType);
             const ext = mimeType.split('/')[1] || (type === 'video' ? 'mp4' : 'png');
             
             const aspect = req.body.aspect || req.body.aspectRatio || req.body.aspect_ratio || '16:9';
@@ -404,8 +415,8 @@ export default function createRouter(deps) {
             // Determine if this is a reference upload or a generated asset
             const isRefUpload = folder === 'reference' || folder === 'uploads';
             const namePrefix = isRefUpload ? 'ref_' : 'gen_';
-            const name = filename || `${namePrefix}${Date.now()}.${ext}`;
-            const storagePath = isRefUpload ? 'uploads' : (folder || 'generated');
+            const name = storageSegment(filename || `${namePrefix}${Date.now()}.${ext}`, 'filename', { filename: true });
+            const storagePath = storageSegment(isRefUpload ? 'uploads' : (folder || 'generated'), 'folder');
             const filePath = `users/${userId || 'anon'}/${storagePath}/${name}`;
             const dbType = isRefUpload ? 'reference_upload' : type;
 
@@ -444,17 +455,21 @@ export default function createRouter(deps) {
             res.json({ success: true, url: publicUrl, path: filePath });
         } catch (err) {
             console.error('[UPLOAD-ASSET-ERR]', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
     // Proxy asset
     router.get('/proxy/asset', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             const { path: assetPath, bucket: targetBucket } = req.query;
             if (!assetPath) return res.status(400).send("path is required");
             
-            const activeBucket = targetBucket || BUCKET_NAME;
+            if ((targetBucket && targetBucket !== BUCKET_NAME) || typeof assetPath !== 'string' || !assetPath.startsWith(`users/${user.id}/`) || assetPath.split('/').some(p => p === '..' || p === '.') || assetPath.includes('\\')) {
+                return res.status(403).send('Asset access denied');
+            }
+            const activeBucket = BUCKET_NAME;
             const file = storage.bucket(activeBucket).file(assetPath);
             const [exists] = await file.exists();
             
@@ -463,10 +478,12 @@ export default function createRouter(deps) {
             }
 
             const [metadata] = await file.getMetadata();
+            assertSafeMediaContentType(metadata.contentType || 'application/octet-stream');
             res.set({
                 'Content-Type': metadata.contentType || 'application/octet-stream',
                 'Access-Control-Allow-Origin': '*',
-                'Cache-Control': 'public, max-age=31536000',
+                'Cache-Control': 'private, no-store',
+                'Content-Security-Policy': "default-src 'none'; sandbox",
             });
 
             const stream = file.createReadStream();
@@ -477,7 +494,7 @@ export default function createRouter(deps) {
             stream.pipe(res);
         } catch (err) {
             console.error('[PROXY-ERR]', err.message);
-            res.status(500).send(err.message);
+            res.status(err.status || 500).send(err.message);
         }
     });
 
