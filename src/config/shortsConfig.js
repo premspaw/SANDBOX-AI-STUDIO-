@@ -33,6 +33,11 @@ export const SHORTS_COST = {
     seedance_25_multiref_720p: 65,
     seedance_25_multiref_1080p: 110,
 
+    // Vortex 3.0 Pro (Wan 3.0 Prime via Higgsfield Wholesale + 15% margin @ ₹96/USD)
+    vortex_30_480p: 3,
+    vortex_30_720p: 6.2,
+    vortex_30_1080p: 12.4,
+
     // Seedance 2.0 Fast (Kie / BytePlus Ark - 20% margin)
     seedance_fast: 14.5,
     seedance_fast_video: 8.7,
@@ -173,6 +178,16 @@ export function calculateEngineCredits(engineId, options = {}) {
         }
         const remixDur = Math.max(4, Math.min(10, Math.round(Number(motionRefVideoDuration) || dur || 5)));
         return remixDur * 5;
+    }
+
+    // 4.5. Vortex 3.0 Pro (Wan 3.0 Reference-to-Video via Higgsfield)
+    const isVortex = engLower.includes('vortex') || engLower.includes('wan') || (panelTab === 'omni-multi' && options.multiRefEngine === 'vortex-3.0');
+    if (isVortex) {
+        let costPerSec = 6.2;
+        if (resLower === '480p') costPerSec = 3.0;
+        else if (resLower === '1080p' || resLower === '4k') costPerSec = 12.4;
+        else costPerSec = 6.2; // 720p HD
+        return Math.ceil(costPerSec * dur);
     }
 
     // 5. Gemini Omni Flash (omni-flash, gemini-omni-1.1-flash, omni)

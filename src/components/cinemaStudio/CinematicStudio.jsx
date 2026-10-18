@@ -141,6 +141,7 @@ function CyclingLoadingText() {
 }
 
 const ENGINES = [
+  { id: 'vortex-3.0',                    label: 'Vortex 3.0 Pro',  icon: '🌀', desc: 'Wan 3.0 Reference-to-Video · 4 Slots · Up to 30s (3–12.4⚡/s)', cost: 6.2 },
   { id: 'omni-flash',                    label: 'Omni Flash 1.1',  icon: '✨', desc: 'Google Gemini Omni Flash 1.1 — Multimodal Camera & Voice (5⚡/s)', cost: 5 },
   { id: 'seedance-2.5',                  label: 'Seedance 2.5',    icon: '⚡', desc: 'ByteDance — 8⚡/s (480p) / 10⚡/s (720p)', cost: 10 },
   { id: 'seedance-fast',                 label: 'Seedance Fast',   icon: '🚀', desc: 'ByteDance — 5⚡/s (480p) / 12⚡/s (720p)', cost: 5 },
@@ -2256,7 +2257,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     seedanceRefs?.ref_videos?.length > 0 || 
     seedanceRefs?.ref_audios?.length > 0 ||
     omniRefVideoPreview ||
-    (omniRefPreviews && omniRefPreviews.some(Boolean))
+    (omniRefPreviews && omniRefPreviews.some(Boolean)) ||
+    (omniMultiImages && omniMultiImages.some(Boolean)) ||
+    (omniMultiVideos && omniMultiVideos.some(Boolean))
   );
 
   const hasInput = Boolean(activePromptText || hasDraftText || (textareaRef?.current?.value?.trim()) || activeFirstFramePreview || taggedItemsCount > 0 || hasRefBoardMedia);
@@ -2844,8 +2847,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         };
       }
 
-      if (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine === 'seedance-2.5') {
-        const modelId = activeEngine === 'seedance-2.5'
+      if (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine === 'seedance-2.5' || activeEngine === 'vortex-3.0' || activeEngine.includes('vortex')) {
+        const modelId = (activeEngine === 'vortex-3.0' || activeEngine.includes('vortex'))
+          ? 'alibaba/wan-3.0/reference-to-video'
+          : activeEngine === 'seedance-2.5'
           ? 'bytedance/seedance-2-5'
           : activeEngine === 'seedance-fast'
           ? 'bytedance/seedance-2-fast'
@@ -3210,7 +3215,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         return;
       }
 
-      if (resolvedEngine !== 'seedace' && resolvedEngine !== 'seedance-fast' && resolvedEngine !== 'seedance-mini' && resolvedEngine !== 'seedance-2.5' && resolvedEngine !== 'kling/v3-turbo-image-to-video' && resolvedEngine !== 'kling-motion' && resolvedEngine !== 'omni-motion' && resolvedEngine !== 'motion-easy' && resolvedEngine !== 'remix-motion-transfer') {
+      if (resolvedEngine !== 'seedace' && resolvedEngine !== 'seedance-fast' && resolvedEngine !== 'seedance-mini' && resolvedEngine !== 'seedance-2.5' && resolvedEngine !== 'vortex-3.0' && !resolvedEngine.includes('vortex') && resolvedEngine !== 'kling/v3-turbo-image-to-video' && resolvedEngine !== 'kling-motion' && resolvedEngine !== 'omni-motion' && resolvedEngine !== 'motion-easy' && resolvedEngine !== 'remix-motion-transfer') {
         const isOmniEngine = resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash' || resolvedEngine === 'gemini-omni-1.1-flash-preview';
         try {
           let targetModel = resolvedEngine;
@@ -3426,15 +3431,17 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           }
           await triggerRefund('cinematic_video_generation');
         }
-      } else if (resolvedEngine === 'seedance-fast' || resolvedEngine === 'seedace' || resolvedEngine === 'seedance-mini' || resolvedEngine === 'seedance-2.5') {
+      } else if (resolvedEngine === 'seedance-fast' || resolvedEngine === 'seedace' || resolvedEngine === 'seedance-mini' || resolvedEngine === 'seedance-2.5' || resolvedEngine === 'vortex-3.0' || resolvedEngine.includes('vortex')) {
         const tempId = tempItems[0].id;
         try {
           if (variationCount > 1) {
             const showToast = useAppStore.getState().showToast;
-            if (showToast) showToast("Seedance currently supports 1 variation per request natively. Processing 1.", "info");
+            if (showToast) showToast(`${resolvedEngine.includes('vortex') ? 'Vortex 3.0' : 'Seedance'} supports 1 variation per request natively. Processing 1.`, "info");
           }
 
-          const modelParam = resolvedEngine === 'seedance-2.5'
+          const modelParam = (resolvedEngine === 'vortex-3.0' || resolvedEngine.includes('vortex'))
+            ? 'alibaba/wan-3.0/reference-to-video'
+            : resolvedEngine === 'seedance-2.5'
             ? 'bytedance/seedance-2-5'
             : resolvedEngine === 'seedance-fast'
             ? 'dreamina-seedance-2-0-fast-260128'
@@ -5895,13 +5902,17 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         setOmniTask={setOmniTask}
         showRefBoard={showRefBoard}
         setShowRefBoard={setShowRefBoard}
-        promptText={panelTab === 'omni' ? omniPromptText : promptText}
-        setPromptText={panelTab === 'omni' ? setOmniPromptText : setPromptText}
+        promptText={panelTab === 'omni' || panelTab === 'omni-multi' ? omniPromptText : promptText}
+        setPromptText={panelTab === 'omni' || panelTab === 'omni-multi' ? setOmniPromptText : setPromptText}
         omniPromptText={omniPromptText}
         setOmniPromptText={setOmniPromptText}
         handleGenerate={handleGenerate}
         isBusy={isBusy}
         canGenerate={canGenerate}
+        userCredits={userCredits}
+        requiredCredits={requiredCredits}
+        activeJobsCount={activeJobsCount}
+        maxConcurrent={maxConcurrent}
         allRefItems={allRefItems}
         gallery={gallery}
         extensionSourceVideo={extensionSourceVideo}

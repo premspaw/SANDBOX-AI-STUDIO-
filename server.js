@@ -674,6 +674,15 @@ app.use('/assets', express.static(path.join(__dirname, 'public', 'assets'), {
     }
 }));
 
+// Serve public static assets (logos, favicons, challenge verification files) directly
+app.use(express.static(path.join(__dirname, 'public'), {
+    maxAge: '1h',
+    setHeaders: (res) => {
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    }
+}));
+
 // Initialize Supabase
 const supabaseUrl = (process.env.VITE_SUPABASE_URL || '').trim();
 const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim();

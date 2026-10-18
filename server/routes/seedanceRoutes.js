@@ -403,6 +403,9 @@ export default function createRouter(deps) {
                     ? (resLower === '1080p' ? 110 : (resLower === '480p' ? 20 : 65))
                     : (resLower === '1080p' ? 92 : (resLower === '480p' ? 17 : 55));
                 requiredCredits = Math.ceil(costPerSec * effectiveDuration);
+            } else if (engine === 'vortex-3.0' || engine === 'vortex-3' || engine.includes('vortex') || engine.includes('wan-3')) {
+                const costPerSec = resLower === '1080p' ? 12.4 : (resLower === '480p' ? 3.0 : 6.2);
+                requiredCredits = Math.ceil(costPerSec * durationNum);
             }
 
             if (typeof req.body.creditCost === 'number' && req.body.creditCost > 0) {
@@ -856,6 +859,149 @@ export default function createRouter(deps) {
                 return res.json({ success: true, requestId: taskId, engine: 'seedance-mini' });
             }
 
+            // Handle Vortex 3.0 (Alibaba Wan 3.0 Reference-to-Video via Higgsfield)
+            if (
+                engine === 'vortex-3.0' ||
+                engine === 'vortex-3' ||
+                engine.includes('vortex') ||
+                engine.includes('wan-3') ||
+                (req.body.model && String(req.body.model).includes('wan-3'))
+            ) {
+                const durationClamped = Math.min(30, Math.max(2, Number(duration) || 5));
+                const resolutionVortex = resolution === '480p' ? '480p' : (resolution === '1080p' ? '1080p' : '720p');
+                const hfRatio = normalizeHfAspectRatio(aspectRatio);
+                const activeHfKey = (process.env.HF_CREDENTIALS || process.env.HF_KEY || '').trim();
+
+                if (!activeHfKey) {
+                    if (creditsClaimed && targetUserId) {
+                        await consumeCredits(targetUserId, -requiredCredits, 'refund_cinematic_video_generation');
+                    }
+                    return res.status(500).json({ error: 'Higgsfield credentials not configured for Vortex 3.0 engine.' });
+                }
+
+                try {
+                    const hfClient = getHfClient(activeHfKey);
+
+                    // Collect reference image URLs (from resolvedIdentity, reference_image_urls, omniMultiImages, etc.)
+                    const rawImages = [
+                        ...(Array.isArray(resolvedIdentity) ? resolvedIdentity : []),
+                        ...(Array.isArray(reference_image_urls) ? reference_image_urls : []),
+                        ...(Array.isArray(req.body.omniMultiImages) ? req.body.omniMultiImages : []),
+                        ...(Array.isArray(req.body.referenceImages) ? req.body.referenceImages : []),
+                        resolvedFirstFrame,
+                        resolvedLastFrame
+                    ].filter(Boolean);
+
+                    const resolvedImages = Array.from(new Set(rawImages)).slice(0, 4);
+
+                    const rawVids = [
+                        ...(Array.isArray(resolvedVideos) ? resolvedVideos : []),
+                        ...(Array.isArray(reference_video_urls) ? reference_video_urls : [])
+                    ].filter(Boolean);
+
+                    const hfInputPayload = {
+                        prompt: finalPrompt,
+                        duration: durationClamped,
+                        resolution: resolutionVortex,
+                        aspect_ratio: hfRatio || 'adaptive',
+                        generate_audio: generateAudio !== undefined ? !!generateAudio : true,
+                        enable_thinking: req.body.enable_thinking !== undefined ? !!req.body.enable_thinking : false
+                    };
+
+                    if (resolvedImages.length > 0) {
+                        hfInputPayload.image_urls = resolvedImages;
+                    }
+                    if (rawVids.length > 0) {
+                        hfInputPayload.video_urls = rawVids.slice(0, 5);
+                    }
+
+                    console.log(`[VORTEX-3.0-HIGGSFIELD] Submitting job to Higgsfield:`, {
+                        model: "alibaba/wan-3.0/reference-to-video",
+                        prompt: finalPrompt.substring(0, 50) + "...",
+                        imagesCount: resolvedImages.length,
+                        duration: durationClamped,
+                        resolution: resolutionVortex,
+                        aspect_ratio: hfInputPayload.aspect_ratio,
+                        generate_audio: hfInputPayload.generate_audio
+                    });
+
+                    const shouldPollServerSide = req.body.sync === true;
+                    const hfResult = await hfClient.subscribe(
+                        "alibaba/wan-3.0/reference-to-video",
+                        {
+                            input: hfInputPayload,
+                            withPolling: shouldPollServerSide
+                        }
+                    );
+
+                    console.log(`[VORTEX-3.0-HIGGSFIELD] Result status:`, hfResult.status, 'requestId:', hfResult.request_id);
+
+                    if (!shouldPollServerSide && hfResult.request_id) {
+                        return res.json({
+                            success: true,
+                            status: 'processing',
+                            requestId: hfResult.request_id,
+                            engine: 'vortex-3.0',
+                            provider: 'higgsfield',
+                            meta: {
+                                prompt: finalPrompt,
+                                duration: durationClamped,
+                                resolution: resolutionVortex,
+                                aspectRatio: hfRatio,
+                                provider: 'higgsfield'
+                            }
+                        });
+                    }
+
+                    if (hfResult.status === 'completed' && (hfResult.video?.url || hfResult.videos?.[0]?.url || hfResult.url)) {
+                        let finalVideoUrl = hfResult.video?.url || hfResult.videos?.[0]?.url || hfResult.url;
+                        if (typeof uploadVideoToSupabase === 'function') {
+                            try {
+                                const saved = await uploadVideoToSupabase(
+                                    finalVideoUrl,
+                                    targetUserId,
+                                    hfRatio,
+                                    'generated',
+                                    finalPrompt,
+                                    'vortex-3.0'
+                                );
+                                if (saved) finalVideoUrl = saved;
+                            } catch (saveErr) {
+                                console.warn('[VORTEX-3.0-HIGGSFIELD] Notice: fallback direct CDN url:', saveErr.message);
+                            }
+                        }
+
+                        return res.json({
+                            success: true,
+                            status: 'completed',
+                            videoUrl: finalVideoUrl,
+                            requestId: hfResult.request_id,
+                            engine: 'vortex-3.0'
+                        });
+                    }
+
+                    if (hfResult.status === 'failed') {
+                        throw new Error(hfResult.error || 'Vortex 3.0 generation failed on Higgsfield.');
+                    }
+
+                    return res.json({
+                        success: true,
+                        status: hfResult.status || 'processing',
+                        requestId: hfResult.request_id,
+                        engine: 'vortex-3.0'
+                    });
+                } catch (hfErr) {
+                    console.error('[VORTEX-3.0-HIGGSFIELD-ERR]:', hfErr.message);
+                    if (creditsClaimed && targetUserId) {
+                        console.log(`[VORTEX-3.0] Refunding ${requiredCredits} credits to user ${targetUserId} due to generation error`);
+                        await consumeCredits(targetUserId, -requiredCredits, 'refund_cinematic_video_generation');
+                    }
+                    return res.status(500).json({
+                        error: sanitizeServerError(hfErr.message) || 'Vortex 3.0 generation failed. Your Shorts credits have been refunded.'
+                    });
+                }
+            }
+
             // Handle seedance-2.5 model — supports Higgsfield (Official/Xfield) and Kie.ai
             if (
                 engine === 'seedance-2.5' || 
@@ -1137,9 +1283,9 @@ export default function createRouter(deps) {
 
             console.log(`[SEEDANCE-STATUS] Checking status | id: ${requestId} | engine: ${engine}`);
 
-            // 0. Handle Higgsfield / Xfield Seedance 2.5 polling
+            // 0. Handle Higgsfield / Xfield Seedance 2.5 & Vortex 3.0 polling
             const isHfUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId);
-            const isHfEngine = engine?.includes('higgsfield') || req.query.provider === 'higgsfield' || isHfUuid;
+            const isHfEngine = engine?.includes('higgsfield') || engine?.includes('vortex') || req.query.provider === 'higgsfield' || isHfUuid;
 
             if (isHfEngine && (process.env.HF_CREDENTIALS || process.env.HF_KEY)) {
                 const creds = (process.env.HF_CREDENTIALS || process.env.HF_KEY).trim();

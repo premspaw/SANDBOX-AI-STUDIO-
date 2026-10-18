@@ -192,7 +192,7 @@ export const SidePanel = React.memo(({
   isBusy = false,
   activeJobsCount = 0,
   maxConcurrent = 4,
-  userCredits = 0,
+  userCredits: propUserCredits,
   requiredCredits = 10,
   canGenerate = true,
   allRefItems = [],
@@ -265,6 +265,12 @@ export const SidePanel = React.memo(({
   const setCharacterOrientation = propSetCharacterOrientation || setInternalCharacterOrientation;
   const backgroundSource = propBackgroundSource !== undefined ? propBackgroundSource : internalBackgroundSource;
   const setBackgroundSource = propSetBackgroundSource || setInternalBackgroundSource;
+
+  // Shorts Credit Balance (Syncs with global userShorts if prop is omitted or zero)
+  const storeUserShorts = useAppStore(state => state.userShorts);
+  const userCredits = (propUserCredits !== undefined && propUserCredits !== null && propUserCredits > 0)
+    ? propUserCredits
+    : (storeUserShorts ?? propUserCredits ?? 0);
 
   // 8-second Cooldown & Double-click Prevention
   const [isCooldown, setIsCooldown] = useState(false);
@@ -348,6 +354,8 @@ export const SidePanel = React.memo(({
   const [seedanceAddMenuOpen, setSeedanceAddMenuOpen] = useState(false);
   // Sub-tab state for the Transition main tab
   const [transitionSubTab, setTransitionSubTab] = useState('sequence'); // 'sequence' | 'omni-keyframe'
+  // Multi-Ref Engine State (Vortex 3.0 Pro vs Omni Flash 1.1)
+  const [multiRefEngine, setMultiRefEngine] = useState('vortex-3.0');
 
   const handlePickSeedanceImage = (item, slotIdx) => {
     const next = [...seedanceImages];
@@ -1536,13 +1544,14 @@ export const SidePanel = React.memo(({
       extensionSourceVideo,
       extensionDuration,
       seedanceSubModel,
+      multiRefEngine,
       seedanceImages,
       seedanceVideos,
       seedanceVideoDurations,
       firstFrameImage: seedanceFirstFrame || firstFrameImage || omniFirstFrameImage,
       lastFrameImage: seedanceLastFrame || lastFrameImage || omniLastFrameImage
     });
-  }, [activeEngine, duration, resolution, generateAudio, activeTab, panelTab, transitionSubTab, remixEngine, motionEngine, motionMode, motionRefVideoDuration, extensionSourceVideo, extensionDuration, seedanceSubModel, seedanceImages, seedanceVideos, seedanceVideoDurations, seedanceFirstFrame, seedanceLastFrame, firstFrameImage, lastFrameImage, omniFirstFrameImage, omniLastFrameImage]);
+  }, [activeEngine, duration, resolution, generateAudio, activeTab, panelTab, transitionSubTab, remixEngine, motionEngine, motionMode, motionRefVideoDuration, extensionSourceVideo, extensionDuration, seedanceSubModel, multiRefEngine, seedanceImages, seedanceVideos, seedanceVideoDurations, seedanceFirstFrame, seedanceLastFrame, firstFrameImage, lastFrameImage, omniFirstFrameImage, omniLastFrameImage]);
 
   const triggerGenerateVeo = async () => {
     if (isCooldown || isBusy) return;
@@ -1599,10 +1608,11 @@ export const SidePanel = React.memo(({
     }
 
     startCooldown(8);
-    const engineToUse = 'gemini-omni-1.1-flash';
+    const isVortex = panelTab === 'omni-multi' && multiRefEngine === 'vortex-3.0';
+    const engineToUse = isVortex ? 'vortex-3.0' : 'gemini-omni-1.1-flash';
     setPromptText(localPrompt);
     setActiveTab('video');
-    if (!isOmniEngine) setActiveEngine(engineToUse);
+    setActiveEngine(engineToUse);
 
     // MultiRef is reference-to-video, not a keyframe workflow. Carrying stale
     // keyframes from the regular Omni tab made Image 1 unexpectedly become a
@@ -1657,6 +1667,7 @@ export const SidePanel = React.memo(({
       omniMultiImages: resolvedMultiImgs,
       multiImageSlots,
       multiReferenceMode: isMultiReference,
+      multiRefEngine,
       omniMultiVideos: resolvedMultiVids,
       multiVideoSlots: resolvedMultiVids,
       omniRefVideoPreview: resolvedRefVid,
@@ -2335,6 +2346,15 @@ export const SidePanel = React.memo(({
     { value: 30, label: '30 Seconds', desc: '30s Maximum duration' }
   ], []);
 
+  const vortexDurationOptions = useMemo(() => [
+    { value: 5, label: '5 Seconds', desc: '5s Quick shot' },
+    { value: 10, label: '10 Seconds', desc: '10s Baseline clip' },
+    { value: 15, label: '15 Seconds', desc: '15s Extended shot' },
+    { value: 20, label: '20 Seconds', desc: '20s Cinematic scene' },
+    { value: 25, label: '25 Seconds', desc: '25s Long sequence' },
+    { value: 30, label: '30 Seconds', desc: '30s Maximum duration' }
+  ], []);
+
   const transitionMiniDurationOptions = useMemo(() => [
     { value: 5, label: '5 Seconds', desc: '5s Quick burst (Default)' },
     { value: 10, label: '10 Seconds', desc: '10s Baseline clip' },
@@ -2344,6 +2364,11 @@ export const SidePanel = React.memo(({
   const transitionModelOptions = useMemo(() => [
     { value: 'seedance-2.5', label: 'Seedance 2.5', desc: 'Up to 30s · 480p / 720p / 1080p' },
     { value: 'seedance-mini', label: 'Seedance Mini', desc: 'Up to 15s · 480p / 720p · Budget' }
+  ], []);
+
+  const multiRefEngineOptions = useMemo(() => [
+    { value: 'vortex-3.0', label: 'Vortex 3.0 Pro', desc: 'Wan 3.0 · Up to 30s · 3–12.4⚡/s' },
+    { value: 'gemini-omni-1.1-flash', label: 'Omni Flash 1.1', desc: 'Google Omni · Up to 10s · 5⚡/s' }
   ], []);
 
   const seedanceDurationOptions = useMemo(() => [
@@ -2390,6 +2415,13 @@ export const SidePanel = React.memo(({
   }, [seedanceProvider]);
 
   const resolutionOptions = useMemo(() => {
+    if (panelTab === 'omni-multi' && multiRefEngine === 'vortex-3.0') {
+      return [
+        { value: '480p', label: '480p SD', desc: '3⚡/s · Fast & Budget (15⚡/5s)' },
+        { value: '720p', label: '720p HD', desc: '6.2⚡/s · Crisp HD Master (31⚡/5s)' },
+        { value: '1080p', label: '1080p FHD', desc: '12.4⚡/s · Cinematic Pro FHD (62⚡/5s)' }
+      ];
+    }
     if ((panelTab === 'transition' && transitionSubTab === 'omni-keyframe') || panelTab === 'omni' || panelTab === 'omni-multi' || (activeEngine && (activeEngine.includes('omni') || activeEngine.includes('flash')))) {
       return [
         { value: '360p', label: '360p SD', desc: 'Fast preview' },
@@ -2452,6 +2484,13 @@ export const SidePanel = React.memo(({
         { value: '1080p', label: '1080p FHD', desc: '12 Shorts · High-def cinematic' }
       ];
     }
+    if (panelTab === 'omni-multi' && multiRefEngine === 'vortex-3.0') {
+      return [
+        { value: '480p', label: '480p SD', desc: '3⚡/s · Fast & Budget (15⚡/5s)' },
+        { value: '720p', label: '720p HD', desc: '6.2⚡/s · Crisp HD Master (31⚡/5s)' },
+        { value: '1080p', label: '1080p FHD', desc: '12.4⚡/s · Cinematic Pro FHD (62⚡/5s)' }
+      ];
+    }
     if (panelTab === 'omni' || panelTab === 'omni-multi') {
       return [
         { value: '360p', label: '360p SD', desc: 'Fast preview' },
@@ -2464,7 +2503,7 @@ export const SidePanel = React.memo(({
       { value: '720p', label: '720p HD', desc: 'Crisp render' },
       { value: '1080p', label: '1080p FHD', desc: 'High-def master' }
     ];
-  }, [panelTab, transitionSubTab, activeEngine, seedanceSubModel]);
+  }, [panelTab, transitionSubTab, activeEngine, seedanceSubModel, multiRefEngine]);
 
   const renderPromptStudio = (placeholderText) => {
     const promptStr = localPrompt || '';
@@ -3069,7 +3108,7 @@ export const SidePanel = React.memo(({
             onClick={() => {
               setPanelTab('omni-multi');
               setActiveTab('video');
-              setActiveEngine('gemini-omni-1.1-flash');
+              setActiveEngine(multiRefEngine || 'vortex-3.0');
             }}
             className={cn(
               "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
@@ -5195,6 +5234,29 @@ export const SidePanel = React.memo(({
                 ) : (
                   /* Standard 4 Controls for Veo / Omni */
                   <>
+                    {/* Multi-Ref Engine Dropdown when in Multi-Ref mode */}
+                    {panelTab === 'omni-multi' && (
+                      <div className="w-full">
+                        <GlassSelect
+                          label="Multi-Ref Engine"
+                          icon={Cpu}
+                          value={multiRefEngine}
+                          onChange={(val) => {
+                            setMultiRefEngine(val);
+                            setActiveEngine(val);
+                            if (val === 'vortex-3.0') {
+                              if (duration > 30) setDuration(30);
+                              if (resolution === '4k' || resolution === '360p') setResolution('720p');
+                            } else {
+                              if (duration > 10) setDuration(10);
+                            }
+                          }}
+                          options={multiRefEngineOptions}
+                          align="up"
+                        />
+                      </div>
+                    )}
+
                     {/* Aspect Ratio + Clip Duration — same row, sleek glass dropdowns */}
                     <div className="grid grid-cols-2 gap-2">
                       <GlassSelect
@@ -5209,7 +5271,7 @@ export const SidePanel = React.memo(({
                         label="Clip Duration"
                         value={duration}
                         onChange={(val) => setDuration(Number(val))}
-                        options={durationOptions}
+                        options={(panelTab === 'omni-multi' && multiRefEngine === 'vortex-3.0') ? vortexDurationOptions : durationOptions}
                         align="up"
                       />
                     </div>
@@ -5325,6 +5387,11 @@ export const SidePanel = React.memo(({
                       ? (!motionRefVideoPreview && !motionRefVideo && !videoPreview) || (!promptText && !omniPromptText && !localPrompt)
                       : panelTab === 'motion'
                       ? (!motionSubjectPreview && !motionSubjectImage) || (!motionRefVideoPreview && !motionRefVideo)
+                      : panelTab === 'omni-multi'
+                      ? (
+                          (!omniMultiImages?.some(Boolean) && !omniMultiVideos?.some(Boolean) && !omniRefVideoPreview && !extensionSourceVideo && !localPrompt?.trim() && !promptText?.trim() && !omniPromptText?.trim()) ||
+                          (userCredits < calculatedCredits)
+                        )
                       : !canGenerate
                   )
                 }
@@ -5335,6 +5402,12 @@ export const SidePanel = React.memo(({
                       ? (!!(motionRefVideoPreview || motionRefVideo || videoPreview) && !!(promptText || omniPromptText || localPrompt))
                       : panelTab === 'motion'
                       ? (!!(motionSubjectPreview || motionSubjectImage) && !!(motionRefVideoPreview || motionRefVideo))
+                      : panelTab === 'omni-multi'
+                      ? (
+                          Boolean(omniMultiImages?.some(Boolean) || omniMultiVideos?.some(Boolean) || omniRefVideoPreview || extensionSourceVideo || localPrompt?.trim() || promptText?.trim() || omniPromptText?.trim()) &&
+                          (userCredits >= calculatedCredits) &&
+                          !isBusy
+                        )
                       : canGenerate && !isBusy
                   ))
                     ? (panelTab === 'seedance' || panelTab === 'seedance-2.5')

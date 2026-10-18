@@ -164,6 +164,16 @@ export async function handleAuthorizeGet(req, res, deps) {
       border: 1.5px solid rgba(16, 163, 127, 0.45);
       box-shadow: 0 0 24px var(--openai-glow);
     }
+    .brand-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .brand-img.zl {
+      padding: 6px;
+      object-fit: contain;
+    }
     .brand-label {
       font-size: 11px;
       font-weight: 800;
@@ -303,50 +313,10 @@ export async function handleAuthorizeGet(req, res, deps) {
 <body>
   <div class="card">
     <div class="brand-bridge">
-      <!-- ZeroLens Official Aperture Logo -->
+      <!-- ZeroLens Official Logo -->
       <div class="brand-box">
         <div class="logo-container zerolens" title="ZeroLens AI Studio">
-          <svg width="44" height="44" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <filter id="zlGlow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
-                <feMerge>
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-            <!-- Outer glowing aperture ring -->
-            <circle cx="80" cy="80" r="72" fill="none" stroke="#c8f135" stroke-width="5" filter="url(#zlGlow)"/>
-            <!-- 8 blade tick marks -->
-            <g stroke="#c8f135" stroke-width="1.6" opacity="0.45">
-              <line x1="80" y1="8" x2="80" y2="20"/>
-              <line x1="80" y1="140" x2="80" y2="152"/>
-              <line x1="8" y1="80" x2="20" y2="80"/>
-              <line x1="140" y1="80" x2="152" y2="80"/>
-              <line x1="30.7" y1="30.7" x2="39.2" y2="39.2"/>
-              <line x1="120.8" y1="120.8" x2="129.3" y2="129.3"/>
-              <line x1="129.3" y1="30.7" x2="120.8" y2="39.2"/>
-              <line x1="39.2" y1="120.8" x2="30.7" y2="129.3"/>
-            </g>
-            <!-- Inner aperture ring -->
-            <circle cx="80" cy="80" r="56" fill="none" stroke="#c8f135" stroke-width="1.2" opacity="0.3"/>
-            <!-- Hexagonal aperture blades -->
-            <g fill="none" stroke="#c8f135" stroke-width="1.2" opacity="0.25">
-              <path d="M80 24 A56 56 0 0 1 128.5 52"/>
-              <path d="M128.5 52 A56 56 0 0 1 128.5 108"/>
-              <path d="M128.5 108 A56 56 0 0 1 80 136"/>
-              <path d="M80 136 A56 56 0 0 1 31.5 108"/>
-              <path d="M31.5 108 A56 56 0 0 1 31.5 52"/>
-              <path d="M31.5 52 A56 56 0 0 1 80 24"/>
-            </g>
-            <!-- Iconic Z letterform -->
-            <line x1="50" y1="56" x2="110" y2="56" stroke="#c8f135" stroke-width="8.5" stroke-linecap="round"/>
-            <line x1="110" y1="56" x2="50" y2="104" stroke="#c8f135" stroke-width="8.5" stroke-linecap="round"/>
-            <line x1="50" y1="104" x2="110" y2="104" stroke="#c8f135" stroke-width="8.5" stroke-linecap="round"/>
-            <!-- Recording glint dot -->
-            <circle cx="116" cy="54" r="5.5" fill="#ef4444"/>
-          </svg>
+          <img src="/zerolens-logo.png" alt="ZeroLens Logo" class="brand-img zl" onerror="this.onerror=null; this.src='/zerolens-icon-512.png';" />
         </div>
         <span class="brand-label zl">ZeroLens</span>
       </div>
@@ -358,12 +328,10 @@ export async function handleAuthorizeGet(req, res, deps) {
         </svg>
       </div>
 
-      <!-- ChatGPT Official Emblem -->
+      <!-- ChatGPT Official Emblem Image -->
       <div class="brand-box">
         <div class="logo-container chatgpt" title="ChatGPT by OpenAI">
-          <svg width="38" height="38" viewBox="0 0 24 24" fill="#ffffff" xmlns="http://www.w3.org/2000/svg">
-            <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.8956zm16.0993 3.8558L12.5973 8.3829l2.02-1.1686a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.402-.6812zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.907 9.2297V6.8974a.0662.0662 0 0 1 .0331-.0615L14.7686 4.05a4.4992 4.4992 0 0 1 6.1408 1.6464 4.485 4.485 0 0 1 .5318 3.0315zM7.747 15.6324l-2.02-1.1686a.071.071 0 0 1-.038-.052V8.8292a4.4944 4.4944 0 0 1 7.3709-3.4536l-.142.0805-4.7783 2.7582a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3655l2.6024-1.4998 2.6025 1.4998v2.9997l-2.6025 1.4998-2.6024-1.4998z"/>
-          </svg>
+          <img src="/chatgpt-logo.png" alt="ChatGPT Logo" class="brand-img" />
         </div>
         <span class="brand-label gpt">ChatGPT</span>
       </div>
