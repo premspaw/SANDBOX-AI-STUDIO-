@@ -9,6 +9,7 @@ import {
     Maximize, Terminal, Music, Volume2, Mic2, Target, ChevronLeft
 } from "lucide-react";
 import { useAppStore } from "../../store";
+import { useShallow } from 'zustand/react/shallow';
 import logo from "../../assets/acs-icon.svg";
 import BrandLogo from "../common/BrandLogo";
 import { generateCharacterImage, analyzeIdentity, generateDynamicAngles, buildConsistencyRefs, expandPrompt } from "../../services/geminiService";
@@ -72,7 +73,42 @@ function ControlSelect({ label, icon: Icon, value, options, onChange }) {
 // --- MAIN DIRECTOR HUD ---
 
 export default function DirectorHUD() {
-    const store = useAppStore();
+    // ⚡ BOLT: Using useShallow to ensure DirectorHUD only re-renders when relevant store state changes.
+    // Previously, using 'const store = useAppStore()' caused re-renders on EVERY store change (e.g. node movement).
+    const store = useAppStore(useShallow(state => ({
+        activeCharacter: state.activeCharacter,
+        anchorImage: state.anchorImage,
+        actionScript: state.actionScript,
+        camera: state.camera,
+        wardrobeImage: state.wardrobeImage,
+        poseImage: state.poseImage,
+        isRendering: state.isRendering,
+        isSyncing: state.isSyncing,
+        activeNodeId: state.activeNodeId,
+        currentProduct: state.currentProduct,
+        lastGeneratedPrompt: state.lastGeneratedPrompt,
+        detailMatrix: state.detailMatrix,
+        setState: state.setState,
+        setWardrobeImage: state.setWardrobeImage,
+        setPoseImage: state.setPoseImage,
+        generateStoryboard: state.generateStoryboard,
+        addNode: state.addNode,
+        updateNodeData: state.updateNodeData,
+        syncCurrentSession: state.syncCurrentSession,
+        deleteNode: state.deleteNode,
+        setMode: state.setMode,
+        setRepairSession: state.setRepairSession,
+        purgeVault: state.purgeVault,
+        // Methods that might be missing from store.js but are called in HUD:
+        addUGCPipelineNode: state.addUGCPipelineNode,
+        addUGCEngineNode: state.addUGCEngineNode,
+        addCameraNode: state.addCameraNode,
+        addLightingNode: state.addLightingNode,
+        addMusicNode: state.addMusicNode,
+        addSFXNode: state.addSFXNode,
+        addDialogueNode: state.addDialogueNode,
+    })));
+
     const [activeTab, setActiveTab] = useState('VISUAL');
     const [isCollapsed, setIsCollapsed] = useState(true);
     const [selectedPoseId, setSelectedPoseId] = useState(null);
@@ -153,7 +189,8 @@ export default function DirectorHUD() {
                     label: actionScript || 'Scene_Output',
                     resolution: camera.resolution
                 });
-                saveStoryboardItem(activeCharacter.id, result, store.nodes.length);
+                const nodesCount = useAppStore.getState().nodes.length;
+                saveStoryboardItem(activeCharacter.id, result, nodesCount);
                 saveGeneratedAsset(result, 'image', `materialize_${Date.now()}.png`);
                 store.syncCurrentSession();
             } else {
@@ -185,7 +222,8 @@ export default function DirectorHUD() {
         });
 
         try {
-            if (!centerNodeId || !store.nodes.find(n => n.id === centerNodeId)) {
+            const currentNodes = useAppStore.getState().nodes;
+            if (!centerNodeId || !currentNodes.find(n => n.id === centerNodeId)) {
                 centerNodeId = store.addNode(anchorImage, "DIRECTOR_ANALYSIS...", true, { x: 500, y: 500 });
             }
 
@@ -200,7 +238,7 @@ export default function DirectorHUD() {
 
             const angles = [0, 60, 120, 180, 240, 300];
             const ghostNodeIds = [];
-            const center = store.nodes.find(n => n.id === centerNodeId)?.position || { x: 500, y: 500 };
+            const center = useAppStore.getState().nodes.find(n => n.id === centerNodeId)?.position || { x: 500, y: 500 };
             const radius = 450;
 
             dynamicAngles.forEach((angleConfig, i) => {
@@ -244,7 +282,8 @@ export default function DirectorHUD() {
 
                 if (result) {
                     store.updateNodeData(id, { image: result, isOptimistic: false, label: config.label, resolution: camera.resolution });
-                    saveStoryboardItem(activeCharacter.id, result, store.nodes.length + i);
+                    const currentCount = useAppStore.getState().nodes.length;
+                    saveStoryboardItem(activeCharacter.id, result, currentCount + i);
                     saveGeneratedAsset(result, 'image', `matrix_${config.label}_${Date.now()}.png`);
                 } else {
                     store.deleteNode(id);
