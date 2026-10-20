@@ -2367,7 +2367,7 @@ export const SidePanel = React.memo(({
   ], []);
 
   const multiRefEngineOptions = useMemo(() => [
-    { value: 'vortex-3.0', label: 'Vortex 3.0 Pro', desc: 'Wan 3.0 · Up to 30s · 3–12.4⚡/s' },
+    { value: 'vortex-3.0', label: 'Omni Flash Pro', desc: 'Wan 3.0 · Up to 30s · 3–12.4⚡/s' },
     { value: 'gemini-omni-1.1-flash', label: 'Omni Flash 1.1', desc: 'Google Omni · Up to 10s · 5⚡/s' }
   ], []);
 

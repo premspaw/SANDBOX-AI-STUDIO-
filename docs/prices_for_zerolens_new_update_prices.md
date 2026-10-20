@@ -28,9 +28,9 @@
 | **Seedance 2.5 (Multi-Reference)** | 480p SD | **Bottom** | **$0.1728** | ₹16.59 | $0.1987 | ₹19.08 | **19 ⚡/s** |
 | **Seedance 2.5 (Multi-Reference)** | 720p HD | **Exact Middle** | **$0.5641** | ₹54.15 | $0.6487 | ₹62.28 | **62 ⚡/s** |
 | **Seedance 2.5 (Multi-Reference)** | 1080p FHD | **Top** | **$0.9553** | ₹91.71 | $1.0986 | ₹105.47 | **105 ⚡/s** |
-| **Vortex 3.0 Pro (Multi-Reference)** | 480p SD | **Bottom** | **$0.0272** ($0.136/5s) | ₹2.61 | $0.0313 | ₹3.00 | **3 ⚡/s** |
-| **Vortex 3.0 Pro (Multi-Reference)** | 720p HD | **Exact Middle** | **$0.0560** ($0.280/5s) | ₹5.38 | $0.0644 | ₹6.18 | **6.2 ⚡/s** (31⚡/5s) |
-| **Vortex 3.0 Pro (Multi-Reference)** | 1080p FHD | **Top** | **$0.1120** ($0.560/5s) | ₹10.75 | $0.1288 | ₹12.36 | **12.4 ⚡/s** (62⚡/5s) |
+| **Omni Flash Pro (Multi-Reference - Wan 3.0)** | 480p SD | **Bottom** | **$0.0272** ($0.136/5s) | ₹2.61 | $0.0313 | ₹3.00 | **3 ⚡/s** |
+| **Omni Flash Pro (Multi-Reference - Wan 3.0)** | 720p HD | **Exact Middle** | **$0.0560** ($0.280/5s) | ₹5.38 | $0.0644 | ₹6.18 | **6.2 ⚡/s** (31⚡/5s) |
+| **Omni Flash Pro (Multi-Reference - Wan 3.0)** | 1080p FHD | **Top** | **$0.1120** ($0.560/5s) | ₹10.75 | $0.1288 | ₹12.36 | **12.4 ⚡/s** (62⚡/5s) |
 
 ---
 
@@ -69,7 +69,7 @@
 
 ---
 
-### D. Vortex 3.0 Pro — Multi-Reference Video (Wan 3.0 Prime via Higgsfield)
+### D. Omni Flash Pro — Multi-Reference Video (Wan 3.0 Prime via Higgsfield)
 *15% Platform Margin applied over $0.0272 – $0.1120/sec @ ₹96 ($0.136, $0.28, $0.56 for 5s)*
 
 | Quality Tier | Calculation Basis | Rate (⚡/s) | 5s Clip | 10s Clip | 15s Clip | 30s Sequence |
@@ -96,9 +96,9 @@
 | **Seedance 2.5 Multi-Reference** | 480p | **$0.0950** | **$0.1728** | **19 ⚡/s** | Multi-reference conditioning payload. |
 | **Seedance 2.5 Multi-Reference** | 720p | **$0.2050** | **$0.5641** (Mid) | **62 ⚡/s** | Exact middle between 480p and 1080p. |
 | **Seedance 2.5 Multi-Reference** | 1080p | **$0.5100** | **$0.9553** | **105 ⚡/s** | High tier multi-reference pro. |
-| **Vortex 3.0 Multi-Reference** | 480p | *N/A* | **$0.0272** ($0.136/5s) | **3 ⚡/s** (15⚡/5s) | Wholesale $0.0272/s + 15% @ ₹96. |
-| **Vortex 3.0 Multi-Reference** | 720p | *N/A* | **$0.0560** ($0.280/5s) | **6.2 ⚡/s** (31⚡/5s) | Wholesale $0.0560/s + 15% @ ₹96. |
-| **Vortex 3.0 Multi-Reference** | 1080p | *N/A* | **$0.1120** ($0.560/5s) | **12.4 ⚡/s** (62⚡/5s) | Wholesale $0.1120/s + 15% @ ₹96. |
+| **Omni Flash Pro (Multi-Reference - Wan 3.0)** | 480p | *N/A* | **$0.0272** ($0.136/5s) | **3 ⚡/s** (15⚡/5s) | Wholesale $0.0272/s + 15% @ ₹96. |
+| **Omni Flash Pro (Multi-Reference - Wan 3.0)** | 720p | *N/A* | **$0.0560** ($0.280/5s) | **6.2 ⚡/s** (31⚡/5s) | Wholesale $0.0560/s + 15% @ ₹96. |
+| **Omni Flash Pro (Multi-Reference - Wan 3.0)** | 1080p | *N/A* | **$0.1120** ($0.560/5s) | **12.4 ⚡/s** (62⚡/5s) | Wholesale $0.1120/s + 15% @ ₹96. |
 
 ---
 
@@ -116,7 +116,7 @@
    - Standard mode: **16 ⚡/s (480p)**, **52 ⚡/s (720p)**, **88 ⚡/s (1080p)**.
    - Multi-reference mode: **19 ⚡/s (480p)**, **62 ⚡/s (720p)**, **105 ⚡/s (1080p)**.
 
-3. **Vortex 3.0 Pro (Multi-Reference up to 30s)**:
+3. **Omni Flash Pro (Multi-Reference up to 30s - Wan 3.0)**:
    - Officially available on **Higgsfield AI** (`alibaba/wan-3.0/reference-to-video` / `alibaba/wan-3.0-prime/reference-to-video`).
    - Rates with 15% margin (@ ₹96):
      - 480p SD: **3 ⚡/s** (15 ⚡ for 5s)

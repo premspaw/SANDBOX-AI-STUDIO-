@@ -997,7 +997,7 @@ export default function createRouter(deps) {
                         await consumeCredits(targetUserId, -requiredCredits, 'refund_cinematic_video_generation');
                     }
                     return res.status(500).json({
-                        error: sanitizeServerError(hfErr.message) || 'Vortex 3.0 generation failed. Your Shorts credits have been refunded.'
+                        error: sanitizeServerError(hfErr.message) || 'Omni Flash Pro generation failed. Your Shorts credits have been refunded.'
                     });
                 }
             }

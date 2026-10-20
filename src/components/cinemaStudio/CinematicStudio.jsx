@@ -141,7 +141,7 @@ function CyclingLoadingText() {
 }
 
 const ENGINES = [
-  { id: 'vortex-3.0',                    label: 'Vortex 3.0 Pro',  icon: '🌀', desc: 'Wan 3.0 Reference-to-Video · 4 Slots · Up to 30s (3–12.4⚡/s)', cost: 6.2 },
+  { id: 'vortex-3.0',                    label: 'Omni Flash Pro',  icon: '🌀', desc: 'Wan 3.0 Reference-to-Video · 4 Slots · Up to 30s (3–12.4⚡/s)', cost: 6.2 },
   { id: 'omni-flash',                    label: 'Omni Flash 1.1',  icon: '✨', desc: 'Google Gemini Omni Flash 1.1 — Multimodal Camera & Voice (5⚡/s)', cost: 5 },
   { id: 'seedance-2.5',                  label: 'Seedance 2.5',    icon: '⚡', desc: 'ByteDance — 8⚡/s (480p) / 10⚡/s (720p)', cost: 10 },
   { id: 'seedance-fast',                 label: 'Seedance Fast',   icon: '🚀', desc: 'ByteDance — 5⚡/s (480p) / 12⚡/s (720p)', cost: 5 },
@@ -3436,7 +3436,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         try {
           if (variationCount > 1) {
             const showToast = useAppStore.getState().showToast;
-            if (showToast) showToast(`${resolvedEngine.includes('vortex') ? 'Vortex 3.0' : 'Seedance'} supports 1 variation per request natively. Processing 1.`, "info");
+            if (showToast) showToast(`${resolvedEngine.includes('vortex') ? 'Omni Flash Pro' : 'Seedance'} supports 1 variation per request natively. Processing 1.`, "info");
           }
 
           const modelParam = (resolvedEngine === 'vortex-3.0' || resolvedEngine.includes('vortex'))

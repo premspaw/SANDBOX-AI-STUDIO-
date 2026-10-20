@@ -33,7 +33,7 @@ export const SHORTS_COST = {
     seedance_25_multiref_720p: 65,
     seedance_25_multiref_1080p: 110,
 
-    // Vortex 3.0 Pro (Wan 3.0 Prime via Higgsfield Wholesale + 15% margin @ ₹96/USD)
+    // Omni Flash Pro (Wan 3.0 Prime via Higgsfield Wholesale + 15% margin @ ₹96/USD)
     vortex_30_480p: 3,
     vortex_30_720p: 6.2,
     vortex_30_1080p: 12.4,
