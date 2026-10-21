@@ -403,8 +403,8 @@ export default function createRouter(deps) {
                     ? (resLower === '1080p' ? 110 : (resLower === '480p' ? 20 : 65))
                     : (resLower === '1080p' ? 92 : (resLower === '480p' ? 17 : 55));
                 requiredCredits = Math.ceil(costPerSec * effectiveDuration);
-            } else if (engine === 'vortex-3.0' || engine === 'vortex-3' || engine.includes('vortex') || engine.includes('wan-3')) {
-                const costPerSec = resLower === '1080p' ? 12.4 : (resLower === '480p' ? 3.0 : 6.2);
+            } else if (engine === 'vortex-3.0' || engine === 'vortex-3' || engine === 'flash-pro' || engine.includes('vortex') || engine.includes('wan')) {
+                const costPerSec = (resLower === '1080p' || resLower === '4k') ? 23.0 : (resLower === '480p' ? 5.8 : 11.5);
                 requiredCredits = Math.ceil(costPerSec * durationNum);
             }
 
@@ -859,12 +859,15 @@ export default function createRouter(deps) {
                 return res.json({ success: true, requestId: taskId, engine: 'seedance-mini' });
             }
 
-            // Handle Vortex 3.0 (Alibaba Wan 3.0 Reference-to-Video via Higgsfield)
+            // Handle Flash Pro / Vortex 3.0 (Alibaba Wan 3.0 via Higgsfield API)
             if (
                 engine === 'vortex-3.0' ||
                 engine === 'vortex-3' ||
+                engine === 'flash-pro' ||
+                engine === 'omni-flash-pro' ||
                 engine.includes('vortex') ||
                 engine.includes('wan-3') ||
+                engine.includes('wan') ||
                 (req.body.model && String(req.body.model).includes('wan-3'))
             ) {
                 const durationClamped = Math.min(30, Math.max(2, Number(duration) || 5));
@@ -876,65 +879,131 @@ export default function createRouter(deps) {
                     if (creditsClaimed && targetUserId) {
                         await consumeCredits(targetUserId, -requiredCredits, 'refund_cinematic_video_generation');
                     }
-                    return res.status(500).json({ error: 'Higgsfield credentials not configured for Vortex 3.0 engine.' });
+                    return res.status(500).json({ error: 'Higgsfield credentials not configured for Flash Pro (Wan 3.0).' });
                 }
 
                 try {
-                    const hfClient = getHfClient(activeHfKey);
-
-                    // Collect reference image URLs (from resolvedIdentity, reference_image_urls, omniMultiImages, etc.)
-                    const rawImages = [
+                    // Collect and resolve start and end image candidates to public URLs
+                    const rawCandidates = [
+                        resolvedFirstFrame,
+                        req.body.image_url,
+                        req.body.firstFrame,
+                        req.body.first_frame_url,
+                        req.body.firstFrameImage,
+                        ...(Array.isArray(req.body.omniMultiImages) ? req.body.omniMultiImages : []),
                         ...(Array.isArray(resolvedIdentity) ? resolvedIdentity : []),
                         ...(Array.isArray(reference_image_urls) ? reference_image_urls : []),
-                        ...(Array.isArray(req.body.omniMultiImages) ? req.body.omniMultiImages : []),
-                        ...(Array.isArray(req.body.referenceImages) ? req.body.referenceImages : []),
-                        resolvedFirstFrame,
-                        resolvedLastFrame
+                        ...(Array.isArray(req.body.referenceImages) ? req.body.referenceImages : [])
                     ].filter(Boolean);
 
-                    const resolvedImages = Array.from(new Set(rawImages)).slice(0, 4);
+                    const resolvedCandidates = (await Promise.all(
+                        rawCandidates.map(async (img) => {
+                            if (!img) return null;
+                            if (typeof img === 'string' && (img.startsWith('http://') || img.startsWith('https://'))) return img;
+                            return await resolveToPublicUrl(img, targetUserId);
+                        })
+                    )).filter(Boolean);
 
-                    const rawVids = [
-                        ...(Array.isArray(resolvedVideos) ? resolvedVideos : []),
-                        ...(Array.isArray(reference_video_urls) ? reference_video_urls : [])
+                    const startImageUrl = resolvedCandidates[0] || null;
+
+                    const rawEndCandidates = [
+                        resolvedLastFrame,
+                        req.body.end_image_url,
+                        req.body.lastFrame,
+                        req.body.last_frame_url,
+                        req.body.lastFrameImage,
+                        ...(resolvedCandidates.length > 1 && resolvedCandidates[1] !== startImageUrl ? [resolvedCandidates[1]] : [])
                     ].filter(Boolean);
+
+                    let endImageUrl = null;
+                    if (rawEndCandidates.length > 0) {
+                        const rawEnd = rawEndCandidates[0];
+                        if (typeof rawEnd === 'string' && (rawEnd.startsWith('http://') || rawEnd.startsWith('https://'))) {
+                            endImageUrl = rawEnd;
+                        } else {
+                            endImageUrl = await resolveToPublicUrl(rawEnd, targetUserId);
+                        }
+                    }
+                    if (endImageUrl === startImageUrl) {
+                        endImageUrl = null;
+                    }
+
+                    // Choose Wan 3.0 model ID:
+                    // If image is provided -> alibaba/wan-3.0/image-to-video
+                    // If text only -> alibaba/wan-3.0/text-to-video
+                    const targetModel = startImageUrl
+                        ? 'alibaba/wan-3.0/image-to-video'
+                        : 'alibaba/wan-3.0/text-to-video';
+                    const targetEndpoint = `https://api.higgsfield.ai/${targetModel}`;
+
+                    let wanRatio = hfRatio;
+                    if (wanRatio === '21:9' || !['16:9', '4:3', '1:1', '3:4', '9:16', 'adaptive'].includes(wanRatio)) {
+                        wanRatio = '16:9';
+                    }
 
                     const hfInputPayload = {
                         prompt: finalPrompt,
                         duration: durationClamped,
                         resolution: resolutionVortex,
-                        aspect_ratio: hfRatio || 'adaptive',
+                        aspect_ratio: wanRatio || 'adaptive',
                         generate_audio: generateAudio !== undefined ? !!generateAudio : true,
                         enable_thinking: req.body.enable_thinking !== undefined ? !!req.body.enable_thinking : false
                     };
 
-                    if (resolvedImages.length > 0) {
-                        hfInputPayload.image_urls = resolvedImages;
-                    }
-                    if (rawVids.length > 0) {
-                        hfInputPayload.video_urls = rawVids.slice(0, 5);
+                    if (startImageUrl) {
+                        hfInputPayload.image_url = startImageUrl;
+                        if (endImageUrl) {
+                            hfInputPayload.end_image_url = endImageUrl;
+                        }
                     }
 
-                    console.log(`[VORTEX-3.0-HIGGSFIELD] Submitting job to Higgsfield:`, {
-                        model: "alibaba/wan-3.0/reference-to-video",
+                    if (req.body.seed !== undefined && Number.isInteger(Number(req.body.seed))) {
+                        hfInputPayload.seed = Number(req.body.seed);
+                    }
+
+                    console.log(`[FLASH-PRO-WAN-3.0] Submitting to Higgsfield (${targetModel}):`, {
+                        endpoint: targetEndpoint,
                         prompt: finalPrompt.substring(0, 50) + "...",
-                        imagesCount: resolvedImages.length,
                         duration: durationClamped,
                         resolution: resolutionVortex,
                         aspect_ratio: hfInputPayload.aspect_ratio,
+                        hasStartImage: Boolean(startImageUrl),
+                        hasEndImage: Boolean(endImageUrl),
                         generate_audio: hfInputPayload.generate_audio
                     });
 
                     const shouldPollServerSide = req.body.sync === true;
-                    const hfResult = await hfClient.subscribe(
-                        "alibaba/wan-3.0/reference-to-video",
-                        {
-                            input: hfInputPayload,
-                            withPolling: shouldPollServerSide
-                        }
-                    );
+                    let hfResult;
 
-                    console.log(`[VORTEX-3.0-HIGGSFIELD] Result status:`, hfResult.status, 'requestId:', hfResult.request_id);
+                    if (shouldPollServerSide) {
+                        const hfClient = getHfClient(activeHfKey);
+                        hfResult = await hfClient.subscribe(targetModel, {
+                            input: hfInputPayload,
+                            withPolling: true
+                        });
+                    } else {
+                        // Direct HTTP submit to Higgsfield queue
+                        const postResp = await fetch(targetEndpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Key ${activeHfKey}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(hfInputPayload)
+                        });
+
+                        const postData = await postResp.json().catch(() => ({}));
+                        if (!postResp.ok || !postData.request_id) {
+                            throw new Error(postData.detail || postData.error || `Higgsfield Wan 3.0 API submission failed (HTTP ${postResp.status})`);
+                        }
+
+                        hfResult = {
+                            status: postData.status || 'queued',
+                            request_id: postData.request_id
+                        };
+                    }
+
+                    console.log(`[FLASH-PRO-WAN-3.0] Result status:`, hfResult.status, 'requestId:', hfResult.request_id);
 
                     if (!shouldPollServerSide && hfResult.request_id) {
                         return res.json({
@@ -948,7 +1017,8 @@ export default function createRouter(deps) {
                                 duration: durationClamped,
                                 resolution: resolutionVortex,
                                 aspectRatio: hfRatio,
-                                provider: 'higgsfield'
+                                provider: 'higgsfield',
+                                model: targetModel
                             }
                         });
                     }
@@ -963,11 +1033,11 @@ export default function createRouter(deps) {
                                     hfRatio,
                                     'generated',
                                     finalPrompt,
-                                    'vortex-3.0'
+                                    'Flash Pro'
                                 );
                                 if (saved) finalVideoUrl = saved;
                             } catch (saveErr) {
-                                console.warn('[VORTEX-3.0-HIGGSFIELD] Notice: fallback direct CDN url:', saveErr.message);
+                                console.warn('[FLASH-PRO-WAN-3.0] Notice: fallback direct CDN url:', saveErr.message);
                             }
                         }
 
@@ -981,7 +1051,7 @@ export default function createRouter(deps) {
                     }
 
                     if (hfResult.status === 'failed') {
-                        throw new Error(hfResult.error || 'Vortex 3.0 generation failed on Higgsfield.');
+                        throw new Error(hfResult.error || 'Flash Pro (Wan 3.0) generation failed on Higgsfield.');
                     }
 
                     return res.json({
@@ -991,13 +1061,13 @@ export default function createRouter(deps) {
                         engine: 'vortex-3.0'
                     });
                 } catch (hfErr) {
-                    console.error('[VORTEX-3.0-HIGGSFIELD-ERR]:', hfErr.message);
+                    console.error('[FLASH-PRO-WAN-3.0-ERR]:', hfErr.message);
                     if (creditsClaimed && targetUserId) {
-                        console.log(`[VORTEX-3.0] Refunding ${requiredCredits} credits to user ${targetUserId} due to generation error`);
+                        console.log(`[FLASH-PRO-WAN-3.0] Refunding ${requiredCredits} credits to user ${targetUserId} due to generation error`);
                         await consumeCredits(targetUserId, -requiredCredits, 'refund_cinematic_video_generation');
                     }
                     return res.status(500).json({
-                        error: sanitizeServerError(hfErr.message) || 'Omni Flash Pro generation failed. Your Shorts credits have been refunded.'
+                        error: sanitizeServerError(hfErr.message) || 'Flash Pro generation failed. Your Shorts credits have been refunded.'
                     });
                 }
             }
@@ -1285,7 +1355,7 @@ export default function createRouter(deps) {
 
             // 0. Handle Higgsfield / Xfield Seedance 2.5 & Vortex 3.0 polling
             const isHfUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId);
-            const isHfEngine = engine?.includes('higgsfield') || engine?.includes('vortex') || req.query.provider === 'higgsfield' || isHfUuid;
+            const isHfEngine = engine?.includes('higgsfield') || engine?.includes('vortex') || engine?.includes('flash-pro') || engine?.includes('wan') || req.query.provider === 'higgsfield' || isHfUuid;
 
             if (isHfEngine && (process.env.HF_CREDENTIALS || process.env.HF_KEY)) {
                 const creds = (process.env.HF_CREDENTIALS || process.env.HF_KEY).trim();

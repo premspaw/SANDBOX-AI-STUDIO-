@@ -47,7 +47,7 @@ export default function VideoTab() {
   const debounceRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!isTypingRef.current) {
+    if (!isTypingRef.current && (!document.activeElement || document.activeElement.tagName !== 'TEXTAREA')) {
       setLocalPrompt(videoPrompt || '');
     }
   }, [videoPrompt]);
@@ -59,7 +59,9 @@ export default function VideoTab() {
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      isTypingRef.current = false;
+      if (!document.activeElement || document.activeElement.tagName !== 'TEXTAREA') {
+        isTypingRef.current = false;
+      }
       React.startTransition(() => {
         setVideoPrompt(val);
         if (splitScenes.length > 0) {
@@ -68,7 +70,7 @@ export default function VideoTab() {
           );
         }
       });
-    }, 120);
+    }, 600);
   };
 
   const handlePromptBlur = () => {

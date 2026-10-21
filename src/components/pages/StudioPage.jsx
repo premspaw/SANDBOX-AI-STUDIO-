@@ -125,7 +125,7 @@ function formatRelativeTime(timestamp) {
   return `${diffDays}d ago`;
 }
 
-function StudioGalleryCard({
+const StudioGalleryCard = React.memo(function StudioGalleryCard({
   item,
   layout = 'masonry',
   onOpenLightbox,
@@ -526,7 +526,7 @@ function StudioGalleryCard({
       </div>
     </div>
   );
-}
+});
 
 export default function StudioPage() {
   const { userProfile, updateShortsBalance, fetchUnifiedGallery } = useAppStore();
@@ -1181,7 +1181,9 @@ export default function StudioPage() {
 
   // Poll Seedance generation task until completed
   const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine, tempId) => {
-    const engineLabel = engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : engine.includes('2.5') ? 'Seedance 2.5 Pro' : 'Seedance 2.0 Pro';
+    const engineLabel = (engine.includes('vortex') || engine.includes('wan') || engine.includes('flash-pro'))
+      ? 'Flash Pro'
+      : engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : engine.includes('2.5') ? 'Seedance 2.5 Pro' : 'Seedance 2.0 Pro';
     const targetProj = (activeProjectId === 'all' || !activeProjectId) ? 'default' : activeProjectId;
 
     for (let i = 0; i < 300; i++) {
@@ -1677,7 +1679,16 @@ export default function StudioPage() {
     const engineToUse = customEngine || activeEngine;
     const isRemix = panelTab === 'remix' || engineToUse.includes('remix') || engineToUse.includes('genjutsu') || engineToUse.includes('motion-transfer');
     const isMotion = !isRemix && (panelTab === 'motion' || engineToUse.includes('motion') || engineToUse.includes('kling'));
-    const isOmni = !isRemix && !isMotion && (
+    const isFlashPro = !isRemix && !isMotion && (
+      engineToUse === 'vortex-3.0' || 
+      engineToUse === 'vortex-3' || 
+      engineToUse === 'flash-pro' || 
+      engineToUse === 'omni-flash-pro' || 
+      engineToUse.includes('vortex') || 
+      engineToUse.includes('wan') || 
+      customOptions?.multiRefEngine === 'vortex-3.0'
+    );
+    const isOmni = !isRemix && !isMotion && !isFlashPro && (
       engineToUse.includes('omni') || 
       engineToUse.includes('flash') || 
       panelTab === 'omni' || 
@@ -1688,7 +1699,8 @@ export default function StudioPage() {
       panelTab === 'seedance' || 
       panelTab === 'seedance-2.5' || 
       engineToUse.startsWith('seedan') || 
-      engineToUse === 'seedace'
+      engineToUse === 'seedace' ||
+      isFlashPro
     );
     const promptToUse = customPrompt || (isRemix ? (promptText || '') : isMotion ? (promptText || '') : (isOmni ? omniPromptText : promptText));
     const activeDuration = customOptions?.duration !== undefined ? customOptions.duration : duration;
@@ -1757,6 +1769,8 @@ export default function StudioPage() {
         ? 'Genjutsu Motion Transfer'
         : isMotion 
         ? (isKlingMotion ? `Kling 3.0 (${motionMode === 'pro' ? 'Pro 1080p' : 'Std 720p'})` : 'Motion Control Easy (10s)')
+        : isFlashPro
+        ? 'Flash Pro'
         : isOmni 
         ? 'Omni Flash 1.1'
         : isSeedance 
@@ -2175,7 +2189,9 @@ export default function StudioPage() {
             });
           }
 
-          const modelParam = (engineToUse === 'seedance-2.5' || (panelTab === 'transition' && engineToUse !== 'seedance-mini') || panelTab === 'seedance-2.5')
+          const modelParam = isFlashPro
+            ? (resolvedStart || (resolvedRefImgs && resolvedRefImgs.length > 0) ? 'alibaba/wan-3.0/image-to-video' : 'alibaba/wan-3.0/text-to-video')
+            : (engineToUse === 'seedance-2.5' || (panelTab === 'transition' && engineToUse !== 'seedance-mini') || panelTab === 'seedance-2.5')
             ? 'bytedance/seedance-2-5'
             : (engineToUse === 'seedance-mini')
             ? 'bytedance/seedance-2-mini'
@@ -2187,7 +2203,7 @@ export default function StudioPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              engine: engineToUse,
+              engine: isFlashPro ? 'vortex-3.0' : engineToUse,
               model: modelParam,
               seedanceContentArray: contentArray,
               firstFrame: resolvedStart || undefined,
@@ -2207,7 +2223,10 @@ export default function StudioPage() {
               web_search: false,
               nsfw_checker: true,
               provider: localStorage.getItem('cs_seedance_provider') || 'auto',
-              creditReason: 'studio_seedance_generation'
+              creditCost: customOptions?.creditCost,
+              creditReason: isFlashPro ? 'cinematic_video_generation' : 'studio_seedance_generation',
+              omniMultiImages: customOptions?.omniMultiImages || omniMultiImages,
+              multiRefEngine: customOptions?.multiRefEngine || (isFlashPro ? 'vortex-3.0' : undefined)
             })
           });
 
@@ -2277,7 +2296,7 @@ export default function StudioPage() {
             }
 
             const showToast = useAppStore.getState().showToast;
-            if (showToast) showToast("Seedance 2.5 video generated successfully!", "success");
+            if (showToast) showToast(isFlashPro ? "Flash Pro video generated successfully!" : "Seedance 2.5 video generated successfully!", "success");
             return;
           }
 

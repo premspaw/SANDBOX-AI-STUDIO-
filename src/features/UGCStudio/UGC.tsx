@@ -125,7 +125,7 @@ const FastScriptTextarea = React.memo(({
   const debounceTimerRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!isTypingRef.current) {
+    if (!isTypingRef.current && (!document.activeElement || document.activeElement.tagName !== 'TEXTAREA')) {
       setLocalVal(value || '');
     }
   }, [value]);
@@ -137,11 +137,13 @@ const FastScriptTextarea = React.memo(({
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      isTypingRef.current = false;
+      if (!document.activeElement || document.activeElement.tagName !== 'TEXTAREA') {
+        isTypingRef.current = false;
+      }
       React.startTransition(() => {
         onChange(next);
       });
-    }, 120);
+    }, 600);
   };
 
   const handleBlur = () => {

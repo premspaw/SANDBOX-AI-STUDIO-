@@ -54,7 +54,7 @@ export const TalkingHeadTab: React.FC = () => {
   const debounceRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!isTypingRef.current) {
+    if (!isTypingRef.current && (!document.activeElement || document.activeElement.tagName !== 'TEXTAREA')) {
       setLocalScript(thScript || '');
     }
   }, [thScript]);
@@ -66,11 +66,13 @@ export const TalkingHeadTab: React.FC = () => {
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      isTypingRef.current = false;
+      if (!document.activeElement || document.activeElement.tagName !== 'TEXTAREA') {
+        isTypingRef.current = false;
+      }
       React.startTransition(() => {
         setThScript(val);
       });
-    }, 120);
+    }, 600);
   };
 
   const handleScriptBlur = () => {

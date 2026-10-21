@@ -1233,7 +1233,7 @@ export const SidePanel = React.memo(({
   useEffect(() => {
     // Only synchronize from external source if user is not actively typing or focused
     if (isTypingRef.current) return;
-    if (document.activeElement === textareaRef.current) return;
+    if (document.activeElement && (document.activeElement === textareaRef.current || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT')) return;
     if (promptText !== undefined && promptText !== localPromptRef.current) {
       localPromptRef.current = promptText || '';
       setLocalPrompt(promptText || '');
@@ -1608,7 +1608,7 @@ export const SidePanel = React.memo(({
     }
 
     startCooldown(8);
-    const isVortex = panelTab === 'omni-multi' && multiRefEngine === 'vortex-3.0';
+    const isVortex = multiRefEngine === 'vortex-3.0';
     const engineToUse = isVortex ? 'vortex-3.0' : 'gemini-omni-1.1-flash';
     setPromptText(localPrompt);
     setActiveTab('video');
@@ -2249,19 +2249,21 @@ export const SidePanel = React.memo(({
     const cursorPos = e.target.selectionStart;
     isTypingRef.current = true;
     localPromptRef.current = val;
-    React.startTransition(() => {
-      setLocalPrompt(val);
-    });
+    // Direct, synchronous update — NEVER wrap controlled text input in startTransition!
+    setLocalPrompt(val);
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      isTypingRef.current = false;
+      // Only release typing lock if user is no longer focused on any textarea
+      if (document.activeElement !== textareaRef.current && (!document.activeElement || document.activeElement.tagName !== 'TEXTAREA')) {
+        isTypingRef.current = false;
+      }
       if (setPromptText) {
         React.startTransition(() => {
           setPromptText(localPromptRef.current);
         });
       }
-    }, 150);
+    }, 600);
 
     const textBeforeCursor = val.slice(0, cursorPos);
     const match = textBeforeCursor.match(/@([\w_<>]*)$/);
@@ -2367,7 +2369,7 @@ export const SidePanel = React.memo(({
   ], []);
 
   const multiRefEngineOptions = useMemo(() => [
-    { value: 'vortex-3.0', label: 'Omni Flash Pro', desc: 'Wan 3.0 · Up to 30s · 3–12.4⚡/s' },
+    { value: 'vortex-3.0', label: 'Flash Pro', desc: 'Wan 3.0 · Up to 30s · Audio & Thinking' },
     { value: 'gemini-omni-1.1-flash', label: 'Omni Flash 1.1', desc: 'Google Omni · Up to 10s · 5⚡/s' }
   ], []);
 
@@ -2415,11 +2417,11 @@ export const SidePanel = React.memo(({
   }, [seedanceProvider]);
 
   const resolutionOptions = useMemo(() => {
-    if (panelTab === 'omni-multi' && multiRefEngine === 'vortex-3.0') {
+    if ((panelTab === 'omni' || panelTab === 'omni-multi') && multiRefEngine === 'vortex-3.0') {
       return [
-        { value: '480p', label: '480p SD', desc: '3⚡/s · Fast & Budget (15⚡/5s)' },
-        { value: '720p', label: '720p HD', desc: '6.2⚡/s · Crisp HD Master (31⚡/5s)' },
-        { value: '1080p', label: '1080p FHD', desc: '12.4⚡/s · Cinematic Pro FHD (62⚡/5s)' }
+        { value: '480p', label: '480p SD', desc: '5.8⚡/s · Fast & Budget (29⚡/5s)' },
+        { value: '720p', label: '720p HD', desc: '11.5⚡/s · Crisp HD Master (58⚡/5s)' },
+        { value: '1080p', label: '1080p FHD', desc: '23⚡/s · Cinematic Pro FHD (115⚡/5s)' }
       ];
     }
     if ((panelTab === 'transition' && transitionSubTab === 'omni-keyframe') || panelTab === 'omni' || panelTab === 'omni-multi' || (activeEngine && (activeEngine.includes('omni') || activeEngine.includes('flash')))) {
@@ -4393,6 +4395,7 @@ export const SidePanel = React.memo(({
                       </div>
 
                       <textarea
+                        ref={textareaRef}
                         value={localPrompt}
                         onChange={handlePromptChange}
                         onBlur={handlePromptBlur}
@@ -5234,11 +5237,11 @@ export const SidePanel = React.memo(({
                 ) : (
                   /* Standard 4 Controls for Veo / Omni */
                   <>
-                    {/* Multi-Ref Engine Dropdown when in Multi-Ref mode */}
-                    {panelTab === 'omni-multi' && (
+                    {/* Engine Dropdown for Flash Pro (Wan 3.0) and Omni Flash 1.1 (Vertex) */}
+                    {(panelTab === 'omni' || panelTab === 'omni-multi') && (
                       <div className="w-full">
                         <GlassSelect
-                          label="Multi-Ref Engine"
+                          label="Engine Model"
                           icon={Cpu}
                           value={multiRefEngine}
                           onChange={(val) => {
@@ -5271,7 +5274,7 @@ export const SidePanel = React.memo(({
                         label="Clip Duration"
                         value={duration}
                         onChange={(val) => setDuration(Number(val))}
-                        options={(panelTab === 'omni-multi' && multiRefEngine === 'vortex-3.0') ? vortexDurationOptions : durationOptions}
+                        options={multiRefEngine === 'vortex-3.0' ? vortexDurationOptions : durationOptions}
                         align="up"
                       />
                     </div>

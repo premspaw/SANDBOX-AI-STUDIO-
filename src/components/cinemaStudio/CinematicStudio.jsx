@@ -141,7 +141,7 @@ function CyclingLoadingText() {
 }
 
 const ENGINES = [
-  { id: 'vortex-3.0',                    label: 'Omni Flash Pro',  icon: '🌀', desc: 'Wan 3.0 Reference-to-Video · 4 Slots · Up to 30s (3–12.4⚡/s)', cost: 6.2 },
+  { id: 'vortex-3.0',                    label: 'Flash Pro',       icon: '🌀', desc: 'Wan 3.0 · 4 Slots · Up to 30s (5.8–23⚡/s)', cost: 11.5 },
   { id: 'omni-flash',                    label: 'Omni Flash 1.1',  icon: '✨', desc: 'Google Gemini Omni Flash 1.1 — Multimodal Camera & Voice (5⚡/s)', cost: 5 },
   { id: 'seedance-2.5',                  label: 'Seedance 2.5',    icon: '⚡', desc: 'ByteDance — 8⚡/s (480p) / 10⚡/s (720p)', cost: 10 },
   { id: 'seedance-fast',                 label: 'Seedance Fast',   icon: '🚀', desc: 'ByteDance — 5⚡/s (480p) / 12⚡/s (720p)', cost: 5 },
@@ -1894,13 +1894,13 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       return;
     }
 
-    // Smoothly debounce parent studio state updates by 120ms with startTransition (zero typing lag)
+    // Smoothly debounce parent studio state updates by 600ms with startTransition (zero typing lag)
     promptDebounceRef.current = setTimeout(() => {
       React.startTransition(() => {
         setPromptText(val);
         setOmniPromptText(val);
       });
-    }, 120);
+    }, 600);
   }, []);
 
   const selectMention = (item) => {
@@ -2445,7 +2445,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   /* ─── SEEDANCE POLL ──────────────────────────────────────── */
   const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine, tempId = null) => {
     setStatus('polling');
-    const engineLabel = (engine.includes('2.5') || engine.includes('2-5')) ? 'Seedance 2.5' : engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : 'Seedance 2.0';
+    const engineLabel = (engine.includes('vortex') || engine.includes('wan') || engine.includes('flash-pro'))
+      ? 'Flash Pro'
+      : (engine.includes('2.5') || engine.includes('2-5'))
+      ? 'Seedance 2.5'
+      : engine.includes('fast')
+      ? 'Seedance Fast'
+      : engine.includes('mini')
+      ? 'Seedance Mini'
+      : 'Seedance 2.0';
 
     for (let i = 0; i < 300; i++) {
       await new Promise(r => setTimeout(r, 6000));
@@ -2848,8 +2856,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       }
 
       if (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine === 'seedance-2.5' || activeEngine === 'vortex-3.0' || activeEngine.includes('vortex')) {
-        const modelId = (activeEngine === 'vortex-3.0' || activeEngine.includes('vortex'))
-          ? 'alibaba/wan-3.0/reference-to-video'
+        const isVortex = activeEngine === 'vortex-3.0' || activeEngine.includes('vortex');
+        const modelId = isVortex
+          ? (activeFirstFramePreview || firstFrameImage || omniFirstFrameImage ? 'alibaba/wan-3.0/image-to-video' : 'alibaba/wan-3.0/text-to-video')
           : activeEngine === 'seedance-2.5'
           ? 'bytedance/seedance-2-5'
           : activeEngine === 'seedance-fast'
@@ -3436,11 +3445,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         try {
           if (variationCount > 1) {
             const showToast = useAppStore.getState().showToast;
-            if (showToast) showToast(`${resolvedEngine.includes('vortex') ? 'Omni Flash Pro' : 'Seedance'} supports 1 variation per request natively. Processing 1.`, "info");
+            if (showToast) showToast(`${resolvedEngine.includes('vortex') ? 'Flash Pro' : 'Seedance'} supports 1 variation per request natively. Processing 1.`, "info");
           }
 
-          const modelParam = (resolvedEngine === 'vortex-3.0' || resolvedEngine.includes('vortex'))
-            ? 'alibaba/wan-3.0/reference-to-video'
+          const rawStart = overrideOptions?.firstFrame || firstFrameImage || omniFirstFrameImage;
+          const rawEnd = overrideOptions?.lastFrame || lastFrameImage || omniLastFrameImage;
+
+          const isVortex = resolvedEngine === 'vortex-3.0' || resolvedEngine.includes('vortex');
+          const modelParam = isVortex
+            ? (rawStart ? 'alibaba/wan-3.0/image-to-video' : 'alibaba/wan-3.0/text-to-video')
             : resolvedEngine === 'seedance-2.5'
             ? 'bytedance/seedance-2-5'
             : resolvedEngine === 'seedance-fast'
@@ -3448,9 +3461,6 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             : resolvedEngine === 'seedance-mini'
             ? 'bytedance/seedance-2-mini'
             : 'dreamina-seedance-2-0-260128';
-
-          const rawStart = overrideOptions?.firstFrame || firstFrameImage || omniFirstFrameImage;
-          const rawEnd = overrideOptions?.lastFrame || lastFrameImage || omniLastFrameImage;
 
           const [resolvedStart, resolvedEnd] = await Promise.all([
             rawStart ? resolveBlobToBase64(rawStart) : null,
@@ -3511,7 +3521,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               generateAudio,
               provider: localStorage.getItem('cs_seedance_provider') || 'auto',
               creditCost: singleCost,
-              creditReason: 'cinematic_video_generation'
+              creditReason: 'cinematic_video_generation',
+              omniMultiImages: overrideOptions?.omniMultiImages || omniMultiImages,
+              multiRefEngine: overrideOptions?.multiRefEngine || (resolvedEngine.includes('vortex') ? 'vortex-3.0' : undefined)
             })
           });
 
@@ -3553,7 +3565,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             }
             setStatus('idle');
             const showToast = useAppStore.getState().showToast;
-            if (showToast) showToast("Seedance 2.5 video generated successfully!", "success");
+            if (showToast) {
+              const engName = (json.engine?.includes('vortex') || activeEngine?.includes('vortex')) ? 'Flash Pro' : 'Seedance 2.5';
+              showToast(`${engName} video generated successfully!`, "success");
+            }
             return;
           }
 
