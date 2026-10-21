@@ -3044,25 +3044,67 @@ export const SidePanel = React.memo(({
       {/* 2. ZeroLens Mode Switcher Tabs (Touch-friendly scrollable single line) */}
       <div className="px-2.5 sm:px-4 py-2 border-b border-white/[0.08] bg-black/40 shrink-0">
         <div className="flex items-center gap-1.5 p-1 bg-black/60 rounded-2xl border border-white/[0.06] overflow-x-auto no-scrollbar scroll-smooth">
+          {/* 1. Multi-Ref */}
           <button
             type="button"
             onClick={() => {
-              setPanelTab('remix');
+              setPanelTab('omni-multi');
               setActiveTab('video');
-              setRemixEngine('omni');
-              setActiveEngine('gemini-omni-1.1-flash');
+              setActiveEngine(multiRefEngine || 'vortex-3.0');
+            }}
+            className={cn(
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              panelTab === 'omni-multi'
+                ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+            )}
+          >
+            Multi-Ref
+          </button>
+
+          {/* 2. Seedance */}
+          <button
+            type="button"
+            onClick={() => {
+              setPanelTab('seedance');
+              setActiveTab('video');
+              const targetEngine = (seedanceSubModel === 'seedace' || seedanceSubModel === 'seedance-mini') ? seedanceSubModel : 'seedance-fast';
+              setActiveEngine(targetEngine);
+              if (targetEngine !== 'seedace' && (resolution === '1080p' || resolution === '4k')) {
+                setResolution('720p');
+              }
+            }}
+            className={cn(
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              panelTab === 'seedance'
+                ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+            )}
+          >
+            Seedance
+          </button>
+
+          {/* 3. Seedance 2.5 */}
+          <button
+            type="button"
+            onClick={() => {
+              setPanelTab('seedance-2.5');
+              setActiveTab('video');
+              setActiveEngine('seedance-2.5');
+              if (duration < 5) setDuration(10);
               if (resolution === '4k') setResolution('1080p');
             }}
             className={cn(
               "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
-              panelTab === 'remix'
-                ? "bg-gradient-to-r from-[#c8f135]/25 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/50 shadow-[0_0_15px_rgba(200,241,53,0.25)] font-black"
+              panelTab === 'seedance-2.5'
+                ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
             )}
           >
-            Edit
+            Seedance 2.5
           </button>
 
+          {/* 4. Transition */}
           <button
             type="button"
             onClick={() => {
@@ -3086,63 +3128,27 @@ export const SidePanel = React.memo(({
             Transition
           </button>
 
+          {/* 5. Edit */}
           <button
             type="button"
             onClick={() => {
-              setPanelTab('seedance-2.5');
+              setPanelTab('remix');
               setActiveTab('video');
-              setActiveEngine('seedance-2.5');
-              if (duration < 5) setDuration(10);
+              setRemixEngine('omni');
+              setActiveEngine('gemini-omni-1.1-flash');
               if (resolution === '4k') setResolution('1080p');
             }}
             className={cn(
               "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
-              panelTab === 'seedance-2.5'
-                ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
+              panelTab === 'remix'
+                ? "bg-gradient-to-r from-[#c8f135]/25 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/50 shadow-[0_0_15px_rgba(200,241,53,0.25)] font-black"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
             )}
           >
-            Seedance 2.5
+            Edit
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setPanelTab('omni-multi');
-              setActiveTab('video');
-              setActiveEngine(multiRefEngine || 'vortex-3.0');
-            }}
-            className={cn(
-              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
-              panelTab === 'omni-multi'
-                ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
-                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
-            )}
-          >
-            Multi-Ref
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setPanelTab('seedance');
-              setActiveTab('video');
-              const targetEngine = (seedanceSubModel === 'seedace' || seedanceSubModel === 'seedance-mini') ? seedanceSubModel : 'seedance-fast';
-              setActiveEngine(targetEngine);
-              if (targetEngine !== 'seedace' && (resolution === '1080p' || resolution === '4k')) {
-                setResolution('720p');
-              }
-            }}
-            className={cn(
-              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
-              panelTab === 'seedance'
-                ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
-                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
-            )}
-          >
-            Seedance
-          </button>
-
+          {/* 6. Motion Control */}
           <button
             type="button"
             onClick={() => {

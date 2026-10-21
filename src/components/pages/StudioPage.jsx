@@ -558,9 +558,9 @@ export default function StudioPage() {
   }, [userId, setShowingAuthModal]);
 
   // Active Engine & Mode State
-  const [activeEngine, setActiveEngine] = useState('gemini-omni-1.1-flash');
+  const [activeEngine, setActiveEngine] = useState('vortex-3.0');
   const [activeTab, setActiveTab] = useState('video');
-  const [panelTab, setPanelTab] = useState('omni'); // 'omni' | 'omni-multi' | 'motion'
+  const [panelTab, setPanelTab] = useState('omni-multi'); // 'omni-multi' | 'seedance' | 'seedance-2.5' | 'transition' | 'remix' | 'motion'
 
   // Input & Parameter States
   const [promptText, setPromptText] = useState('');
