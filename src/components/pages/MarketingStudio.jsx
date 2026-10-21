@@ -2263,73 +2263,56 @@ Any written text, characters, letters, numbers, and labels inside the image must
                             /* ── ADS STUDIO 1.0 CONTROLS ── */
                             <>
                                 {/* 1. Product Reference Photos (TOP) */}
-                                <div className="space-y-2 p-3.5 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/15 transition-all">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-[10px] font-black uppercase tracking-wider text-white/80 flex items-center gap-1.5">
-                                            <span>📸</span>
-                                            <span>Product Reference Photos</span>
-                                            <span className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-bold">
-                                                {adsImages.length}/10
-                                            </span>
-                                        </label>
-                                        {adsImages.length > 0 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setAdsImages([])}
-                                                className="text-[8.5px] font-bold text-red-400 hover:text-red-300 uppercase tracking-wider cursor-pointer"
-                                            >
-                                                Clear All
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {/* Prominent, Spacious Dropzone Box */}
-                                    <button
-                                        type="button"
-                                        onClick={() => adsFileInputRef.current?.click()}
-                                        disabled={adsImages.length >= 10}
-                                        className={cn(
-                                            "w-full py-4 px-4 rounded-xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group text-center select-none",
-                                            adsImages.length >= 10
-                                                ? "border-white/10 bg-white/[0.01] opacity-50 cursor-not-allowed"
-                                                : "border-white/20 hover:border-rose-400/80 bg-black/40 hover:bg-rose-500/[0.04]"
-                                        )}
-                                    >
-                                        <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/25 flex items-center justify-center text-rose-400 group-hover:scale-110 transition-transform">
-                                            {adsIsUploading ? (
-                                                <Loader2 className="w-5 h-5 animate-spin text-rose-400" />
-                                            ) : (
-                                                <Upload className="w-5 h-5" />
+                                <div className="space-y-3 p-3 rounded-2xl bg-white/[0.02] border border-white/8">
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-black uppercase tracking-wider text-white/70 flex items-center gap-1.5">
+                                                <span>📸</span>
+                                                <span>Product Reference Photos ({adsImages.length}/10)</span>
+                                            </label>
+                                            {adsImages.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAdsImages([])}
+                                                    className="text-[8px] font-bold text-red-400 hover:text-red-300 uppercase tracking-wider cursor-pointer"
+                                                >
+                                                    Clear All
+                                                </button>
                                             )}
                                         </div>
-                                        <div className="space-y-0.5">
-                                            <p className="text-xs font-bold text-white/90 group-hover:text-rose-300 transition-colors">
-                                                {adsIsUploading ? "Processing product photos…" : "+ Click or drop product photos"}
-                                            </p>
-                                            <p className="text-[9px] text-white/40 font-mono">
-                                                Up to 10 photos · PNG, JPG, WEBP · High-res recommended
-                                            </p>
-                                        </div>
-                                    </button>
 
-                                    {/* Thumbnails */}
-                                    {adsImages.length > 0 && (
-                                        <div className="grid grid-cols-5 gap-1.5 pt-1">
+                                        <div className="grid grid-cols-4 gap-2">
                                             {adsImages.map((url, i) => (
-                                                <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-white/15 group shadow-sm bg-black/60">
+                                                <div key={i} className="relative group aspect-square rounded-xl overflow-hidden border border-rose-500/40 bg-black/60 shadow-md">
                                                     <img src={url} alt={`product-${i}`} className="w-full h-full object-cover" />
                                                     <button
                                                         type="button"
                                                         onClick={() => setAdsImages(prev => prev.filter((_, idx) => idx !== i))}
-                                                        className="absolute top-0.5 right-0.5 p-1 rounded-full bg-black/80 hover:bg-red-500 text-white transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
-                                                        title="Remove photo"
+                                                        className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
                                                     >
-                                                        <X size={10} />
+                                                        <X className="w-4 h-4 text-white" />
                                                     </button>
                                                 </div>
                                             ))}
+                                            {adsImages.length < 10 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => adsFileInputRef.current?.click()}
+                                                    disabled={adsIsUploading}
+                                                    className="aspect-square rounded-xl border-2 border-dashed border-white/20 hover:border-rose-400/60 bg-white/[0.02] hover:bg-rose-500/5 flex flex-col items-center justify-center gap-1 text-white/40 hover:text-white transition-all cursor-pointer group"
+                                                >
+                                                    {adsIsUploading ? (
+                                                        <Loader2 className="w-4 h-4 animate-spin text-rose-400" />
+                                                    ) : (
+                                                        <Plus className="w-4 h-4 group-hover:scale-110 transition-transform text-rose-400" />
+                                                    )}
+                                                    <span className="text-[8px] font-bold uppercase tracking-wider">
+                                                        {adsIsUploading ? "Uploading…" : "Add Photo"}
+                                                    </span>
+                                                </button>
+                                            )}
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
 
                                 {/* 2. Creative Brief / Vision (BELOW PHOTOS) */}
