@@ -69,6 +69,61 @@ const MARKETING_CAMPAIGN_TYPES = [
   },
 ];
 
+const ADS_STUDIO_ENGINES = [
+  { id: 'higgsfield/ads-studio/v1.0', label: 'Ads Studio 1.0', icon: '⚡', badge: '1.0 Workflow', cost: 3, desc: 'Brief-to-ad commercial creative workflow with product preservation' },
+  { id: 'openai-2.5-sunburst', label: 'Studio Sunburst 2.5', icon: '☀️', badge: 'Billboard Pro', cost: 2.5, desc: 'Highest fidelity advertising typography and lighting' },
+  { id: 'openai-2.5-flare', label: 'Studio Flare 2.5', icon: '✨', badge: 'Ultra-Fast', cost: 1.5, desc: 'Fast, high-contrast commercial social feed ads' },
+  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', badge: '4K Studio', cost: 1, desc: 'Google 4K photorealistic studio rendering' },
+];
+
+const ADS_NICHES = [
+  'Beauty & Skincare',
+  'Tech & Gadgets',
+  'Fashion & Apparel',
+  'Food & Beverage',
+  'Fitness & Wellness',
+  'Luxury Goods & Watches',
+  'Home & Furniture',
+  'SaaS & Digital Apps'
+];
+
+const ADS_TARGET_AUDIENCES = [
+  'Gen Z Trendsetters',
+  'Busy Working Professionals',
+  'High-Net-Worth Luxury',
+  'Fitness Enthusiasts',
+  'Eco-Conscious Shoppers',
+  'Moms & Families'
+];
+
+const ADS_ASPECT_RATIOS = [
+  { value: '1:1', label: '1:1 Square', desc: 'Instagram Feed / Post', ratio: '1:1' },
+  { value: '4:5', label: '4:5 Portrait', desc: 'High-Converting Feed', ratio: '4:5' },
+  { value: '9:16', label: '9:16 Vertical', desc: 'Stories, Reels & TikTok', ratio: '9:16' },
+  { value: '16:9', label: '16:9 Banner', desc: 'Website & YouTube Ads', ratio: '16:9' },
+  { value: '3:4', label: '3:4 Editorial', desc: 'Magazine Commercial', ratio: '3:4' },
+  { value: '21:9', label: '21:9 Cinema', desc: 'Panoramic Billboard', ratio: '21:9' },
+];
+
+const ADS_PROMPT_PRESETS = [
+  {
+    label: 'Luxury Minimal',
+    prompt: 'Minimalist luxury hero advertisement. The product floats elegantly over polished dark slate and soft water ripples. Dramatic volumetric rim lighting, subtle morning mist, ultra-clean commercial composition.'
+  },
+  {
+    label: 'Viral Social Pop',
+    prompt: 'Bold vibrant commercial ad. Punchy candy-colored pastel background with high contrast shadows. Dynamic floating elements, energetic studio strobe lights, crisp billboard clarity.'
+  },
+  {
+    label: 'Organic Lifestyle',
+    prompt: 'Warm golden hour lifestyle advertisement. The product placed naturally on a raw light oak wooden surface next to fresh botanical flora. Soft sun flare, organic textures, editorial magazine aesthetic.'
+  },
+  {
+    label: 'Cyber Studio',
+    prompt: 'Futuristic commercial visual with sleek neon cyber accents. Dark reflective obsidian surface, moody anamorphic blue and violet backlight, ultra-sharp reflections, 8K commercial product showcase.'
+  }
+];
+
 const DURATION_OPTIONS = [
   { value: 5,  label: '5 Seconds',  desc: 'Quick burst — ideal for ads' },
   { value: 8,  label: '8 Seconds',  desc: 'Standard — cinematic shots' },
@@ -96,9 +151,11 @@ const OMNI_DURATION_OPTIONS = [
 ];
 
 const SIZE_OPTIONS = [
-  { value: '1024x1024', label: '1:1 Square (Feed)',    desc: '1:1 social post & carousel', ratio: '1:1' },
-  { value: '1024x1792', label: '9:16 Story / Reel',     desc: '9:16 vertical video & story', ratio: '9:16' },
-  { value: '1792x1024', label: '16:9 Landscape', desc: '16:9 widescreen & website', ratio: '16:9' },
+  { value: '1024x1024', label: '1:1 Square (Feed)',       desc: '1:1 social post & carousel', ratio: '1:1' },
+  { value: '1024x1365', label: '3:4 Editorial Portrait',  desc: '3:4 magazine & commercial',  ratio: '3:4' },
+  { value: '1080x1350', label: '4:5 Social Portrait',      desc: '4:5 high-converting feed',   ratio: '4:5' },
+  { value: '1024x1792', label: '9:16 Story / Reel',        desc: '9:16 vertical video & story', ratio: '9:16' },
+  { value: '1792x1024', label: '16:9 Landscape',           desc: '16:9 widescreen & website', ratio: '16:9' },
 ];
 
 
@@ -461,7 +518,7 @@ const VIDEO_TEMPLATES = {
 
 const LS_KEY = 'marketing_custom_templates';
 
-export default function MarketingStudio() {
+export default function MarketingStudio({ initialWorkspace = 'marketing' }) {
     const userProfile = useAppStore(state => state.userProfile);
     const currentUserId = userProfile?.id || null;
     // Per-user localStorage key so admin-generated images never bleed into other users' galleries
@@ -469,6 +526,179 @@ export default function MarketingStudio() {
     const userShorts = useAppStore(state => state.userShorts);
     const userCredits = userShorts ?? 0;
     const isAdmin = userProfile?.email === 'premspaw@gmail.com';
+
+    // Workspace mode: 'marketing' | 'ads-studio'
+    const [workspaceMode, setWorkspaceMode] = useState(initialWorkspace);
+    useEffect(() => {
+        if (initialWorkspace) setWorkspaceMode(initialWorkspace);
+    }, [initialWorkspace]);
+
+    // Ads Studio State
+    const [adsPrompt, setAdsPrompt] = useState('');
+    const [adsNiche, setAdsNiche] = useState('Beauty & Skincare');
+    const [adsCustomNiche, setAdsCustomNiche] = useState('');
+    const [adsAudience, setAdsAudience] = useState('Gen Z Trendsetters');
+    const [adsCustomAudience, setAdsCustomAudience] = useState('');
+    const [adsAspectRatio, setAdsAspectRatio] = useState('1:1');
+    const [adsBatchSize, setAdsBatchSize] = useState(1);
+    const [adsEngine, setAdsEngine] = useState('higgsfield/ads-studio/v1.0');
+    const [adsImages, setAdsImages] = useState([]);
+    const [adsIsUploading, setAdsIsUploading] = useState(false);
+    const adsFileInputRef = useRef(null);
+
+    const handleAdsFileUpload = async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        const remaining = 10 - adsImages.length;
+        if (remaining <= 0) {
+            alert('Maximum 10 product reference images allowed.');
+            return;
+        }
+
+        const toUpload = files.slice(0, remaining);
+        setAdsIsUploading(true);
+
+        try {
+            // 1. Instantly read all files in parallel so thumbnails appear in 0ms!
+            const localPreviews = await Promise.all(toUpload.map(file => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve({ file, dataUrl: reader.result });
+                    reader.onerror = () => resolve({ file, dataUrl: null });
+                    reader.readAsDataURL(file);
+                });
+            }));
+
+            const validPreviews = localPreviews.filter(p => p.dataUrl).map(p => p.dataUrl);
+            setAdsImages(prev => [...prev, ...validPreviews]);
+
+            // 2. Concurrently upload all files to backend cloud CDN in parallel
+            Promise.all(localPreviews.map(async ({ file, dataUrl }) => {
+                if (!file || !dataUrl) return;
+                try {
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    formData.append('userId', currentUserId || 'anonymous');
+
+                    const resp = await fetch(getApiUrl('/api/ads-studio/upload-asset'), {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data.url) {
+                            setAdsImages(prev => prev.map(u => u === dataUrl ? data.url : u));
+                        }
+                    }
+                } catch (syncErr) {
+                    console.warn('[Ads Upload Sync]:', syncErr.message);
+                }
+            })).finally(() => {
+                setAdsIsUploading(false);
+            });
+
+        } catch (err) {
+            console.error('[Ads Upload Error]:', err);
+            setAdsIsUploading(false);
+        } finally {
+            if (adsFileInputRef.current) adsFileInputRef.current.value = '';
+        }
+    };
+
+    const handleAdsGenerate = async () => {
+        if (!adsPrompt.trim()) {
+            alert('Please enter your ad creative brief or vision first.');
+            return;
+        }
+
+        const activeEng = ADS_STUDIO_ENGINES.find(e => e.id === adsEngine) || ADS_STUDIO_ENGINES[0];
+        const totalCredits = (activeEng?.cost || 3) * adsBatchSize;
+
+        if (userCredits < totalCredits) {
+            alert(`Insufficient Shorts! You need ${totalCredits}⚡, but you only have ${userCredits}⚡. Redirecting to Pricing...`);
+            useAppStore.getState().setActiveTab('pricing');
+            return;
+        }
+
+        setIsGenerating(true);
+        setPollMsg('Ads Studio 1.0 rendering creative…');
+
+        try {
+            const finalNiche = adsCustomNiche.trim() || adsNiche;
+            const finalAudience = adsCustomAudience.trim() || adsAudience;
+
+            const resp = await fetch(getApiUrl('/api/ads-studio/generate'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': currentUserId || 'anonymous'
+                },
+                body: JSON.stringify({
+                    prompt: adsPrompt.trim(),
+                    niche: finalNiche,
+                    target_audience: finalAudience,
+                    aspect_ratio: adsAspectRatio,
+                    batch_size: adsBatchSize,
+                    image_urls: adsImages,
+                    engine: adsEngine,
+                    sync: true
+                })
+            });
+
+            const data = await resp.json();
+            if (!resp.ok || !data.success) {
+                throw new Error(data.error || 'Ads generation failed.');
+            }
+
+            const images = data.images || [];
+            if (images.length === 0) throw new Error('No images returned by Ads Studio 1.0.');
+
+            // Display on the center hero canvas
+            setGeneratedImage(images[0].url);
+
+            // Resolve actual pixel dimensions for the chosen aspect ratio
+            const ADS_SIZE_MAP = {
+                '1:1': '1024x1024',
+                '3:4': '1024x1365',
+                '4:5': '1080x1350',
+                '9:16': '1024x1792',
+                '16:9': '1792x1024',
+                '21:9': '1792x768',
+            };
+            const resolvedSize = ADS_SIZE_MAP[adsAspectRatio] || (adsAspectRatio?.includes(':') ? adsAspectRatio.replace(':', 'x') : '1024x1024');
+
+            // Add all images to generation history & unified store
+            const newAssets = images.map((img, i) => ({
+                url: img.url,
+                ts: Date.now() + i,
+                size: resolvedSize,
+                aspect: adsAspectRatio,
+                ratio: adsAspectRatio,
+                type: 'image',
+                folder: 'marketing-ads',
+                prompt: adsPrompt.trim(),
+                engine: activeEng.label
+            }));
+
+            newAssets.forEach(a => useAppStore.getState().addUnifiedAsset(a));
+
+            setGenerationHistory(prev => {
+                const next = [...newAssets, ...prev].slice(0, 50);
+                try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { void 0; }
+                return next;
+            });
+
+            refreshShorts();
+        } catch (err) {
+            console.error('[Ads Studio Error]:', err);
+            alert('Ads Studio generation failed: ' + (err.message || 'Unknown error'));
+        } finally {
+            setIsGenerating(false);
+            setPollMsg('');
+        }
+    };
     const [activeCategory, setActiveCategory] = useState('food');
     const [templateTab, setTemplateTab] = useState('image'); // 'image' | 'video'
     const [activeVideoCategory, setActiveVideoCategory] = useState('product');
@@ -511,7 +741,7 @@ export default function MarketingStudio() {
     const [upscalingItems, setUpscalingItems] = useState({});
     const [marketingCampaignType, setMarketingCampaignType] = useState('carousel');
     const [showGeneratorPanel, setShowGeneratorPanel] = useState(true);
-    const [showTemplatePanel, setShowTemplatePanel] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1280 : false);
+    const [showTemplatePanel, setShowTemplatePanel] = useState(false);
     const [customTemplates, setCustomTemplates] = useState({ food: [], restaurant: [], realestate: [], medical: [], other: [] });
     const [showAddModal, setShowAddModal] = useState(false);
     const [templatesLoading, setTemplatesLoading] = useState(true);
@@ -855,8 +1085,12 @@ export default function MarketingStudio() {
 
     const getGeminiAspectRatio = (size) => {
         if (!size) return '1:1';
-        if (size.includes('1536x1024') || size.includes('2048x1152') || size.includes('3840x2160') || size.includes('1792x1024')) return '16:9';
-        if (size.includes('1024x1536') || size.includes('2160x3840') || size.includes('1024x1792')) return '9:16';
+        const str = String(size).toLowerCase().trim();
+        if (str === '3:4' || str === '3/4' || str.includes('1024x1365') || str.includes('768x1024')) return '3:4';
+        if (str === '4:3' || str === '4/3' || str.includes('1365x1024') || str.includes('1024x768')) return '4:3';
+        if (str === '4:5' || str === '4/5' || str.includes('1080x1350')) return '3:4'; // Closest native Google GenAI portrait aspect
+        if (str === '16:9' || str === '16/9' || str.includes('1536x1024') || str.includes('2048x1152') || str.includes('3840x2160') || str.includes('1792x1024') || str.includes('21:9')) return '16:9';
+        if (str === '9:16' || str === '9/16' || str.includes('1024x1536') || str.includes('2160x3840') || str.includes('1024x1792')) return '9:16';
         return '1:1';
     };
 
@@ -1011,14 +1245,42 @@ Any written text, characters, letters, numbers, and labels inside the image must
         window.open(url, '_blank', 'noopener,noreferrer');
     };
 
-    // Derive CSS aspect-ratio string from a WxH size string (e.g. '1536x1024' → '1536/1024')
-    const getAspectRatio = (size) => {
-        if (!size || size === 'auto') return '9/16';
-        const parts = size.split('x');
-        if (parts.length !== 2) return '9/16';
-        const [w, h] = parts.map(Number);
-        if (!w || !h) return '9/16';
-        return `${w}/${h}`;
+    // Derive CSS aspect-ratio string from an item object, ratio string (e.g. '3:4'), or WxH size string (e.g. '1024x1365')
+    const getAspectRatio = (input) => {
+        if (!input) return '1/1';
+        let val = input;
+        if (typeof input === 'object') {
+            val = input.aspect || input.aspect_ratio || input.ratio || input.size || '1/1';
+        }
+        if (typeof val !== 'string') return '1/1';
+        const trimmed = val.trim();
+        if (!trimmed || trimmed === 'auto') return '1/1';
+
+        // Check for colon notation e.g. '3:4', '16:9', '9:16', '1:1', '21:9', '4:5'
+        if (trimmed.includes(':')) {
+            const parts = trimmed.split(':').map(Number);
+            if (parts.length === 2 && parts[0] > 0 && parts[1] > 0) {
+                return `${parts[0]}/${parts[1]}`;
+            }
+        }
+
+        // Check for slash notation e.g. '3/4', '16/9', '9/16', '1/1', '21/9', '4/5'
+        if (trimmed.includes('/')) {
+            const parts = trimmed.split('/').map(Number);
+            if (parts.length === 2 && parts[0] > 0 && parts[1] > 0) {
+                return `${parts[0]}/${parts[1]}`;
+            }
+        }
+
+        // Check for WxH notation e.g. '1024x1365', '1792x1024', '1080x1350'
+        if (trimmed.toLowerCase().includes('x')) {
+            const parts = trimmed.toLowerCase().split('x').map(Number);
+            if (parts.length === 2 && parts[0] > 0 && parts[1] > 0) {
+                return `${parts[0]}/${parts[1]}`;
+            }
+        }
+
+        return '1/1';
     };
 
     const addIngredient = () => {
@@ -1841,6 +2103,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
         <>
         {/* Hidden file inputs — at root so pointer-events/stacking context never blocks them */}
         <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" multiple />
+        <input type="file" ref={adsFileInputRef} onChange={handleAdsFileUpload} className="hidden" accept="image/*" multiple />
         <input type="file" ref={logoInputRef} className="hidden" accept="image/*"
             onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = async ev => { const norm = await normalizeImageForOpenAI(ev.target.result); setLogoImage(norm); }; r.readAsDataURL(f); }} />
         <input type="file" ref={firstFrameRef} className="hidden" accept="image/*"
@@ -1893,7 +2156,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
             <div className="flex-1 flex overflow-hidden relative">
                 {/* ── SECTION 1: Marketing Studio Generator Sidebar (Left) ── */}
                 <div className={cn(
-                    "border-r border-white/10 bg-[#0c0c10] flex-col h-full transition-all duration-300 relative shrink-0",
+                    "border-r border-white/10 bg-[#0c0c10] flex flex-col h-full min-h-0 transition-all duration-300 relative shrink-0",
                     showGeneratorPanel
                         ? "flex w-full md:w-[360px] lg:w-[390px] xl:w-[410px]"
                         : "hidden"
@@ -1902,12 +2165,21 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     {/* Header */}
                     <div className="p-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/60 backdrop-blur-md">
                         <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-[#c8f135]/15 border border-[#c8f135]/30 flex items-center justify-center">
-                                <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" />
+                            <div className={cn(
+                                "w-7 h-7 rounded-lg flex items-center justify-center transition-all",
+                                workspaceMode === 'ads-studio'
+                                    ? "bg-rose-500/20 border border-rose-500/40 text-rose-400"
+                                    : "bg-[#c8f135]/15 border border-[#c8f135]/30 text-[#c8f135]"
+                            )}>
+                                <Sparkles className="w-3.5 h-3.5" />
                             </div>
                             <div>
-                                <h2 className="text-xs font-black uppercase tracking-wider text-white">Marketing Studio</h2>
-                                <p className="text-[8px] text-white/40 font-mono">Viral Marketing Engine</p>
+                                <h2 className="text-xs font-black uppercase tracking-wider text-white">
+                                    {workspaceMode === 'ads-studio' ? 'Ads Studio 1.0' : 'Marketing Studio'}
+                                </h2>
+                                <p className="text-[8px] text-white/40 font-mono">
+                                    {workspaceMode === 'ads-studio' ? 'Brief-to-Ad Commercial Workflow' : 'Viral Marketing Engine'}
+                                </p>
                             </div>
                         </div>
 
@@ -1916,44 +2188,286 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                 <Zap className="w-3 h-3 fill-amber-400 text-amber-400" />
                                 <span>{userCredits}⚡</span>
                             </div>
-
                         </div>
                     </div>
 
-                    {/* Image / Video Mode Switcher */}
+                    {/* Mode Switcher: Campaign Studio vs Ads Studio 1.0 */}
                     <div className="p-2 border-b border-white/5 bg-black/30 shrink-0">
                         <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/5 border border-white/8">
                             <button
                                 type="button"
-                                onClick={() => setGenerateMode("image")}
+                                onClick={() => setWorkspaceMode('marketing')}
                                 className={cn(
-                                    "flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
-                                    generateMode === "image"
+                                    "flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                                    workspaceMode === 'marketing'
                                         ? "bg-white text-black shadow-md font-black"
                                         : "text-white/50 hover:text-white"
                                 )}
                             >
-                                <ImageIcon className="w-3.5 h-3.5" />
-                                <span>Image & Carousels</span>
+                                <Zap className="w-3.5 h-3.5" />
+                                <span>Campaign Studio</span>
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setGenerateMode("video")}
+                                onClick={() => setWorkspaceMode('ads-studio')}
                                 className={cn(
-                                    "flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
-                                    generateMode === "video"
-                                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md font-black"
-                                        : "text-white/50 hover:text-white"
+                                    "flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                                    workspaceMode === 'ads-studio'
+                                        ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md font-black"
+                                        : "text-rose-400/80 hover:text-rose-300"
                                 )}
                             >
-                                <Video className="w-3.5 h-3.5" />
-                                <span>Video Studio</span>
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>Ads Studio 1.0</span>
                             </button>
                         </div>
                     </div>
 
+                    {/* Image / Video Sub-mode switcher (ONLY in Campaign Studio mode) */}
+                    {workspaceMode === 'marketing' && (
+                        <div className="p-2 border-b border-white/5 bg-black/20 shrink-0">
+                            <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-white/5 border border-white/8">
+                                <button
+                                    type="button"
+                                    onClick={() => setGenerateMode("image")}
+                                    className={cn(
+                                        "flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-all",
+                                        generateMode === "image"
+                                            ? "bg-white/20 text-white font-bold"
+                                            : "text-white/40 hover:text-white"
+                                    )}
+                                >
+                                    <ImageIcon className="w-3 h-3" />
+                                    <span>Image & Carousels</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setGenerateMode("video")}
+                                    className={cn(
+                                        "flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-all",
+                                        generateMode === "video"
+                                            ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold"
+                                            : "text-white/40 hover:text-white"
+                                    )}
+                                >
+                                    <Video className="w-3 h-3" />
+                                    <span>Video Studio</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Scrollable Form Body */}
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 space-y-3.5">
+                    <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3.5 space-y-3.5">
+                        {workspaceMode === 'ads-studio' ? (
+                            /* ── ADS STUDIO 1.0 CONTROLS ── */
+                            <>
+                                {/* 1. Product Reference Photos (TOP) */}
+                                <div className="space-y-2 p-3.5 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/15 transition-all">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-black uppercase tracking-wider text-white/80 flex items-center gap-1.5">
+                                            <span>📸</span>
+                                            <span>Product Reference Photos</span>
+                                            <span className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-bold">
+                                                {adsImages.length}/10
+                                            </span>
+                                        </label>
+                                        {adsImages.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setAdsImages([])}
+                                                className="text-[8.5px] font-bold text-red-400 hover:text-red-300 uppercase tracking-wider cursor-pointer"
+                                            >
+                                                Clear All
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Prominent, Spacious Dropzone Box */}
+                                    <button
+                                        type="button"
+                                        onClick={() => adsFileInputRef.current?.click()}
+                                        disabled={adsImages.length >= 10}
+                                        className={cn(
+                                            "w-full py-4 px-4 rounded-xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group text-center select-none",
+                                            adsImages.length >= 10
+                                                ? "border-white/10 bg-white/[0.01] opacity-50 cursor-not-allowed"
+                                                : "border-white/20 hover:border-rose-400/80 bg-black/40 hover:bg-rose-500/[0.04]"
+                                        )}
+                                    >
+                                        <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/25 flex items-center justify-center text-rose-400 group-hover:scale-110 transition-transform">
+                                            {adsIsUploading ? (
+                                                <Loader2 className="w-5 h-5 animate-spin text-rose-400" />
+                                            ) : (
+                                                <Upload className="w-5 h-5" />
+                                            )}
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <p className="text-xs font-bold text-white/90 group-hover:text-rose-300 transition-colors">
+                                                {adsIsUploading ? "Processing product photos…" : "+ Click or drop product photos"}
+                                            </p>
+                                            <p className="text-[9px] text-white/40 font-mono">
+                                                Up to 10 photos · PNG, JPG, WEBP · High-res recommended
+                                            </p>
+                                        </div>
+                                    </button>
+
+                                    {/* Thumbnails */}
+                                    {adsImages.length > 0 && (
+                                        <div className="grid grid-cols-5 gap-1.5 pt-1">
+                                            {adsImages.map((url, i) => (
+                                                <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-white/15 group shadow-sm bg-black/60">
+                                                    <img src={url} alt={`product-${i}`} className="w-full h-full object-cover" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setAdsImages(prev => prev.filter((_, idx) => idx !== i))}
+                                                        className="absolute top-0.5 right-0.5 p-1 rounded-full bg-black/80 hover:bg-red-500 text-white transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                                                        title="Remove photo"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 2. Creative Brief / Vision (BELOW PHOTOS) */}
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-black uppercase tracking-wider text-rose-400 flex items-center gap-1">
+                                            <span>✍️</span>
+                                            <span>Ad Creative Brief / Vision</span>
+                                        </label>
+                                        <span className="text-[9px] font-mono text-white/30">{adsPrompt.length}/8000</span>
+                                    </div>
+                                    <textarea
+                                        value={adsPrompt}
+                                        onChange={e => setAdsPrompt(e.target.value)}
+                                        placeholder="Describe your ad creative concept (e.g. Luxury skincare bottle resting on black volcanic sand at golden hour, rim lighting, sleek mist...)"
+                                        rows={4}
+                                        className="w-full bg-[#141419] border border-white/15 focus:border-rose-400 rounded-xl p-3 text-xs text-white placeholder:text-white/25 outline-none resize-none leading-relaxed transition-all"
+                                    />
+
+                                    {/* Presets */}
+                                    <div className="flex flex-wrap gap-1 pt-1">
+                                        <span className="text-[8px] font-black uppercase text-white/30 self-center">Presets:</span>
+                                        {ADS_PROMPT_PRESETS.map((p, idx) => (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => setAdsPrompt(p.prompt)}
+                                                className="text-[9px] px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white transition-all font-medium cursor-pointer"
+                                            >
+                                                {p.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 3. Industry Niche */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-wider text-white/60 block">
+                                        Industry Niche
+                                    </label>
+                                    <div className="flex flex-wrap gap-1">
+                                        {ADS_NICHES.map(n => {
+                                            const isSel = adsNiche === n && !adsCustomNiche;
+                                            return (
+                                                <button
+                                                    key={n}
+                                                    type="button"
+                                                    onClick={() => { setAdsNiche(n); setAdsCustomNiche(''); }}
+                                                    className={cn(
+                                                        "text-[9px] font-bold px-2 py-0.5 rounded-lg border transition-all cursor-pointer",
+                                                        isSel ? "bg-rose-500/20 border-rose-500/60 text-rose-300" : "bg-[#141419] border-white/10 hover:border-white/20 text-white/60"
+                                                    )}
+                                                >
+                                                    {n}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <input
+                                        value={adsCustomNiche}
+                                        onChange={e => setAdsCustomNiche(e.target.value)}
+                                        placeholder="Or custom niche (e.g. Specialty Matcha Tea)..."
+                                        className="w-full bg-[#141419] border border-white/10 focus:border-rose-400 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder:text-white/25 outline-none"
+                                    />
+                                </div>
+
+                                {/* 4. Target Audience */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-wider text-white/60 block">
+                                        Target Audience
+                                    </label>
+                                    <div className="flex flex-wrap gap-1">
+                                        {ADS_TARGET_AUDIENCES.map(a => {
+                                            const isSel = adsAudience === a && !adsCustomAudience;
+                                            return (
+                                                <button
+                                                    key={a}
+                                                    type="button"
+                                                    onClick={() => { setAdsAudience(a); setAdsCustomAudience(''); }}
+                                                    className={cn(
+                                                        "text-[9px] font-bold px-2 py-0.5 rounded-lg border transition-all cursor-pointer",
+                                                        isSel ? "bg-rose-500/20 border-rose-500/60 text-rose-300" : "bg-[#141419] border-white/10 hover:border-white/20 text-white/60"
+                                                    )}
+                                                >
+                                                    {a}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <input
+                                        value={adsCustomAudience}
+                                        onChange={e => setAdsCustomAudience(e.target.value)}
+                                        placeholder="Or custom audience (e.g. Urban sneakerheads aged 18-28)..."
+                                        className="w-full bg-[#141419] border border-white/10 focus:border-rose-400 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder:text-white/25 outline-none"
+                                    />
+                                </div>
+
+                                {/* 5. Aspect Ratio & Variations in ONE ROW */}
+                                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
+                                    <div className="space-y-1 min-w-0">
+                                        <label className="text-[10px] font-black uppercase tracking-wider text-rose-400 block truncate">
+                                            Aspect Ratio
+                                        </label>
+                                        <DropUpSelect
+                                            value={adsAspectRatio}
+                                            onChange={val => setAdsAspectRatio(val)}
+                                            options={ADS_ASPECT_RATIOS}
+                                            accentColor="fuchsia"
+                                            minMenuWidth={220}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block truncate">
+                                                Variations
+                                            </label>
+                                            <span className="text-[9px] font-mono text-[#c8f135] font-bold">{adsBatchSize} {adsBatchSize === 1 ? 'Ad' : 'Ads'}</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min={1}
+                                            max={8}
+                                            value={adsBatchSize}
+                                            onChange={e => setAdsBatchSize(Number(e.target.value))}
+                                            className="w-full accent-[#c8f135] cursor-pointer mt-1"
+                                        />
+                                        <div className="flex justify-between text-[7.5px] text-white/30 font-mono">
+                                            <span>1</span>
+                                            <span>4</span>
+                                            <span>8 Ads</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            /* ── CAMPAIGN STUDIO CONTROLS ── */
+                            <>
                         {generateMode === "image" ? (
                             <>
                                 {/* 1. TOP: Placeholders & Media Uploads */}
@@ -2284,37 +2798,87 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                 </div>
                             </>
                         )}
-                    </div>
+                    </>
+                )}
+            </div>
 
                     {/* Bottom Fixed Sticky Generate Action — always visible above navigation */}
-                    <div className="p-2.5 pb-2 md:pb-2 border-t border-white/10 bg-[#0c0c10]/95 backdrop-blur-xl shrink-0 z-20 shadow-2xl">
-                        <button
-                            type="button"
-                            onClick={handleGenerate}
-                            disabled={isGenerating}
-                            className={cn(
-                                "w-full py-3.5 px-4 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl transition-all cursor-pointer active:scale-95",
-                                isGenerating
-                                    ? "bg-white/10 text-white/30 cursor-not-allowed"
-                                    : generateMode === "video"
-                                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:scale-[1.02] shadow-pink-900/30"
-                                        : "bg-gradient-to-r from-lime-400 to-emerald-500 text-black hover:scale-[1.02] shadow-[0_0_20px_rgba(200,241,53,0.35)]"
-                            )}
-                        >
-                            {isGenerating ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    <span>Rendering {generateMode === "video" ? "Video" : "Asset"}…</span>
-                                </>
-                            ) : (
-                                <>
-                                    {generateMode === "video" ? <Video className="w-4 h-4" /> : <Wand2 className="w-4 h-4" />}
-                                    <span>Generate {generateMode === "video" ? "Video" : "Image"}</span>
-                                    <span className="opacity-40">|</span>
-                                    <span className="font-mono text-xs">{getRequiredCredits(generateMode === "image" ? imageEngine : videoEngine)}⚡</span>
-                                </>
-                            )}
-                        </button>
+                    <div className="p-2.5 pb-2 md:pb-2 border-t border-white/10 bg-[#0c0c10]/95 backdrop-blur-xl shrink-0 z-20 shadow-2xl space-y-2 mt-auto">
+                        {workspaceMode === 'ads-studio' ? (
+                            <>
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-black uppercase tracking-wider text-white/60 flex items-center gap-1.5">
+                                            <span>⚡</span>
+                                            <span>Ads Engine</span>
+                                        </label>
+                                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-lime-400/10 text-lime-400 border border-lime-400/30 uppercase">
+                                            {ADS_STUDIO_ENGINES.find(e => e.id === adsEngine)?.badge || "1.0 Workflow"}
+                                        </span>
+                                    </div>
+                                    <DropUpSelect
+                                        value={adsEngine}
+                                        onChange={val => setAdsEngine(val)}
+                                        options={ADS_STUDIO_ENGINES}
+                                        accentColor="lime"
+                                        minMenuWidth={280}
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleAdsGenerate}
+                                    disabled={isGenerating}
+                                    className={cn(
+                                        "w-full py-3.5 px-4 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl transition-all cursor-pointer active:scale-95",
+                                        isGenerating
+                                            ? "bg-white/10 text-white/30 cursor-not-allowed"
+                                            : "bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400 text-white hover:scale-[1.02] shadow-[0_0_20px_rgba(244,63,94,0.35)]"
+                                    )}
+                                >
+                                    {isGenerating ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Creating Ad Campaign…</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Wand2 className="w-4 h-4" />
+                                            <span>Generate Ads Creative</span>
+                                            <span className="opacity-40">|</span>
+                                            <span className="font-mono text-xs">{((ADS_STUDIO_ENGINES.find(e => e.id === adsEngine)?.cost || 3) * adsBatchSize)}⚡</span>
+                                        </>
+                                    )}
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleGenerate}
+                                disabled={isGenerating}
+                                className={cn(
+                                    "w-full py-3.5 px-4 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl transition-all cursor-pointer active:scale-95",
+                                    isGenerating
+                                        ? "bg-white/10 text-white/30 cursor-not-allowed"
+                                        : generateMode === "video"
+                                            ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:scale-[1.02] shadow-pink-900/30"
+                                            : "bg-gradient-to-r from-lime-400 to-emerald-500 text-black hover:scale-[1.02] shadow-[0_0_20px_rgba(200,241,53,0.35)]"
+                                )}
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Rendering {generateMode === "video" ? "Video" : "Asset"}…</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        {generateMode === "video" ? <Video className="w-4 h-4" /> : <Wand2 className="w-4 h-4" />}
+                                        <span>Generate {generateMode === "video" ? "Video" : "Image"}</span>
+                                        <span className="opacity-40">|</span>
+                                        <span className="font-mono text-xs">{getRequiredCredits(generateMode === "image" ? imageEngine : videoEngine)}⚡</span>
+                                    </>
+                                )}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -2324,7 +2888,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     (showTemplatePanel || showGeneratorPanel) ? "hidden md:flex" : "flex"
                 )}>
                     {/* Vault Header Bar */}
-                    <div className="h-11 border-b border-white/10 px-4 flex items-center justify-between shrink-0 bg-black/50 backdrop-blur-md">
+                    <div className="h-11 border-b border-white/10 px-3 sm:px-4 flex items-center justify-between shrink-0 bg-black/50 backdrop-blur-md">
                         <div className="flex items-center gap-2">
                             <Layers className="w-4 h-4 text-lime-400" />
                             <span className="text-[11px] font-black uppercase tracking-wider text-white">Asset Vault</span>
@@ -2333,11 +2897,27 @@ Any written text, characters, letters, numbers, and labels inside the image must
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
+                            {/* Toggle Templates Drawer Button (Desktop & Mobile) */}
+                            <button
+                                type="button"
+                                onClick={() => setShowTemplatePanel(prev => !prev)}
+                                className={cn(
+                                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer",
+                                    showTemplatePanel
+                                        ? "bg-orange-500/20 text-orange-300 border-orange-500/40 shadow-sm"
+                                        : "bg-white/5 hover:bg-white/10 text-white/70 border-white/10 hover:border-white/20"
+                                )}
+                                title={showTemplatePanel ? "Close Template Drawer" : "Open Template Drawer"}
+                            >
+                                <LayoutGrid className="w-3.5 h-3.5 text-orange-400" />
+                                <span>{showTemplatePanel ? "Hide Templates" : "Browse Templates"}</span>
+                            </button>
+
                             {/* Mobile button to open Studio */}
                             <button
                                 type="button"
                                 onClick={() => setShowGeneratorPanel(true)}
-                                className="md:hidden flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#c8f135] text-black font-black text-[10px] uppercase tracking-wider shadow-lg"
+                                className="md:hidden flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#c8f135] text-black font-black text-[10px] uppercase tracking-wider shadow-lg cursor-pointer"
                             >
                                 <Wand2 className="w-3.5 h-3.5" />
                                 <span>Create ⚡</span>
@@ -2345,8 +2925,8 @@ Any written text, characters, letters, numbers, and labels inside the image must
                         </div>
                     </div>
 
-                    {/* ── UGC-STYLE FIXED GRID ── */}
-                    <div className="flex-1 overflow-y-auto bg-[#0a0a0a] custom-scrollbar p-3 sm:p-4" style={{ minHeight: 0 }}>
+                    {/* ── UGC-STYLE FIXED GRID (Larger Preview Cards & Clean Padding) ── */}
+                    <div className="flex-1 overflow-y-auto bg-[#0a0a0a] custom-scrollbar p-2.5 sm:p-3" style={{ minHeight: 0 }}>
                                 {isGenerating && generationHistory.length === 0 ? (
                                     <div className="w-full h-full flex flex-col items-center justify-center gap-4 min-h-[300px]">
                                         <div className="relative w-16 h-16">
@@ -2357,11 +2937,18 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                         <CyclingLoadingText messages={activeCategory === 'realestate' ? LOADING_MESSAGES_REALESTATE : LOADING_MESSAGES_DEFAULT} />
                                     </div>
                                 ) : generationHistory.length > 0 ? (
-                                    <div className="p-4 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 items-start">
+                                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-3 items-start">
                                         {/* Generating spinner tile */}
                                         {isGenerating && (
                                             <div className="w-full rounded-lg border border-[#c8f135]/20 bg-[#0d0d0d] flex flex-col items-center justify-center gap-2 relative overflow-hidden" 
-                                                style={{aspectRatio: (Object.keys(upscalingItems).length > 0 && generationHistory.find(i => upscalingItems[i.url])) ? getAspectRatio(generationHistory.find(i => upscalingItems[i.url])?.size) : getAspectRatio(imageSize)}}>
+                                                style={{
+                                                    aspectRatio: workspaceMode === 'ads-studio'
+                                                        ? getAspectRatio(adsAspectRatio)
+                                                        : ((Object.keys(upscalingItems).length > 0 && generationHistory.find(i => upscalingItems[i.url]))
+                                                            ? getAspectRatio(generationHistory.find(i => upscalingItems[i.url]))
+                                                            : getAspectRatio(imageSize)),
+                                                    maxHeight: 'min(72vh, 520px)'
+                                                }}>
                                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" style={{animation:'shimmer 1.8s infinite', transform:'translateX(-100%)'}} />
                                                 <div className="relative w-8 h-8">
                                                     <div className="absolute inset-0 rounded-full border-2 border-[#c8f135]/20" />
@@ -2372,12 +2959,12 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                             </div>
                                         )}
                                         {generationHistory.map((item, idx) => (
-                                            <motion.div key={item.ts}
+                                            <motion.div key={item.ts || idx}
                                                 initial={{ opacity: 0, scale: 0.95 }}
                                                 animate={{ opacity: 1, scale: 1 }}
                                                 transition={{ duration: 0.3 }}
-                                                className="relative rounded-lg overflow-hidden w-full bg-black/60 flex items-center justify-center border border-white/10"
-                                                style={{ aspectRatio: getAspectRatio(item.size) }}
+                                                className="relative rounded-lg overflow-hidden w-full bg-black/60 flex items-center justify-center border border-white/10 hover:border-white/30 transition-all cursor-pointer shadow-md"
+                                                style={{ aspectRatio: getAspectRatio(item), maxHeight: 'min(72vh, 520px)' }}
                                                 onClick={() => openZoom(item.url)}
                                             >
                                                 {item.type === 'video'
@@ -2402,24 +2989,41 @@ Any written text, characters, letters, numbers, and labels inside the image must
 
                 </div>
 
-                {/* ── SECTION 3: Templates Panel (Right) ── */}
+                {/* ── SECTION 3: Templates Drawer (Right Side Drawer) ── */}
                 <div className={cn(
-                    "border-l border-white/10 flex-col bg-[#0a0a0a] transition-all duration-300 flex-shrink-0 relative h-full",
+                    "border-l border-white/10 flex flex-col bg-[#0a0a0a] transition-all duration-300 flex-shrink-0 relative h-full z-30 shadow-2xl",
                     showTemplatePanel 
-                        ? "flex w-full md:w-[300px] xl:w-[330px] border-r" 
+                        ? "flex w-full md:w-[320px] lg:w-[350px] xl:w-[380px]" 
                         : "hidden"
                 )}>
+                    {/* Drawer Header with Title and Cancel/Close Button */}
+                    <div className="h-11 px-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/70 backdrop-blur-md">
+                        <div className="flex items-center gap-2">
+                            <LayoutGrid className="w-4 h-4 text-orange-400" />
+                            <span className="text-[11px] font-black uppercase tracking-wider text-white">Templates Drawer</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowTemplatePanel(false)}
+                            className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                            title="Close Templates Drawer"
+                        >
+                            <span className="text-[9px] uppercase tracking-wider text-white/50">Close</span>
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+
                     {/* Image / Video tab switcher */}
                     <div className="flex gap-1 p-2 border-b border-white/8 bg-black/20">
                         <button
                             onClick={() => setTemplateTab('image')}
-                            className={cn('flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all',
+                            className={cn('flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer',
                                 templateTab === 'image' ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' : 'text-white/30 hover:text-white/60 hover:bg-white/5')}>
                             <ImageIcon className="w-3 h-3" /> Image
                         </button>
                         <button
                             onClick={() => { setTemplateTab('video'); setGenerateMode('video'); }}
-                            className={cn('flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all',
+                            className={cn('flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer',
                                 templateTab === 'video' ? 'bg-lime-500/20 text-lime-300 border border-lime-500/30' : 'text-white/30 hover:text-white/60 hover:bg-white/5')}>
                             <Video className="w-3 h-3" /> Video
                         </button>

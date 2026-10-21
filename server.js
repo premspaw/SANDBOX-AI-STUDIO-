@@ -2435,6 +2435,7 @@ import createAdminRouter from './server/routes/adminRoutes.js';
 import createAvatarRouter from './server/routes/avatar.js';
 import createYourVoiceRouter from './server/routes/yourVoiceRoutes.js';
 import createRemixRouter from './server/routes/remixRoutes.js';
+import createAdsStudioRouter from './server/routes/adsStudioRoutes.js';
 import createMcpRouter from './server/routes/mcpRoutes.js';
 import { getOAuthMetadata } from './server/mcp/auth/oauthHandler.js';
 
@@ -2506,6 +2507,10 @@ app.use('/api', createYourVoiceRouter(deps));
 // ── Remix Studio (Higgsfield Genjutsu Motion Transfer) ────────────────────────
 app.use('/api/remix', createRemixRouter(deps));
 app.use('/api', createRemixRouter(deps));
+
+// ── Ads Studio (Higgsfield Ads Studio v1.0 & Multi-Engine Workflows) ──────────
+app.use('/api', createAdsStudioRouter(deps));
+app.use('/api/ads-studio', createAdsStudioRouter(deps));
 
 // Explicit JSON 404 handler for any unhandled /api requests so they never return HTML
 app.use('/api', (req, res) => {

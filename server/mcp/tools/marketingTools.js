@@ -81,6 +81,41 @@ export function registerMarketingTools() {
         },
         required: ['dish_names_or_items']
       }
+    },
+    {
+      name: 'marketing_generate_ad_creative',
+      description: 'Generate commercial ad creatives from a brief, product images, niche, and target audience using Higgsfield Ads Studio v1.0 or OpenAI 2.5 Sunflare workflows.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Creative brief or ad vision describing the product and scene' },
+          niche: { type: 'string', description: 'Industry niche (e.g. Beauty, SaaS, Fashion, Food & Beverage, Fitness, Real Estate)', default: '' },
+          target_audience: { type: 'string', description: 'Target audience and buyer persona (e.g. Gen Z, Busy professionals)', default: '' },
+          aspect_ratio: {
+            type: 'string',
+            enum: ['1:1', '4:5', '9:16', '16:9', '4:3', '3:4'],
+            default: '1:1',
+            description: 'Image aspect ratio: 1:1 (Square), 4:5 (Feed), 9:16 (Story/Reel), 16:9 (Landscape banner)'
+          },
+          image_urls: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Optional product photo URLs to feature inside the ad'
+          },
+          batch_size: {
+            type: 'number',
+            description: 'Number of variations to generate (1 to 8)',
+            default: 1
+          },
+          engine: {
+            type: 'string',
+            enum: ['higgsfield/ads-studio/v1.0', 'openai-2.5-sunburst', 'openai-2.5-flare', 'nano-banana-pro'],
+            default: 'higgsfield/ads-studio/v1.0',
+            description: 'Generation workflow engine'
+          }
+        },
+        required: ['prompt']
+      }
     }
   ];
 }
@@ -184,6 +219,43 @@ export async function handleMarketingToolCall(name, args) {
         {
           type: 'text',
           text: `### 📋 Generated Handwritten Menu Poster\n\n![Menu Poster](${result.url})\n\n**Dishes & Items:** ${dish_names_or_items}\n**Style:** ${handwritten_style}\n**Download/View Image:** [Open Full Resolution](${result.url})`
+        }
+      ]
+    };
+  }
+
+  if (name === 'marketing_generate_ad_creative') {
+    const resp = await fetch(`${API_BASE}/api/ads-studio/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: args.prompt,
+        niche: args.niche || '',
+        target_audience: args.target_audience || '',
+        aspect_ratio: args.aspect_ratio || '1:1',
+        batch_size: args.batch_size || 1,
+        image_urls: args.image_urls || [],
+        engine: args.engine || 'higgsfield/ads-studio/v1.0',
+        userId: 'mcp_agent'
+      })
+    });
+
+    const result = await resp.json();
+    if (!resp.ok || !result.success) {
+      throw new Error(result.error || 'Failed to generate ad creative');
+    }
+
+    const images = result.images || [];
+    const imageMarkdown = images.map((img, i) => `![Ad Creative ${i + 1}](${img.url})\n[Open Ad Variant ${i + 1}](${img.url})`).join('\n\n');
+
+    return {
+      success: true,
+      engine: result.engine,
+      images: images,
+      content: [
+        {
+          type: 'text',
+          text: `### 🚀 Generated Commercial Ad Creative(s)\n\n**Brief:** ${args.prompt}\n${args.niche ? `**Niche:** ${args.niche}\n` : ''}${args.target_audience ? `**Audience:** ${args.target_audience}\n` : ''}**Engine:** ${result.engine}\n\n${imageMarkdown}`
         }
       ]
     };

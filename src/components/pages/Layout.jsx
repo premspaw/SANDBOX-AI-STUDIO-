@@ -14,6 +14,7 @@ const FULL_BLEED_TABS = new Set([
     'living-avatar',
     'directors-cut',
     'marketing',
+    'ads-studio',
     'carousel',
     'ugc',
     'motion-control',

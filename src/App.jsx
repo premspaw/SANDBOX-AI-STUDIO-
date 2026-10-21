@@ -60,6 +60,7 @@ const MotionControl = lazyWithRetry(() => import('./features/MotionControl/Motio
 const PlaygroundCanvas = lazyWithRetry(() => import('./components/canvas/PlaygroundCanvas').then(m => ({ default: m.PlaygroundCanvas })));
 const AssetManager = lazyWithRetry(() => import('./components/panels/AssetManager').then(m => ({ default: m.AssetManager })));
 const MarketingStudio = lazyWithRetry(() => import('./components/pages/MarketingStudio'));
+const AdsStudio = lazyWithRetry(() => import('./components/pages/AdsStudio'));
 const CarouselStudio = lazyWithRetry(() => import('./components/pages/CarouselStudio'));
 const SettingsPage = lazyWithRetry(() => import('./components/pages/SettingsPage'));
 const PricingPage = lazyWithRetry(() => import('./components/pages/PricingPage'));
@@ -75,6 +76,7 @@ const StoryboardStudio = lazyWithRetry(() => import('./components/pages/Storyboa
 const RemixStudio = lazyWithRetry(() => import('./components/pages/RemixStudio'));
 const ObjectSwapStudio = lazyWithRetry(() => import('./components/pages/ObjectSwapStudio'));
 const TemplatesPage = lazyWithRetry(() => import('./components/pages/TemplatesPage'));
+
 
 
 // Beautiful, futuristic stand-by placeholder for the new Avatar Studio
@@ -143,6 +145,7 @@ const FULL_HEIGHT_TABS = new Set([
   'living-avatar',
   'directors-cut',
   'marketing',
+  'ads-studio',
   'carousel',
   'ugc',
   'motion-control',
@@ -194,6 +197,7 @@ function App() {
         'cinematic-studio',
         'studio',
         'marketing',
+        'ads-studio',
         'templates',
         'remix',
         'brand-voice',
@@ -405,7 +409,9 @@ function App() {
       case 'directors-cut':
         return <PlaygroundCanvas />;
       case 'marketing':
-        return <MarketingStudio />;
+        return <MarketingStudio initialWorkspace="marketing" />;
+      case 'ads-studio':
+        return <MarketingStudio initialWorkspace="ads-studio" />;
       case 'carousel':
         return <CarouselStudio userId={userProfile?.id} />;
       case 'ugc':
@@ -454,7 +460,7 @@ function App() {
     if (activeTab === 'settings' || activeTab === 'pricing' || activeTab === 'brand-voice' || activeTab === 'auth' || activeTab === 'mcp-connection') {
       return 'h-full w-full overflow-y-auto'
     }
-    return FULL_HEIGHT_TABS.has(activeTab) ? 'h-full' : 'p-4'
+    return FULL_HEIGHT_TABS.has(activeTab) ? 'h-full w-full' : 'p-4'
   }
 
   return (

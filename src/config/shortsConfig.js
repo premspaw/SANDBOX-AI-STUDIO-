@@ -79,6 +79,12 @@ export const SHORTS_COST = {
 
     // AI Influencer (Higgsfield AI Influencer - $0.05 wholesale + 30% margin = ₹6 / 6 Shorts)
     ai_influencer: 6,
+
+    // Ads Studio (Higgsfield Ads Studio v1.0 & Multi-Engine Commercial Workflows)
+    ads_studio_higgsfield: 3,
+    ads_studio_sunburst: 2.5,
+    ads_studio_flare: 1.5,
+    ads_studio_nano_banana: 1,
 };
 
 /**
