@@ -8,8 +8,14 @@ export const DEFAULT_BRAND = Object.freeze({
 /** Keep the user's copy, timing and source anchors when restyling. */
 export function brandLayer(overlay, brand) {
   if (!brand) return overlay;
+  const isHormozi = overlay.templateId === 'hormozi-caption';
   return { ...overlay,
-    style:{...overlay.style, color:brand.text, boxColor:brand.surface, font:brand.font},
+    style:{
+      ...overlay.style,
+      color: isHormozi ? (brand.accent || '#FFE600') : brand.text,
+      boxColor: isHormozi ? '#000000' : brand.surface,
+      font: brand.font || overlay.style.font,
+    },
     animation:{in:brand.animation, durationFrames:brand.animation==='none'?0:(overlay.animation.durationFrames||9)},
   };
 }
