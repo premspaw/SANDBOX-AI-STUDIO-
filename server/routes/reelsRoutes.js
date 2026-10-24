@@ -261,9 +261,11 @@ export default function createReelsRouter(deps) {
       scriptText,
       userPrompt,
       durationSec: tl.durationSec || 15,
+      ownerId: req.ownerId,
+      sourceId: project.sources?.[0]?.id,
     });
     res.json({
-      transcript: scriptText || '',
+      transcript: scriptText || result.transcript || '',
       hooks: result.hooks || [],
       captionPhrases: result.captionPhrases || [],
     });

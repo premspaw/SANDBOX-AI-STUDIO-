@@ -8,9 +8,19 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, '.env.local'), override: true });
+
+import fs from 'fs';
+const localGcpCreds = path.resolve(__dirname, 'new-zerolens-api.json');
+if (fs.existsSync(localGcpCreds)) {
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = localGcpCreds;
+    if (!process.env.GOOGLE_PROJECT_ID) process.env.GOOGLE_PROJECT_ID = 'new-zerolens-api';
+    process.env.GOOGLE_LOCATION = 'global';
+}
+
 console.log(`[STARTUP-ENV-CHECK] GOOGLE_API_KEY configured: ${Boolean(process.env.GOOGLE_API_KEY)}`);
 console.log(`[STARTUP-ENV-CHECK] ADMIN_GOOGLE_API_KEY configured: ${Boolean(process.env.ADMIN_GOOGLE_API_KEY)}`);
 console.log(`[STARTUP-ENV-CHECK] HF_CREDENTIALS configured: ${Boolean(process.env.HF_CREDENTIALS || process.env.HF_KEY)}`);
+console.log(`[STARTUP-ENV-CHECK] GOOGLE_APPLICATION_CREDENTIALS: ${Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS)} (Location: ${process.env.GOOGLE_LOCATION || 'global'})`);
 import dns from 'dns';
 import net from 'net';
 dns.setDefaultResultOrder('ipv4first');
@@ -110,7 +120,6 @@ import { v4 as uuidv4 } from 'uuid';
 import http from 'http';
 import { Readable } from 'stream';
 import { createClient } from '@supabase/supabase-js';
-import fs from 'fs';
 import * as geminiService from './src/services/geminiService.js';
 import * as audioService from './services/audioService.js';
 import * as storageService from './services/storageService.js';
