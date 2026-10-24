@@ -1,3 +1,4 @@
+import {configureOAuthStorage} from '../mcp/auth/grantStore.js';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
@@ -18,6 +19,7 @@ import { renderWidgetHtml } from '../mcp/ui/widgetRenderer.js';
 
 export default function createMcpRouter(deps = {}) {
   const router = express.Router();
+  configureOAuthStorage(deps.supabaseAdmin);
   const authenticate=createMcpAuthMiddleware(deps);
   router.use('/auth',rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-8',legacyHeaders:false}));
 
@@ -40,7 +42,6 @@ export default function createMcpRouter(deps = {}) {
 
   router.get([
     '/.well-known/oauth-authorization-server',
-    '/.well-known/openid-configuration',
     '/.well-known/oauth-authorization-server/api/mcp'
   ], sendOAuthDiscovery);
 
@@ -101,13 +102,14 @@ export default function createMcpRouter(deps = {}) {
       });
 
       await server.connect(transport);
+      res.on('close',()=>{transport.close().catch(()=>{});server.close().catch(()=>{});});
       await transport.handleRequest(req, res, req.body);
     } catch (err) {
       console.error('[MCP Streamable HTTP Error]:', err);
       if (!res.headersSent) {
         res.status(500).json({
           jsonrpc: '2.0',
-          error: { code: -32603, message: `Internal server error: ${err.message}` },
+          error: { code: -32603, message: 'MCP request failed' },
           id: req.body?.id ?? null
         });
       }
@@ -254,7 +256,7 @@ export default function createMcpRouter(deps = {}) {
   router.get('/openapi.json', (req, res) => {
     const protocol = req.protocol || 'https';
     const host = req.get('host') || 'zerolens.in';
-    const baseUrl = `${protocol}://${host}`;
+    const baseUrl = process.env.PUBLIC_APP_URL || 'https://zerolens.in';
 
     const spec = generateOpenAPISpec(baseUrl);
     res.json(spec);

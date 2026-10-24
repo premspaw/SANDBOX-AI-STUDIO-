@@ -144,7 +144,7 @@ export default function createRouter(deps) {
             }
 
             if (targetUserId) {
-                const creditReason = req.body.creditReason || 'cinematic_video_generation';
+                const creditReason = 'cinematic_video_generation';
                 console.log(`[VEO-I2V] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} (reason: ${creditReason})`);
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
@@ -587,7 +587,7 @@ export default function createRouter(deps) {
             }
 
             if (targetUserId) {
-                const creditReason = req.body.creditReason || 'cinematic_video_generation';
+                const creditReason = 'cinematic_video_generation';
                 console.log(`[KLING-GEN] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} (reason: ${creditReason})`);
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
@@ -753,7 +753,7 @@ export default function createRouter(deps) {
                 : Math.ceil(rate * duration);
 
             if (targetUserId) {
-                const creditReason = req.body.creditReason || `kling_motion_control_${resolvedMode}`;
+                const creditReason = `kling_motion_control_${resolvedMode}`;
                 console.log(`[KLING-MOTION] Consuming ${requiredCredits} credits for user: ${targetUserId} (reason: ${creditReason})`);
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
@@ -803,7 +803,7 @@ export default function createRouter(deps) {
             if (createData.code !== 200) {
                 if (targetUserId) {
                     try {
-                        const { refundCredits } = await import('../../services/creditService.js');
+                        const { refundCredits } = deps;
                         if (refundCredits) await refundCredits(targetUserId, requiredCredits, `kling_motion_control_refund`);
                     } catch (refErr) {
                         console.error('[KLING-REFUND-ERR]', refErr);
@@ -876,7 +876,7 @@ export default function createRouter(deps) {
             }
 
             if (targetUserId) {
-                const creditReason = req.body.creditReason || 'cinematic_video_generation';
+                const creditReason = 'cinematic_video_generation';
                 console.log(`[VIDEO-GENERATE] Consuming/Claiming ${requiredCredits} credits | user: ${targetUserId} | provider: ${provider} (reason: ${creditReason})`);
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
@@ -948,7 +948,7 @@ export default function createRouter(deps) {
             requiredCredits = durationSec * 5; // 5 Shorts per second
 
             if (targetUserId) {
-                const creditReason = req.body.creditReason || 'video_upscale_1080p';
+                const creditReason = 'video_upscale_1080p';
                 console.log(`[VIDEO-UPSCALE] Consuming/Claiming ${requiredCredits} credits | user: ${targetUserId} | duration: ${durationSec}s`);
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
@@ -1089,7 +1089,7 @@ export default function createRouter(deps) {
             // Refund credits if deducted
             if (targetUserId && requiredCredits > 0) {
                 try {
-                    const { refundCredits } = await import('../../services/creditService.js');
+                    const { refundCredits } = deps;
                     if (refundCredits) await refundCredits(targetUserId, requiredCredits, 'video_upscale_refund');
                 } catch (rErr) {
                     console.error('[VIDEO-UPSCALE] Refund error:', rErr);

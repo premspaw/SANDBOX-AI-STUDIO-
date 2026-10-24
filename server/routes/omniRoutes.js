@@ -360,7 +360,7 @@ export default function createRouter(deps) {
                 (Array.isArray(req.body.multiVideoSlots) && req.body.multiVideoSlots.some(v => v && (typeof v === 'string' ? v : (v.url || v.data)))) ||
                 (Array.isArray(req.body.omniMultiVideos) && req.body.omniMultiVideos.some(v => v && (typeof v === 'string' ? v : (v.url || v.data))))
             );
-            console.log(`[OMNI-I2V] Task: ${requestedTask || 'auto'} | CreditReason: ${req.body.creditReason || 'default'} | HasVideo: ${hasAnyVideo} | RefImages: ${(req.body.ref_images || req.body.refImages || []).length}`);
+            console.log(`[OMNI-I2V] Task: ${requestedTask || 'auto'} | CreditReason: ${'default'} | HasVideo: ${hasAnyVideo} | RefImages: ${(req.body.ref_images || req.body.refImages || []).length}`);
 
             // Deduct credits: omni/omni-flash are cost-per-second
             let requiredCredits = 10; // Default
@@ -386,7 +386,7 @@ export default function createRouter(deps) {
             // Client-supplied credit amounts never override server pricing.
 
             if (targetUserId) {
-                const creditReason = req.body.creditReason || 'cinematic_video_generation';
+                const creditReason = 'cinematic_video_generation';
                 console.log(`[OMNI-I2V] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} (reason: ${creditReason})`);
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
@@ -1163,7 +1163,7 @@ export default function createRouter(deps) {
                             const interactionResult = await restResponse.json();
                             if (interactionResult.error) {
                                 const errMessage = interactionResult.error.message || JSON.stringify(interactionResult.error);
-                                console.warn(`[OMNI-I2V] [AI Studio Fallback] Key ${studioKey.substring(0, 10)} model ${testModel} failed: ${errMessage}`);
+                                console.warn(`[OMNI-I2V] [AI Studio Fallback] Key configured key model ${testModel} failed: ${errMessage}`);
                                 // If model is not found, continue to next candidate model
                                 if (errMessage.includes('not found') || errMessage.includes('Did you mean')) {
                                     lastOmniError = errMessage;
@@ -1201,7 +1201,7 @@ export default function createRouter(deps) {
                             }
 
                             if (!videoData && !videoUri) {
-                                console.warn(`[OMNI-I2V] [AI Studio Fallback] No video output returned with key ${studioKey.substring(0, 10)} model ${testModel}`);
+                                console.warn(`[OMNI-I2V] [AI Studio Fallback] No video output returned with key configured key model ${testModel}`);
                                 continue;
                             }
 
@@ -1256,7 +1256,7 @@ export default function createRouter(deps) {
                                 break;
                             }
                         } catch (apiKeyErr) {
-                            console.warn(`[OMNI-I2V] [API Key ${studioKey.substring(0, 10)}] Failed: ${apiKeyErr.message}`);
+                            console.warn(`[OMNI-I2V] [API Key configured key] Failed: ${apiKeyErr.message}`);
                         }
                     }
                 }
@@ -1298,27 +1298,7 @@ export default function createRouter(deps) {
             const taskId = req.body.nodeId ? `veo-${req.body.nodeId}` : 'veo-default';
             broadcastProgress(taskId, 0, 0, `Error: ${error.message}`);
             
-            // Refund user credits if deducted
-            const targetUser = req.body.userId || 'cec79985-ce59-4d23-82a2-3ae6f69994ed';
-            if (targetUser && (deps.supabaseAdmin || deps.supabase)) {
-                const dbClient = deps.supabaseAdmin || deps.supabase;
-                try {
-                    const reqCreds = Number(req.body.requiredCredits) || 66;
-                    const { data: prof } = await dbClient.from('profiles').select('shorts_balance').eq('id', targetUser).maybeSingle();
-                    if (prof) {
-                        await dbClient.from('profiles').update({ shorts_balance: (prof.shorts_balance || 0) + reqCreds }).eq('id', targetUser);
-                        await dbClient.from('shorts_transactions').insert({
-                            user_id: targetUser,
-                            amount: reqCreds,
-                            action_type: 'omni_generation_refund',
-                            reason: `Refund: ${error.message?.substring(0, 100)}`
-                        });
-                        console.log(`[OMNI-I2V] 🔄 Refunded ${reqCreds} credits to user ${targetUser}`);
-                    }
-                } catch (refErr) {
-                    console.warn('[OMNI-I2V] Failed to refund credits:', refErr.message);
-                }
-            }
+            await deps.billing?.refundFailedRequest().catch(()=>{});
 
             let msg = error.message || 'Video generation failed';
             const isParamOrConfigError = msg.includes('Unknown parameter') || msg.includes('safety_settings');

@@ -56,7 +56,7 @@ export default function createRouter(deps) {
 
             // Deduct credits: UGC Veo video costs 10 credits
             if (targetUserId) {
-                const creditReason = req.body.creditReason || 'ugc_video_generation';
+                const creditReason = 'ugc_video_generation';
                 await claimOrCreateSpend(targetUserId, 10, creditReason);
             }
 

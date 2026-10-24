@@ -112,7 +112,7 @@ export default function createRouter(deps) {
             
             let memories = [];
             try {
-                memories = await storageService.readFromR2(`agent-memory/${userId}.json`);
+                memories = JSON.parse(await storageService.readFromR2(`agent-memory/${userId}.json`));
                 if (!Array.isArray(memories)) memories = [];
             } catch (_) {
                 memories = [];
@@ -964,15 +964,8 @@ export default function createRouter(deps) {
                     if (prof) {
                         balanceBefore = prof.shorts_balance || 0;
                         if (debitNum > 0) {
-                            balanceAfter = Math.max(0, balanceBefore - debitNum);
-                            await dbClient.from('profiles').update({ shorts_balance: balanceAfter }).eq('id', targetUserId);
-                            await dbClient.from('shorts_transactions').insert({
-                                user_id: targetUserId,
-                                amount: -debitNum,
-                                action_type: 'spend_video_generation',
-                                reason: `Sync audit: ${detectedProvider} (${finalCallingId} ➔ ${receivedAssetId})`
-                            });
-                            console.log(`[ADMIN-SYNC-VIDEO] Debited ${debitNum}⚡ from ${targetUserId}. New balance: ${balanceAfter}`);
+                            const receipt=await deps.consumeCredits(targetUserId,debitNum,'admin_video_sync');
+                            balanceAfter=receipt.newBalance;
                         } else {
                             balanceAfter = balanceBefore;
                         }
@@ -1317,7 +1310,7 @@ export default function createRouter(deps) {
             let recovered = 0;
             for (const file of files) {
                 if (file.name.match(/\.(png|jpg|jpeg)$/i)) {
-                    const url = storageService.getPublicUrl(file.name, MARKETING_BUCKET);
+                    const url = await storageService.getPublicUrl(file.name, MARKETING_BUCKET);
                     const name = path.basename(file.name);
                     const { error } = await (supabaseAdmin || supabase).from('assets').insert([{
                         name,

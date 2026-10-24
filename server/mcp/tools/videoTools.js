@@ -7,19 +7,23 @@ export function getVideoToolDefinitions() {
       description: 'Starts an AI video render in the user\'s ZeroLens account and returns a generation ID that can be polled with check_generation. This consumes Shorts credits billed per second of video, so confirm the scene, engine, aspect ratio, resolution, duration and total credit cost with the user before calling, and set user_confirmed to true once they agree. Optionally accepts public first/last frame image URLs. Engine costs: "omni-flash-1.1" 5 credits/sec (6 with audio), "seedance-fast" 5 credits/sec, "seedance-2.5" 8 credits/sec at 480p or 10 credits/sec at 720p. Default duration: 10s.',
       inputSchema: {
         type: 'object',
+        additionalProperties:false,
         properties: {
           prompt: {
             type: 'string',
+            maxLength:20000,
             description: 'Motion prompt describing scene action, subject movement, camera dynamics (e.g. pan, zoom, tilt), and cinematic lighting.'
           },
           engine: {
             type: 'string',
+            maxLength:20000,
             enum: ['omni-flash-1.1', 'seedance-2.5', 'seedance-fast'],
             description: 'Video generation engine. "omni-flash-1.1" = Google Gemini Omni Flash 1.1 (primary Google video engine), "seedance-2.5" = ByteDance Seedance 2.5 (cinematic fidelity), "seedance-fast" = ByteDance Seedance Fast (budget 720p). Default: "omni-flash-1.1"',
             default: 'omni-flash-1.1'
           },
           aspect_ratio: {
             type: 'string',
+            maxLength:20000,
             enum: ['16:9', '9:16', '1:1'],
             description: 'Video aspect ratio. "16:9" (Landscape/YouTube), "9:16" (Vertical/Instagram Reels/TikTok), "1:1" (Square). Default: "16:9"',
             default: '16:9'
@@ -31,6 +35,7 @@ export function getVideoToolDefinitions() {
           },
           resolution: {
             type: 'string',
+            maxLength:20000,
             enum: ['720p', '480p'],
             description: 'Resolution of the rendered video. "720p" (default for Omni Flash & Seedance Fast) or "480p" (default for Seedance 2.5). Default: "720p"',
             default: '720p'
@@ -38,14 +43,16 @@ export function getVideoToolDefinitions() {
           user_confirmed: {
             type: 'boolean',
             description: 'Confirmation flag indicating the user approved starting the video render.',
-            default: true
+            default: false
           },
           first_frame_url: {
             type: 'string',
+            maxLength:20000,
             description: 'Optional URL of a starting image frame to animate from.'
           },
           last_frame_url: {
             type: 'string',
+            maxLength:20000,
             description: 'Optional URL of an ending frame for interpolated camera movement.'
           },
           generate_audio: {
@@ -55,10 +62,11 @@ export function getVideoToolDefinitions() {
           },
           project_id: {
             type: 'string',
+            maxLength:20000,
             description: 'Target project or folder ID. Default: "default"'
           }
         },
-        required: ['prompt']
+        required: ['prompt','user_confirmed']
       },
       annotations: {
         readOnlyHint: false,
@@ -138,6 +146,7 @@ export async function executeGenerateVideo(args, user, deps) {
     updateJobStatus
   } = deps;
   const dbClient = supabaseAdmin || supabase;
+  if(typeof consumeCredits!=='function')throw new Error('Billing service unavailable');
 
   // 1. Check user credit balance
   let currentBalance = 0;
@@ -263,6 +272,7 @@ function normalizeAspectRatio(ratio) {
 async function launchBackgroundVideoWorker(jobPayload, generationId, cost, user, deps) {
   const { updateJobStatus, supabaseAdmin, supabase } = deps;
   const dbClient = supabaseAdmin || supabase;
+  if(typeof consumeCredits!=='function')throw new Error('Billing service unavailable');
 
   // Run asynchronously without blocking tool return
   (async () => {
@@ -404,24 +414,8 @@ async function launchBackgroundVideoWorker(jobPayload, generationId, cost, user,
         await updateJobStatus(generationId, 'failed', null, err.message);
       }
 
-      // Refund user credits on failure
-      if (dbClient) {
-        try {
-          const { data: prof } = await dbClient.from('profiles').select('shorts_balance').eq('id', user.id).single();
-          if (prof) {
-            await dbClient.from('profiles').update({ shorts_balance: prof.shorts_balance + cost }).eq('id', user.id);
-            await dbClient.from('shorts_transactions').insert([{
-              user_id: user.id,
-              amount: Math.round(cost),
-              action_type: 'refund_mcp_chatgpt_video_generation',
-              created_at: new Date().toISOString()
-            }]);
-            console.log(`[MCP Video Worker] 🔄 Refunded ${cost} credits to user ${user.id}`);
-          }
-        } catch (refErr) {
-          console.warn('[MCP Video Worker] Refund error:', refErr.message);
-        }
-      }
+      await deps.refundCredits?.(user.id,cost).catch(()=>{});
+
     }
   })();
 }

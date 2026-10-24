@@ -5,6 +5,7 @@ export function getProjectToolDefinitions() {
       description: 'List existing user projects, creative folders, and asset counts in ZeroLens.',
       inputSchema: {
         type: 'object',
+        additionalProperties:false,
         properties: {
           limit: {
             type: 'number',
@@ -29,9 +30,11 @@ export function getProjectToolDefinitions() {
       description: 'Retrieve details, metadata, and recent generated image and video assets for a specific project.',
       inputSchema: {
         type: 'object',
+        additionalProperties:false,
         properties: {
           project_id: {
             type: 'string',
+            maxLength:20000,
             description: 'The ID or folder name of the project to retrieve.'
           },
           limit: {

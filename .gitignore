@@ -64,3 +64,6 @@ local_assets.json
 .google-credentials-temp.json
 
 server/data/reels/
+
+# Private runtime media, keys, and account data
+server/data/

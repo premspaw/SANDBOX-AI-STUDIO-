@@ -349,21 +349,7 @@ Style & Layout: Billboard-grade commercial advertising photography, luxury studi
         } catch (error) {
             console.error('[ADS-STUDIO] Generation failed:', error.message);
 
-            // Refund credits if deducted
-            if (spendSuccess && userId && userId !== 'anonymous' && deps.consumeCredits) {
-                try {
-                    // Refund by negative consumption or adding credits
-                    if (supabaseAdmin) {
-                        const { data: profile } = await supabaseAdmin.from('profiles').select('shorts_balance').eq('id', userId).single();
-                        if (profile) {
-                            await supabaseAdmin.from('profiles').update({ shorts_balance: (profile.shorts_balance || 0) + totalCredits }).eq('id', userId);
-                            console.log(`[ADS-STUDIO] Refunded ${totalCredits}⚡ credits to user ${userId}`);
-                        }
-                    }
-                } catch (refundErr) {
-                    console.warn('[ADS-STUDIO] Credit refund warning:', refundErr.message);
-                }
-            }
+            if(spendSuccess)await deps.refundCredits?.(userId,totalCredits).catch(()=>{});
 
             return res.status(500).json({
                 error: error.message || 'Ads Studio generation failed.'

@@ -5,6 +5,7 @@ export function getUsageToolDefinitions() {
       description: 'Retrieve current ZeroLens account details, available Shorts credit balance, subscription tier, and recent usage activity.',
       inputSchema: {
         type: 'object',
+        additionalProperties:false,
         properties: {}
       },
       annotations: {

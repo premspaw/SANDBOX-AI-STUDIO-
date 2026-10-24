@@ -148,22 +148,9 @@ export default function createRouter(deps) {
             }
 
             if (targetUserId) {
-                const creditReason = req.body.creditReason || 'cinematic_image_generation';
+                const creditReason = isGptModel ? 'gpt_image_generation' : 'cinematic_image_generation';
                 console.log(`[Generate Image] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} using model: ${model} (reason: ${creditReason})`);
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
-            }
-
-            if (isGptModel && isFreeTier && client && targetUserId) {
-                try {
-                    const latestBv = profile?.brand_voice || {};
-                    const newGptCount = (latestBv.free_gpt_images_used || 0) + 1;
-                    await client.from('profiles').update({
-                        brand_voice: { ...latestBv, free_gpt_images_used: newGptCount }
-                    }).eq('id', targetUserId);
-                    console.log(`[Generate Image] ✅ Free tier user ${targetUserId} used GPT image (${newGptCount}/2).`);
-                } catch (gptCountErr) {
-                    console.warn('[Generate Image] Failed to increment free_gpt_images_used:', gptCountErr.message);
-                }
             }
 
             if (modelLower.includes('gpt') || modelLower.includes('sunburst') || modelLower.includes('flare') || modelLower.includes('dall') || modelLower.includes('openai')) {

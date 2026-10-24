@@ -7,9 +7,11 @@ export function getStatusToolDefinitions() {
       description: 'Check the real-time status and retrieve the output URL of an asynchronous video or image generation job in ZeroLens.',
       inputSchema: {
         type: 'object',
+        additionalProperties:false,
         properties: {
           generation_id: {
             type: 'string',
+            maxLength:20000,
             description: 'The generation or job ID returned when starting an image or video generation.'
           }
         },

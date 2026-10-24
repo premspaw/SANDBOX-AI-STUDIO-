@@ -412,7 +412,7 @@ export default function createRouter(deps) {
             }
 
             if (targetUserId) {
-                const creditReason = req.body.creditReason || 'cinematic_video_generation';
+                const creditReason = 'cinematic_video_generation';
                 console.log(`[SEEDANCE-GEN] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} (duration: ${durationNum}s, res: ${resLower}, reason: ${creditReason})`);
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
                 creditsClaimed = true;
@@ -875,7 +875,7 @@ export default function createRouter(deps) {
 
                 if (!activeHfKey) {
                     if (creditsClaimed && targetUserId) {
-                        await consumeCredits(targetUserId, -requiredCredits, 'refund_cinematic_video_generation');
+                        await deps.refundCredits(targetUserId, requiredCredits);
                     }
                     return res.status(500).json({ error: 'Higgsfield credentials not configured for Flash Pro (Wan 3.0).' });
                 }
@@ -1062,7 +1062,7 @@ export default function createRouter(deps) {
                     console.error('[FLASH-PRO-WAN-3.0-ERR]:', hfErr.message);
                     if (creditsClaimed && targetUserId) {
                         console.log(`[FLASH-PRO-WAN-3.0] Refunding ${requiredCredits} credits to user ${targetUserId} due to generation error`);
-                        await consumeCredits(targetUserId, -requiredCredits, 'refund_cinematic_video_generation');
+                        await deps.refundCredits(targetUserId, requiredCredits);
                     }
                     return res.status(500).json({
                         error: sanitizeServerError(hfErr.message) || 'Flash Pro generation failed. Your Shorts credits have been refunded.'
@@ -1320,20 +1320,7 @@ export default function createRouter(deps) {
             // Refund credits if deduct happened and generation failed
             if (creditsClaimed && targetUserId && requiredCredits > 0) {
                 try {
-                    const dbClient = supabaseAdmin || supabase;
-                    if (dbClient) {
-                        const { data: prof } = await dbClient.from('profiles').select('shorts_balance').eq('id', targetUserId).maybeSingle();
-                        if (prof) {
-                            await dbClient.from('profiles').update({ shorts_balance: (prof.shorts_balance || 0) + requiredCredits }).eq('id', targetUserId);
-                            await dbClient.from('shorts_transactions').insert({
-                                user_id: targetUserId,
-                                amount: requiredCredits,
-                                action_type: 'refund_seedance_generation',
-                                reason: `Refund: ${error.message?.substring(0, 100)}`
-                            });
-                            console.log(`[SEEDANCE-GEN] 🔄 Refunded ${requiredCredits} credits to user ${targetUserId}`);
-                        }
-                    }
+                    await deps.refundCredits(targetUserId,requiredCredits);
                 } catch (rErr) {
                     console.warn('[SEEDANCE-REFUND] Notice:', rErr.message);
                 }

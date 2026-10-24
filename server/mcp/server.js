@@ -1,3 +1,8 @@
+import Ajv from 'ajv';
+import crypto from 'node:crypto';
+import {withBillingOperation,bindOperationUser} from '../billing/ledger.js';
+import {refreshPrivateMediaUrls} from '../storage/privateMedia.js';
+import {oauthChallenge} from './auth/oauthHandler.js';
 /**
  * 🚀 ZeroLens OpenAI App & MCP Server
  * Conforms to Model Context Protocol (MCP) standards for ChatGPT OpenAI Apps.
@@ -71,6 +76,8 @@ export function getAllMcpTools() {
 
     return {
       ...tool,
+      securitySchemes:[{type:'oauth2',scopes:[tool.name]}],
+      _meta:{...tool._meta,securitySchemes:[{type:'oauth2',scopes:[tool.name]}]},
       annotations: resolvedAnnotations,
       provided_tool_annotations: resolvedAnnotations,
       readOnlyHint: resolvedAnnotations.readOnlyHint,
@@ -83,7 +90,7 @@ export function getAllMcpTools() {
 /**
  * Dispatch an MCP tool call by name
  */
-export async function dispatchMcpToolCall(name, args, user, deps = {}) {
+async function dispatchVerifiedTool(name, args, user, deps = {}) {
   if(!user?.id)throw new Error('Unauthorized');
   switch (name) {
     case 'search':
@@ -111,16 +118,26 @@ export async function dispatchMcpToolCall(name, args, user, deps = {}) {
       return await executeGetUsage(args, user, deps);
 
     default:
-      // Fallback for legacy names
-      if (name.startsWith('cinema_')) {
-        return await handleCinemaToolCall(name, args);
-      } else if (name.startsWith('ugc_')) {
-        return await handleUGCToolCall(name, args);
-      } else if (name.startsWith('marketing_')) {
-        return await handleMarketingToolCall(name, args);
-      }
       throw new Error(`Unknown MCP tool requested: ${name}`);
   }
+}
+
+const validators=new Map();
+const ajv=new Ajv({strict:false,allErrors:true,useDefaults:true});
+export async function dispatchMcpToolCall(name,args,user,deps={}){
+ if(!user?.id)throw Object.assign(new Error('Unauthorized'),{status:401});
+ const tool=getAllMcpTools().find(t=>t.name===name);
+ if(!tool)throw Object.assign(new Error('Unknown MCP tool'),{status:400});
+ if(user.authMethod==='oauth2'&&!user.scopes?.includes(name))throw Object.assign(new Error('Insufficient tool permissions'),{status:403});
+ if(!validators.has(name))validators.set(name,ajv.compile(tool.inputSchema));
+ const validate=validators.get(name),input=structuredClone(args||{});
+ if(!validate(input))throw Object.assign(new Error('Invalid tool arguments: '+ajv.errorsText(validate.errors)),{status:400});
+ if(name.startsWith('generate_')&&input.user_confirmed!==true)throw Object.assign(new Error('Confirm the generation and credit cost before proceeding'),{status:400});
+ return withBillingOperation('mcp:'+crypto.randomUUID(),async()=>{
+  bindOperationUser(user);
+  try{return await refreshPrivateMediaUrls(await dispatchVerifiedTool(name,input,user,deps),user.id);}
+  catch(err){await deps.billing?.refundFailedRequest().catch(()=>{});throw err;}
+ });
 }
 
 /**
@@ -362,11 +379,7 @@ Then plan the title, slide content, and invoke ZeroLens generate_image for each 
   // Call tool handler - returns both structuredContent and content for OpenAI Deep Research & Plugin compatibility
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
-    const activeUser = userContext || {
-      id: process.env.DEV_MOCK_USER_ID || 'cec79985-ce59-4d23-82a2-3ae6f69994ed',
-      email: 'dev@zerolens.in',
-      role: 'authenticated'
-    };
+    const activeUser = userContext;
 
     try {
       const result = await dispatchMcpToolCall(name, args || {}, activeUser, deps);
@@ -409,7 +422,8 @@ Then plan the title, slide content, and invoke ZeroLens generate_image for each 
             text: `Error executing ${name}: ${err.message}`
           }
         ],
-        isError: true
+        isError: true,
+        ...([401,403].includes(err.status)?{_meta:{'mcp/www_authenticate':[oauthChallenge(err.status===403?'insufficient_scope':'invalid_token')]}}:{})
       };
     }
   });

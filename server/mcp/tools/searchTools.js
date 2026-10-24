@@ -13,9 +13,11 @@ export function getSearchToolDefinitions() {
       description: 'Search ZeroLens AI Studio assets, video generation prompts, UGC ad scripts, and creative knowledge. Returns matching items with title, id, and canonical citation URLs for ChatGPT Deep Research.',
       inputSchema: {
         type: 'object',
+        additionalProperties:false,
         properties: {
           query: {
             type: 'string',
+            maxLength:20000,
             description: 'Search query string. Natural language queries work best for semantic and keyword search across studio projects and assets.'
           },
           limit: {
@@ -42,9 +44,11 @@ export function getSearchToolDefinitions() {
       description: 'Retrieve complete document content, prompt parameters, media URL, and metadata by ID for detailed analysis and citation in ChatGPT.',
       inputSchema: {
         type: 'object',
+        additionalProperties:false,
         properties: {
           id: {
             type: 'string',
+            maxLength:20000,
             description: 'Document or asset ID returned from the search tool (e.g. asset_xxx, template_xxx).'
           }
         },

@@ -1,3 +1,4 @@
+import {privateMediaHandler,refreshPrivateMediaUrls} from './server/storage/privateMedia.js';
 import { requireAppUser } from './server/auth/requireAppUser.js';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -25,7 +26,9 @@ import { fetchAllowedProxyResource } from './server/utils/safeProxy.js';
 import { createGoogleProviderFetch } from './server/utils/providerFetch.js';
 import { decode } from 'base64-arraybuffer';
 import multer from 'multer';
-import { Jimp } from 'jimp';
+import sharp from 'sharp';
+import {createBillingService,billingRequestContext,bindOperationUser} from './server/billing/ledger.js';
+import {createPaymentWebhook} from './server/billing/payments.js';
 import { readFileSync, rmSync } from 'fs';
 import { isValidUuid } from './server/utils/validateUuid.js';
 import { getEmbeddedVertexCredentials } from './server/config/vertexAuth.js';
@@ -758,7 +761,11 @@ async function supabaseRestGet(tablePath, timeoutMs = 15000) {
 // SECURE CREDITS HELPER (S3 Fix)
 // ─────────────────────────────────────────────────────────────
 async function requireAuth(req) {
-    return requireAppUser(req, supabaseAdmin || supabase);
+    const user = await requireAppUser(req, supabaseAdmin || supabase);
+    req.user = user;
+    bindOperationUser(user);
+    if (req.body && !req.path?.startsWith('/admin/')) req.body.userId = user.id;
+    return user;
 }
 
 async function resolveGoogleApiKey(req, userId, forceVertex = false) {
@@ -770,190 +777,8 @@ async function resolveGoogleApiKey(req, userId, forceVertex = false) {
     return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.ADMIN_GOOGLE_API_KEY || null;
 }
 
-async function consumeCredits(userId, cost, reason = 'generation') {
-    if (!supabase) {
-        if (process.env.NODE_ENV === 'production') {
-            const err = new Error('Credit system is unavailable');
-            err.status = 503;
-            throw err;
-        }
-        return true;
-    }
-
-    if (!userId) {
-        if (process.env.NODE_ENV !== 'production') {
-            return true; // Dev mode fallback
-        }
-        const err = new Error('Sign in required');
-        err.status = 401;
-        throw err;
-    }
-
-    const client = supabaseAdmin || supabase;
-
-    // Fetch current profile with balance, brand_voice, tier, and role
-    const { data: profile, error: fetchErr } = await client
-        .from('profiles')
-        .select('shorts_balance, brand_voice, tier, role')
-        .eq('id', userId)
-        .single();
-
-    if (fetchErr) {
-        const err = new Error('Unable to deduct credits');
-        err.status = 500;
-        throw err;
-    }
-
-    const brandVoice = profile?.brand_voice || {};
-    const fractionalShorts = brandVoice.fractional_shorts || 0;
-    const currentBalance = (profile?.shorts_balance ?? 0) + fractionalShorts;
-
-    if (currentBalance < cost) {
-        const err = new Error('Insufficient credits');
-        err.status = 402;
-        throw err;
-    }
-
-    // Free Tier division enforcement: 10⚡ for Images, 50⚡ for Video
-    const isFreeTier = (!profile?.tier || profile.tier === 'FREE' || profile.tier === 'free') && profile?.role !== 'admin';
-    const isImageSpend = reason === 'cinematic_image_generation' || reason.includes('image');
-    const isVideoSpend = reason === 'cinematic_video_generation' || reason.includes('video');
-
-    let updatedBrandVoice = { ...brandVoice };
-
-    if (isFreeTier) {
-        if (isImageSpend) {
-            const currentImgCredits = typeof brandVoice.free_image_credits === 'number'
-                ? brandVoice.free_image_credits
-                : Math.min(10, Math.max(0, currentBalance - 50));
-            if (currentImgCredits < cost) {
-                const err = new Error('Free image credits exhausted (10⚡ limit reached). Your remaining 50⚡ credits are reserved for 1 full Video generation! Please top up Shorts to unlock unlimited images.');
-                err.status = 402;
-                throw err;
-            }
-            updatedBrandVoice.free_image_credits = Math.max(0, Number((currentImgCredits - cost).toFixed(2)));
-        } else if (isVideoSpend) {
-            const currentVidCredits = typeof brandVoice.free_video_credits === 'number'
-                ? brandVoice.free_video_credits
-                : Math.min(50, currentBalance);
-            if (currentVidCredits < cost) {
-                const err = new Error('Free video credits exhausted (50⚡ limit reached). Please top up Shorts to continue generating videos.');
-                err.status = 402;
-                throw err;
-            }
-            updatedBrandVoice.free_video_credits = Math.max(0, Number((currentVidCredits - cost).toFixed(2)));
-        }
-    }
-
-    const newTotalBalance = currentBalance - cost;
-    const newIntBalance = Math.floor(newTotalBalance);
-    const newFractBalance = Number((newTotalBalance - newIntBalance).toFixed(4));
-    updatedBrandVoice.fractional_shorts = newFractBalance;
-
-    // Update profile
-    const { error: updateErr } = await client
-        .from('profiles')
-        .update({ 
-            shorts_balance: newIntBalance,
-            brand_voice: updatedBrandVoice
-        })
-        .eq('id', userId);
-
-    if (updateErr) {
-        const err = new Error('Unable to deduct credits');
-        err.status = 500;
-        throw err;
-    }
-
-    // Write audit log to shorts_transactions so client-side refunds work properly
-    try {
-        await client.from('shorts_transactions').insert({
-            user_id: userId,
-            amount: -Math.round(cost),
-            action_type: reason,
-            created_at: new Date().toISOString()
-        });
-        console.log(`[consumeCredits] ✅ Logged transaction in database for user ${userId}: spent ${cost} credits (reason: ${reason}).`);
-    } catch (logErr) {
-        console.warn('[consumeCredits] Failed to write audit log:', logErr.message);
-    }
-
-    return true;
-}
-
-async function claimOrCreateSpend(userId, cost, reason = 'generation') {
-    const client = supabaseAdmin || supabase;
-    if (!client) {
-        if (process.env.NODE_ENV === 'production') {
-            const err = new Error('Credit system is unavailable');
-            err.status = 503;
-            throw err;
-        }
-        return true;
-    }
-
-    if (!userId) {
-        if (process.env.NODE_ENV !== 'production') {
-            return true; // Dev mode fallback
-        }
-        const err = new Error('Sign in required');
-        err.status = 401;
-        throw err;
-    }
-
-    // 1. Look for a recent unclaimed spend transaction from the client within 60s
-    const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString();
-    try {
-        let { data: txs, error: fetchErr } = await client
-            .from('shorts_transactions')
-            .select('id, amount')
-            .eq('user_id', userId)
-            .eq('amount', -cost)
-            .eq('action_type', reason)
-            .is('reason', null) // null means unclaimed/unused
-            .gte('created_at', sixtySecondsAgo)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-        // Fallback: look for any recent unclaimed negative spend for this user and action_type
-        if ((!txs || txs.length === 0) && !fetchErr) {
-            const fallbackCheck = await client
-                .from('shorts_transactions')
-                .select('id, amount')
-                .eq('user_id', userId)
-                .eq('action_type', reason)
-                .lt('amount', 0)
-                .is('reason', null)
-                .gte('created_at', sixtySecondsAgo)
-                .order('created_at', { ascending: false })
-                .limit(1);
-            if (fallbackCheck.data && fallbackCheck.data.length > 0) {
-                txs = fallbackCheck.data;
-            }
-        }
-
-        if (txs && txs.length > 0) {
-            const txId = txs[0].id;
-            const { data: claimedRows, error: claimErr } = await client
-                .from('shorts_transactions')
-                .update({ reason: 'claimed' })
-                .eq('id', txId)
-                .is('reason', null)
-                .select('id');
-
-            if (!claimErr && claimedRows?.length===1) {
-                console.log(`[Credits] ✅ Claimed recent client-side transaction ${txId} (${Math.abs(txs[0].amount)} credits) for user ${userId} (${reason}). No extra charge.`);
-                return true;
-            }
-        }
-    } catch (err) {
-        console.warn('[claimOrCreateSpend] Failed to check/claim existing transaction:', err.message);
-    }
-
-    // 2. If no valid transaction found, deduct credits now (server-side fallback)
-    console.log(`[Credits] No recent transaction found for user ${userId} (${reason}). Charging now...`);
-    return await consumeCredits(userId, cost, reason);
-}
+const billing = createBillingService(() => supabaseAdmin);
+const {consumeCredits, claimOrCreateSpend, refundCredits} = billing;
 
 // ─────────────────────────────────────────────────────────────
 // SHARED HELPER FUNCTIONS
@@ -1908,7 +1733,7 @@ async function handleGoogle(req, res) {
             if (finalImageSize === '2K' || finalImageSize === '4K') {
                 try {
                     const targetResMultiplier = finalImageSize === '4K' ? 2 : 1;
-                    const image = await Jimp.read(imageBuffer);
+
                     
                     let targetW = 2048 * targetResMultiplier;
                     let targetH = 2048 * targetResMultiplier;
@@ -1927,11 +1752,9 @@ async function handleGoogle(req, res) {
                         targetH = 2048 * targetResMultiplier;
                     }
                     
-                    console.log(`[handleGoogle] [Resizing] Upscaling generated image from ${image.getWidth()}x${image.getHeight()} to ${targetW}x${targetH} (${finalImageSize})`);
-                    await image.resize(targetW, targetH);
-                    imageBuffer = await image.getBufferAsync(Jimp.MIME_PNG);
+                    imageBuffer = await sharp(imageBuffer,{limitInputPixels:4096*4096}).resize(targetW,targetH,{fit:'fill'}).png().toBuffer();
                 } catch (jimpErr) {
-                    console.error('[handleGoogle] Jimp upscaling failed fallback to original:', jimpErr.message);
+                    console.error('[handleGoogle] Image resizing failed fallback to original:', jimpErr.message);
                 }
             }
 
@@ -2222,121 +2045,7 @@ wss.on('connection',(ws,req)=>{
 
 // ── RAZORPAY AUTOMATED Webhook (S2 signature timingSafeEqual verify) ─────────
 // Razorpay webhook must be placed BEFORE express.json() to get the raw body
-app.post('/api/webhook/razorpay',
-    express.raw({ type: 'application/json' }),
-    async (req, res) => {
-    try {
-        const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-        if (!webhookSecret) {
-            console.error('[RAZORPAY_WEBHOOK] RAZORPAY_WEBHOOK_SECRET not set!');
-            return res.status(500).json({ error: 'Webhook secret not configured on server.' });
-        }
-
-        const razorpaySignature = req.headers['x-razorpay-signature'];
-        if (!razorpaySignature) {
-            return res.status(401).json({ error: 'Missing signature header.' });
-        }
-
-        const rawBody = req.body;
-        const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
-
-        const sigBuf = Buffer.from(razorpaySignature, 'hex');
-        const expBuf = Buffer.from(expectedSignature, 'hex');
-        if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-            return res.status(401).json({ error: 'Invalid signature.' });
-        }
-
-        const payload = JSON.parse(rawBody.toString());
-        if (payload.event === 'payment.captured' || payload.event === 'order.paid') {
-            const payment = payload.payload.payment.entity;
-            const amount_in_rs = payment.amount / 100;
-            let userId = payment.notes?.client_id || payment.notes?.user_id;
-            const customerEmail = payment.email;
-            const transaction_id = payment.id || payment.order_id || 'N/A';
-
-            if (!userId && customerEmail && supabaseAdmin) {
-                const { data: profileByEmail } = await supabaseAdmin
-                    .from('profiles')
-                    .select('id')
-                    .eq('email', customerEmail)
-                    .maybeSingle();
-                if (profileByEmail) {
-                    userId = profileByEmail.id;
-                    console.log(`[RAZORPAY_WEBHOOK] Resolved userId ${userId} via customer email ${customerEmail}`);
-                }
-            }
-
-            if (userId) {
-                let creditsToAdd = 0;
-                let targetTier = null;
-                let planName = 'TOP-UP';
-
-                // Exact Match Checks (Plans & Top-Ups) - 1 Short ≈ ₹1 ratio with volume bonuses
-                if (amount_in_rs === 9999 || amount_in_rs === 10000 || amount_in_rs === 7999) {
-                    creditsToAdd = 11000; targetTier = 'ENTERPRISE'; planName = 'Agency Max';
-                } else if (amount_in_rs === 4999 || amount_in_rs === 5000 || amount_in_rs === 3999) {
-                    creditsToAdd = 5500; targetTier = 'DIRECTOR'; planName = 'Enterprise Bulk';
-                } else if (amount_in_rs === 2499 || amount_in_rs === 2500 || amount_in_rs === 1999) {
-                    creditsToAdd = 2600; targetTier = 'INFLUENCER'; planName = 'Studio Master';
-                } else if (amount_in_rs === 999 || amount_in_rs === 1000) {
-                    creditsToAdd = 1000; targetTier = null; planName = 'Creator Pro';
-                } else if (amount_in_rs === 299 || amount_in_rs === 300 || amount_in_rs === 399 || amount_in_rs === 319) {
-                    creditsToAdd = 400; targetTier = 'STARTER'; planName = 'Starter Fuel';
-                }
-                
-                // Fallback Range Checks
-                else if (amount_in_rs >= 7500) { creditsToAdd = 11000; targetTier = 'ENTERPRISE'; planName = 'Agency Max'; }
-                else if (amount_in_rs >= 3500) { creditsToAdd = 5500; targetTier = 'DIRECTOR'; planName = 'Enterprise Bulk'; }
-                else if (amount_in_rs >= 1500) { creditsToAdd = 2600; targetTier = 'INFLUENCER'; planName = 'Studio Master'; }
-                else if (amount_in_rs >= 700)  { creditsToAdd = 1000; targetTier = null; planName = 'Creator Pro'; }
-                else if (amount_in_rs >= 200)  { creditsToAdd = 400;  targetTier = 'STARTER'; planName = 'Starter Fuel'; }
-
-                if (creditsToAdd > 0 && supabaseAdmin) {
-                    const { data: existingPayment } = await supabaseAdmin
-                        .from('billing_history')
-                        .select('id')
-                        .eq('transaction_id', transaction_id)
-                        .maybeSingle();
-
-                    if (existingPayment) {
-                        console.log(`[RAZORPAY_WEBHOOK] Duplicate payment ignored: ${transaction_id}`);
-                        return res.status(200).json({ success: true, duplicate: true });
-                    }
-
-                    const { data: profile } = await supabaseAdmin.from('profiles').select('shorts_balance, full_name, email').eq('id', userId).single();
-                    const new_balance = (profile?.shorts_balance ?? 0) + creditsToAdd;
-
-                    const profileUpdate = { shorts_balance: new_balance, last_payment_at: new Date().toISOString() };
-                    if (targetTier) profileUpdate.tier = targetTier;
-
-                    await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', userId);
-                    await supabaseAdmin.from('billing_history').insert({ user_id: userId, plan_name: planName, amount: amount_in_rs, status: 'SUCCESS', transaction_id });
-                    await supabaseAdmin.from('shorts_transactions').insert({ user_id: userId, amount: creditsToAdd, action_type: 'razorpay_payment', reason: `Purchase: ${planName}` });
-
-                    // Automated Payment Confirmation Email from support@zerolens.in
-                    const recipientEmail = customerEmail || profile?.email;
-                    if (recipientEmail) {
-                        sendPaymentSuccessEmail({
-                            email: recipientEmail,
-                            name: profile?.full_name || 'Creator',
-                            planName,
-                            amountPaid: amount_in_rs,
-                            creditsAdded: creditsToAdd,
-                            newBalance: new_balance,
-                            transactionId: transaction_id
-                        }).catch(e => console.error('[RAZORPAY_EMAIL] Failed to send payment confirmation email:', e));
-                    }
-                }
-            } else {
-                console.warn(`[RAZORPAY_WEBHOOK] Payment received (${transaction_id}) but could not match any user_id or email (${customerEmail})`);
-            }
-        }
-        res.status(200).json({ success: true });
-    } catch (err) {
-        console.error('[RAZORPAY_WEBHOOK_ERROR]:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
+app.post('/api/webhook/razorpay', express.raw({type:'application/json',limit:'256kb'}), createPaymentWebhook({billing}));
 
 // JSON parsers
 
@@ -2352,6 +2061,22 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 app.use(express.json({limit:'32mb'}));
 app.use(express.urlencoded({limit:'64kb',extended:false}));
+app.use('/api', billingRequestContext);
+app.use('/api', (req,res,next)=>{
+ const original=res.json.bind(res);
+ const send=body=>{refreshPrivateMediaUrls(body,req.user?.id).then(original).catch(()=>original({error:"Private media unavailable"}));return res;};
+ res.json=(body)=>{
+  res.json=send;
+  if(res.statusCode>=400 || body?.error) {
+   billing.refundFailedRequest().catch(()=>console.error('[BILLING] Failed-request refund needs reconciliation')).finally(()=>send(body));
+   return res;
+  }
+  return send(body);
+ };
+ next();
+});
+
+app.get('/api/private-media/:id',privateMediaHandler());
 
 // ── Automated Welcome Email Endpoint (support@zerolens.in) ─────────
 app.post('/api/auth/welcome', createWelcomeEmailHandler({
@@ -2402,6 +2127,8 @@ const deps = {
     resolveGoogleApiKey,
     consumeCredits,
     claimOrCreateSpend,
+    refundCredits,
+    billing,
     handleGoogle,
     handleOpenAI,
     handleKling,
@@ -2441,7 +2168,7 @@ import createAdsStudioRouter from './server/routes/adsStudioRoutes.js';
 import createMcpRouter from './server/routes/mcpRoutes.js';
 import createReelsRouter from './server/routes/reelsRoutes.js';
 import createMotionStudioRouter from './server/routes/motionStudioRoutes.js';
-import { getOAuthMetadata } from './server/mcp/auth/oauthHandler.js';
+import { getOAuthMetadata,getProtectedResourceMetadata } from './server/mcp/auth/oauthHandler.js';
 
 // ── MCP (Model Context Protocol & ChatGPT Actions Gateway) ───────────────────
 const mcpRouterInstance = createMcpRouter(deps);
@@ -2453,9 +2180,9 @@ app.use(['/sse', '/sse/'], (req, res, next) => {
 });
 
 // OAuth 2.0 & OIDC Discovery Metadata (RFC 8414 / PKCE S256 for ChatGPT Apps & Connectors)
+app.get(['/.well-known/oauth-protected-resource','/.well-known/oauth-protected-resource/api/mcp'],(_req,res)=>res.json(getProtectedResourceMetadata()));
 app.get([
   '/.well-known/oauth-authorization-server',
-  '/.well-known/openid-configuration',
   '/.well-known/oauth-authorization-server/api/mcp'
 ], (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';

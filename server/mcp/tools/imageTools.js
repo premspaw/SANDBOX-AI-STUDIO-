@@ -7,24 +7,29 @@ export function getImageToolDefinitions() {
       description: 'Generates an AI image in the user\'s ZeroLens account and returns the image URL. This consumes Shorts credits from the user\'s balance, so confirm the prompt, model, aspect ratio and credit cost with the user before calling, and set user_confirmed to true once they agree. Optionally accepts a public reference image URL. Model costs: "nano-banana-2-lite" 0.5 credits, "nano-banana-2" 1 credit, "gpt-image-2.5-flare" 1.5 credits, "gpt-image-2.5-sunburst" 2.5 credits, "nano-banana-pro" 3 credits.',
       inputSchema: {
         type: 'object',
+        additionalProperties:false,
         properties: {
           prompt: {
             type: 'string',
+            maxLength:20000,
             description: 'Detailed prompt describing the subject, composition, atmosphere, and lighting.'
           },
           aspect_ratio: {
             type: 'string',
+            maxLength:20000,
             enum: ['1:1', '16:9', '9:16', '3:4', '4:3'],
             description: 'Image aspect ratio: "1:1" (Square), "9:16" (Vertical/Story), "16:9" (Landscape/Banner), "3:4" (Portrait). Default: "1:1"',
             default: '1:1'
           },
           style: {
             type: 'string',
+            maxLength:20000,
             enum: ['cinematic', 'photorealistic', 'anime', '3d-render', 'digital-art', 'minimalist'],
             description: 'Visual artistic style preset.'
           },
           model: {
             type: 'string',
+            maxLength:20000,
             enum: ['nano-banana-2-lite', 'nano-banana-pro', 'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst', 'nano-banana-2'],
             description: 'Image generation engine: "nano-banana-2-lite" (fast/budget), "nano-banana-pro" (ultra detail studio), "gpt-image-2.5-flare" (fast high-quality GPT), "gpt-image-2.5-sunburst" (deep typography & fidelity). Default: "nano-banana-2-lite"',
             default: 'nano-banana-2-lite'
@@ -32,27 +37,31 @@ export function getImageToolDefinitions() {
           user_confirmed: {
             type: 'boolean',
             description: 'Confirmation flag indicating the user approved generating the image.',
-            default: true
+            default: false
           },
           reference_image_url: {
             type: 'string',
+            maxLength:20000,
             description: 'Optional public URL of an image to use as reference or visual anchor.'
           },
           visual_context: {
             type: 'string',
+            maxLength:20000,
             description: 'Visual description or transcription of an image uploaded by the user into ChatGPT. Use this when the user uploads an image to the chat and wants to iterate, edit, or transform it.'
           },
           image_count: {
-            type: 'number',
+            type: 'integer',
+            minimum:1,maximum:4,
             description: 'Number of images to generate (1 to 4). Default: 1',
             default: 1
           },
           project_id: {
             type: 'string',
+            maxLength:20000,
             description: 'Target project or folder ID to save into. Default: "default"'
           }
         },
-        required: ['prompt']
+        required: ['prompt','user_confirmed']
       },
       annotations: {
         readOnlyHint: false,
@@ -110,6 +119,7 @@ export async function executeGenerateImage(args, user, deps) {
   const totalCost = costPerImage * count;
   const { consumeCredits, supabaseAdmin, supabase, handleGoogle, handleOpenAI } = deps;
   const dbClient = supabaseAdmin || supabase;
+  if(typeof consumeCredits!=='function')throw new Error('Billing service unavailable');
 
   // 1. Verify user's credit balance
   let currentBalance = 0;
@@ -236,24 +246,7 @@ export async function executeGenerateImage(args, user, deps) {
     };
 
   } catch (err) {
-    // 3. Automatic refund if failure occurred after deduction
-    if (creditsDeducted && dbClient) {
-      try {
-        const { data: prof } = await dbClient.from('profiles').select('shorts_balance').eq('id', user.id).single();
-        if (prof) {
-          await dbClient.from('profiles').update({ shorts_balance: prof.shorts_balance + totalCost }).eq('id', user.id);
-          await dbClient.from('shorts_transactions').insert([{
-            user_id: user.id,
-            amount: Math.round(totalCost),
-            action_type: 'refund_mcp_chatgpt_image_generation',
-            created_at: new Date().toISOString()
-          }]);
-          console.log(`[MCP Image] 🔄 Refunded ${totalCost} credits to user ${user.id} after failure.`);
-        }
-      } catch (refErr) {
-        console.warn('[MCP Image] Refund error:', refErr.message);
-      }
-    }
+    await deps.refundCredits?.(user.id,totalCost).catch(()=>{});
     throw new Error(`ZeroLens Image Generation Failed: ${err.message}`);
   }
 }

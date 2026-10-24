@@ -23,7 +23,7 @@ begin
     if (before_row - allowed) is distinct from (after_row - allowed) then
       raise exception 'Account privileges and billing fields are server-managed' using errcode='42501';
     end if;
-    foreach key in array array['fractional_shorts','free_image_credits','free_video_credits'] loop
+    foreach key in array array['fractional_shorts','free_image_credits','free_video_credits','free_gpt_images_used','max_free_gpt_images'] loop
       if (before_row->'brand_voice'->key) is distinct from (after_row->'brand_voice'->key) then
         raise exception 'Credit fields are server-managed' using errcode='42501';
       end if;

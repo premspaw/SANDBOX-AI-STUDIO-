@@ -1141,110 +1141,17 @@ export const useAppStore = create((set, get) => ({
     // ✅ S3 FIX: Credits are mutated SERVER-SIDE via /api/credits/* endpoints.
     // The server verifies the JWT/session, checks balance, deducts/refunds, and writes the audit log.
     // The frontend store does an optimistic UI update and syncs with server-confirmed balance.
-    spendShorts: async (userId, amount, reason) => {
-        const current = get().userShorts;
-        const newOptimistic = Math.max(0, current - amount);
-
-        // Optimistic UI update
-        set({ userShorts: newOptimistic });
-        if (userId && _profileCache[userId]) {
-            _profileCache[userId].shorts_balance = newOptimistic;
-        }
-
+    spendShorts: async (userId,amount,reason)=>{
         try {
-            // Get session token, with dev-mode fallback for local testing
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token || (import.meta.env.DEV ? 'dev_mode_token' : null);
-            if (!token) throw new Error('No active session');
-
-            const response = await fetch(getApiUrl('/api/credits/spend'), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ amount, reason })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || `Server returned ${response.status}`);
-            }
-
-            // Sync store with server-confirmed balance
-            if (typeof data.newBalance === 'number') {
-                set({ userShorts: data.newBalance });
-                if (userId && _profileCache[userId]) {
-                    _profileCache[userId].shorts_balance = data.newBalance;
-                }
-            }
-
-            return { success: true };
-        } catch (err) {
-            console.error('Store: Spend failed', err);
-            // In dev mode or for admin testing, preserve local optimistic deduction so credit decrement is clearly visible
-            const isDevOrAdmin = import.meta.env.DEV || get().isAdmin || get().userProfile?.role === 'admin';
-            if (isDevOrAdmin) {
-                console.warn('[Store:spendShorts] Server deduction failed, preserving local optimistic deduction for dev/admin:', err.message);
-                return { success: true };
-            }
-            // Revert optimistic update on failure for non-admin production users
-            set({ userShorts: current });
-            if (userId && _profileCache[userId]) {
-                _profileCache[userId].shorts_balance = current;
-            }
-            return { success: false, reason: err.message || 'transaction_failed' };
-        }
+            const session=(await supabase.auth.getSession())?.data?.session;
+            if(!session?.access_token)throw new Error('Sign in required');
+            const response=await fetch(getApiUrl('/api/credits/spend'),{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({amount,reason})});
+            const data=await response.json();if(!response.ok)throw new Error(data.error||'Credit check failed');
+            if(typeof data.newBalance==='number')set({userShorts:data.newBalance});
+            return {success:true};
+        }catch(err){return {success:false,reason:err.message};}
     },
-
-    refundShorts: async (userId, amount, reason) => {
-        const current = get().userShorts;
-        const newOptimistic = current + amount;
-        // Optimistic UI update
-        set({ userShorts: newOptimistic });
-        if (userId && _profileCache[userId]) {
-            _profileCache[userId].shorts_balance = newOptimistic;
-        }
-
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token || (import.meta.env.DEV ? 'dev_mode_token' : null);
-            if (!token) throw new Error('No active session');
-
-            const response = await fetch(getApiUrl('/api/credits/refund'), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ amount, reason })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || `Server returned ${response.status}`);
-            }
-
-            // Sync store with server-confirmed balance
-            if (typeof data.newBalance === 'number') {
-                set({ userShorts: data.newBalance });
-                if (userId && _profileCache[userId]) {
-                    _profileCache[userId].shorts_balance = data.newBalance;
-                }
-            }
-        } catch (err) {
-            console.error('Store: Refund failed', err);
-            const isDevOrAdmin = import.meta.env.DEV || get().isAdmin || get().userProfile?.role === 'admin';
-            if (!isDevOrAdmin) {
-                set({ userShorts: current }); // Revert on failure for prod users
-                if (userId && _profileCache[userId]) {
-                    _profileCache[userId].shorts_balance = current;
-                }
-            }
-        }
-    },
+    refundShorts: async (userId)=>{if(userId)await get().fetchBalance(userId);},
 
     updateNodeData: (nodeId, newData) => {
         set((state) => ({
