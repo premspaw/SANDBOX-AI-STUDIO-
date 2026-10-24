@@ -20,7 +20,15 @@ import { brandLayer, DEFAULT_BRAND } from '../core/brand.js';
 import { reelsApi } from '../services/reelsApi.js';
 
 export function useReelsEditor(initialProject, onProjectUpdated) {
-  const [project, setProject] = useState(initialProject);
+  const [project, setProjectState] = useState(initialProject);
+  const projectRef=useRef(initialProject);
+  // Evaluate edit transactions once, outside React's replayable state updater.
+  // Undo bookkeeping and network saves must not run twice in development StrictMode.
+  const setProject=useCallback(update=>{
+    const next=typeof update==='function'?update(projectRef.current):update;
+    projectRef.current=next;
+    setProjectState(next);
+  },[]);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedClipId, setSelectedClipId] = useState(null);

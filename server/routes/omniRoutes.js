@@ -391,7 +391,8 @@ export default function createRouter(deps) {
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
 
-            const taskId = nodeId ? `veo-${nodeId}` : 'veo-default';
+            const taskId = nodeId ? `veo-${nodeId}` : `veo-${targetUserId}-${Date.now()}`;
+            await deps.updateJobStatus?.(taskId,'processing',{userId:targetUserId});
             const validAspectRatio = ['16:9', '9:16'].includes(aspectRatio) ? aspectRatio : '16:9';
 
             console.log(`[OMNI-I2V] Starting | taskId: ${taskId} | duration: ${validDuration}s | ratio: ${validAspectRatio} | model: ${model} | image: ${!!image}`);

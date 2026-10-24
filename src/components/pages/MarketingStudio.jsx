@@ -817,13 +817,8 @@ export default function MarketingStudio({ initialWorkspace = 'marketing' }) {
 
     const { spend, refund, canAfford, refresh: refreshShorts } = useShorts();
 
-    const getApiKey = () => {
-        if (userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com') {
-            return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
-        }
-        return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
-    };
-
+    // Only user-supplied keys may be used by a browser SDK.
+    const getApiKey = () => localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || '';
     const getAI = () => {
         const key = getApiKey();
         if (!key) throw new Error("No API Key detected. Please provide a Gemini API Key.");

@@ -21,6 +21,7 @@ import compression from 'compression';
 import { staticAssetOptions } from './server/http/staticAssets.js';
 
 import nodeFetch from 'node-fetch';
+import { fetchAllowedProxyResource } from './server/utils/safeProxy.js';
 import { createGoogleProviderFetch } from './server/utils/providerFetch.js';
 import { decode } from 'base64-arraybuffer';
 import multer from 'multer';
@@ -465,7 +466,9 @@ let videoQueue = null;
 const inMemoryJobStatus = new Map();
 
 let updateJobStatus = async (jobId, state, data = null, error = null) => {
-    const statusData = { ...inMemoryJobStatus.get(jobId), ...data, state, timestamp: Date.now(), error };
+    const previous=inMemoryJobStatus.get(jobId);
+    if(previous?.userId && data?.userId && previous.userId!==data.userId)throw new Error('Job owner mismatch');
+    const statusData = { ...previous, ...data, state, timestamp: Date.now(), error };
     inMemoryJobStatus.set(jobId, statusData);
     setTimeout(() => inMemoryJobStatus.delete(jobId), 3600_000);
 };
@@ -500,6 +503,7 @@ if (await isRedisAvailable()) {
 
         updateJobStatus = async (jobId, state, data = null, error = null) => {
             const previous=await getJobStatus(jobId);
+            if(previous?.userId && data?.userId && previous.userId!==data.userId)throw new Error('Job owner mismatch');
             const statusData = { ...previous, ...data, state, timestamp: Date.now(), error };
             await redisConn.set(`job-status:${jobId}`, JSON.stringify(statusData), 'EX', 3600);
         };
@@ -1002,10 +1006,8 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', 
     if (typeof resolvedBuffer === 'string' && (resolvedBuffer.startsWith('http://') || resolvedBuffer.startsWith('https://'))) {
         try {
             console.log(`[STORAGE-VIDEO] Fetching binary video buffer from URL: ${resolvedBuffer}`);
-            const vResp = await fetch(resolvedBuffer);
-            if (!vResp.ok) throw new Error(`HTTP ${vResp.status} ${vResp.statusText}`);
-            const arrayBuf = await vResp.arrayBuffer();
-            resolvedBuffer = Buffer.from(arrayBuf);
+            const media=await fetchAllowedProxyResource(resolvedBuffer,{maxBytes:250*1024*1024});
+            resolvedBuffer=media.buffer;
             console.log(`[STORAGE-VIDEO] ✅ Downloaded ${resolvedBuffer.length} bytes for video upload`);
         } catch (fetchErr) {
             console.warn(`[STORAGE-VIDEO] Warning: could not download remote video (${fetchErr.message}), returning direct URL`);
@@ -1153,14 +1155,7 @@ async function resolveImageForGemini(imageUrlInput, gcsUri) {
     }
     try {
         const fullUrl = imageUrl.startsWith('//') ? `https:${imageUrl}` : imageUrl;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-        const resp = await fetch(fullUrl, { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const buffer = await resp.buffer();
-        const mimeType = resp.headers.get('content-type') || 'image/jpeg';
+        const {buffer,contentType:mimeType}=await fetchAllowedProxyResource(fullUrl,{maxBytes:25*1024*1024,timeoutMs:8000});
         return { type: 'inline', mimeType, data: buffer.toString('base64') };
     } catch (err) {
         console.error('[resolveImageForGemini] Fetch failed:', err.message);
@@ -1184,9 +1179,8 @@ async function resolveFrameUri(frameDataInput) {
             buffer = Buffer.from(b64, 'base64');
         } else if (frameData.startsWith('http') || frameData.startsWith('//')) {
             const fullUrl = frameData.startsWith('//') ? `https:${frameData}` : frameData;
-            const res = await fetch(fullUrl);
-            buffer = Buffer.from(await res.arrayBuffer());
-            mimeType = res.headers.get('content-type') || 'image/png';
+            const media=await fetchAllowedProxyResource(fullUrl,{maxBytes:25*1024*1024});
+            buffer=media.buffer;mimeType=media.contentType;
         } else {
             buffer = Buffer.from(frameData, 'base64');
         }
@@ -1309,11 +1303,8 @@ async function resolveImageToBuffer(imgSrcInput) {
 
     // HTTP/HTTPS URL — fetch directly
     if (imgSrc.startsWith('http://') || imgSrc.startsWith('https://')) {
-        const resp = await fetch(imgSrc);
-        if (!resp.ok) throw new Error(`Failed to fetch image from URL: ${resp.statusText}`);
-        const mimeType = resp.headers.get('content-type') || 'image/png';
-        const buffer = Buffer.from(await resp.arrayBuffer());
-        return { buffer, mimeType };
+        const {buffer,contentType:mimeType}=await fetchAllowedProxyResource(imgSrc,{maxBytes:25*1024*1024});
+        return {buffer,mimeType};
     }
 
     // Data URI — data:image/png;base64,xxxx

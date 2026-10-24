@@ -13,6 +13,10 @@ import {executeSearch,executeFetch} from '../mcp/tools/searchTools.js';
 import createMotionRouter from '../routes/motionStudioRoutes.js';
 import createAdsRouter from '../routes/adsStudioRoutes.js';
 import createMcpRouter from '../routes/mcpRoutes.js';
+import createRemixRouter from '../routes/remixRoutes.js';
+import createOmniRouter from '../routes/omniRoutes.js';
+import {probeMedia} from '../reels/media.js';
+import createAdminRouter from '../routes/adminRoutes.js';
 import createCreditsRouter from '../routes/creditsRoutes.js';
 import {requireAppUser} from '../auth/requireAppUser.js';
 
@@ -99,18 +103,67 @@ test('Local asset search and fetch enforce ownership',async()=>{
 async function withApp(run){
  const user={id:'alice',email:'alice@example.invalid',email_confirmed_at:'2026-01-01'};
  const client={auth:{getUser:async token=>({data:{user:token==='fixture-session'?user:null},error:token!=='fixture-session'})}};
- const deps={requireAuth:req=>requireAppUser(req,client),supabaseAdmin:client};
+ const billed=[];
+ const deps={requireAuth:req=>requireAppUser(req,client),supabaseAdmin:client,
+  claimOrCreateSpend:async(...args)=>billed.push(args),
+  getVertexToken:async()=>{throw new Error('Fixture stops before provider');},
+  getJobStatus:async()=>({userId:'bob'})};
  const app=express();app.use(express.json());app.use('/motion',createMotionRouter(deps));app.use('/ads',createAdsRouter(deps));
+ app.use('/remix',createRemixRouter(deps));app.use('/omni',createOmniRouter(deps));
  app.use('/mcp',createMcpRouter(deps));app.use('/api',createCreditsRouter(deps));
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
- try{await run('http://127.0.0.1:'+server.address().port);}
+ try{await run('http://127.0.0.1:'+server.address().port,billed);}
  finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 }
 test('Paid studio endpoints reject anonymous requests before doing work; motion rejects traversal',async()=>withApp(async base=>{
- for(const route of ['/motion/choreograph','/ads/generate','/ads/upload-asset','/mcp/','/mcp/enhance-prompt','/mcp/action/get_usage']){
+ for(const route of ['/motion/choreograph','/ads/generate','/ads/upload-asset','/mcp/','/mcp/enhance-prompt','/mcp/action/get_usage','/remix/motion-transfer','/remix/object-swap','/remix/ai-influencer','/omni/omni-i2v']){
   const r=await fetch(base+route,{method:'POST',headers:{'content-type':'application/json'},body:'{}'});assert.equal(r.status,401,route);
  }
  const headers={'content-type':'application/json',authorization:'Bearer fixture-session'};
  assert.equal((await fetch(base+'/motion/choreograph',{method:'POST',headers,body:JSON.stringify({selectedSkill:'../../server'})})).status,400);
  assert.equal((await fetch(base+'/api/credits/refund',{method:'POST',headers,body:JSON.stringify({amount:999,reason:'video'})})).status,403);
 }));
+
+test('Provider status is owner-scoped and Omni ignores client credit overrides',async()=>withApp(async(base,billed)=>{
+ const headers={'content-type':'application/json',authorization:'Bearer fixture-session'};
+ for(const route of ['/ads/status/foreign-job','/remix/status/foreign-job']){
+  assert.equal((await fetch(base+route,{headers})).status,404);
+ }
+ await fetch(base+'/omni/omni-i2v',{method:'POST',headers,body:JSON.stringify({
+  userId:'bob',prompt:'Fixture',model:'omni-flash',duration:5,creditCost:.01,isAdmin:true,
+ })});
+ assert.equal(billed.length,1);assert.equal(billed[0][0],'alice');assert.ok(billed[0][1]>.01);
+}));
+test('Uploaded playlists cannot make FFprobe fetch network resources',{skip:!process.env.REELS_FFPROBE_PATH},async()=>{
+ const dir=await fsp.mkdtemp(path.join(os.tmpdir(),'reels-playlist-'));
+ const app=express();let hits=0;app.use((_req,res)=>{hits++;res.end('private');});
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+ try{
+  const file=path.join(dir,'disguised.mp4');
+  await fsp.writeFile(file,'#EXTM3U\n#EXT-X-TARGETDURATION:5\n#EXTINF:5,\nhttp://127.0.0.1:'+server.address().port+'/private.ts\n#EXT-X-ENDLIST\n');
+  await assert.rejects(()=>probeMedia(file));assert.equal(hits,0);
+ }finally{server.closeAllConnections();await new Promise(r=>server.close(r));await fsp.rm(dir,{recursive:true,force:true});}
+});
+
+test('Admin verification requires a session, stored role and explicit password configuration',async()=>{
+ const previous=process.env.ADMIN_PASSWORD;delete process.env.ADMIN_PASSWORD;
+ let role='member';
+ const builder={select(){return this;},eq(){return this;},single:async()=>({data:{role}})};
+ const deps={requireAuth:async req=>{
+  if(req.headers.authorization!=='Bearer fixture-session')throw Object.assign(new Error('Sign in required'),{status:401});
+  return {id:'alice'};
+ },supabaseAdmin:{from:()=>builder}};
+ const app=express();app.use(express.json());app.use(createAdminRouter(deps));
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+ try{
+  const url='http://127.0.0.1:'+server.address().port+'/admin/verify-login';
+  const request=authorized=>fetch(url,{method:'POST',headers:{'content-type':'application/json',...(authorized?{authorization:'Bearer fixture-session'}:{})},body:JSON.stringify({password:'fixture-only-password'})});
+  assert.equal((await request(false)).status,401);
+  assert.equal((await request(true)).status,403);
+  role='admin';assert.equal((await request(true)).status,503);
+  process.env.ADMIN_PASSWORD='fixture-only-password';assert.equal((await request(true)).status,200);
+ }finally{
+  if(previous===undefined)delete process.env.ADMIN_PASSWORD;else process.env.ADMIN_PASSWORD=previous;
+  server.closeAllConnections();await new Promise(r=>server.close(r));
+ }
+});

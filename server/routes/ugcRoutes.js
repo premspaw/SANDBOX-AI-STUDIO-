@@ -719,7 +719,7 @@ Return ONLY valid JSON.`
     // Compile Ad
     router.post('/compile-ad', async (req, res) => {
         try {
-            await requireAuth(req);
+            const user=await requireAuth(req);
             const { script, sceneVideos, bgMusicPath, nodeId } = req.body;
             validateExportInput({ script, sceneVideos, bgMusicPath, nodeId });
             if (!script || !sceneVideos || !sceneVideos.length) {
@@ -727,6 +727,7 @@ Return ONLY valid JSON.`
             }
 
             const taskId = `ugc-export-${nodeId || Date.now()}`;
+            await deps.updateJobStatus?.(taskId,'processing',{userId:user.id});
 
             masterExportService.compileUGCAd(
                 taskId,

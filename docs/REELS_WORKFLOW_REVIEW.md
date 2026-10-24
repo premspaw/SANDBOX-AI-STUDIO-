@@ -1,37 +1,56 @@
-# Reels workflow review and implementation
+# Reels editor workflow and verified limits
 
-Reviewed base commit 92788bf. This branch updates the existing Reels Editor, not the earlier standalone prototype.
+This updates the existing Reels Editor in the application. It preserves the uploaded source clips and edits a versioned timeline.
 
-## Confirmed issues corrected
-- aiEditor previously returned canned “viral” overlays when provider calls failed. Failures now leave the revision unchanged and configured providers are shown explicitly.
-- Chat previously replaced all overlays without sending existing layers to the model. The model now receives layer IDs, text and timing; returned IDs and timing are validated. It can still make a bad editorial choice: inspect the preview.
-- AI had no source-audio input. When a transcript is omitted, compressed mono audio is extracted and transcribed using the selected provider. Temporary audio is always removed. It is not word-timed or visual scene analysis.
-- AI results previously overwrote changes made while an API request was running. Save now requires the original revision.
-- Concurrent debounced saves could race; saves are serialized and flushed before AI/export. Project rename uses the saved mutation path.
-- Additional uploads did not refresh the mounted editor. Workspace now remounts on returned upload revision.
-- Upload now runs queued silence detection, applies reversible gap removal, enables light denoise and loudness normalization, then opens the styling workspace. No-audio sources skip acoustic work. Silence is not a reliable detector of filler words or unwanted sounds.
-- The palette is saved with the project. Text/surface/font/animation apply to text layers. Background/accent/secondary are reserved tokens, clearly labelled in the UI.
-- Export previously forced portrait dimensions. Canvas now supports even dimensions up to 3840; source dimensions and presets are selectable. Preview respects aspect ratio. Export remains MP4/H.264/AAC at 30 fps, not original container, codec, HDR, or variable frame rate.
+## What now happens
 
-## Run and configure
-Existing application setup and Supabase authentication remain in place. Install with `npm ci`, then `npm run dev` and `npm run server`.
+1. Upload footage. The queued worker detects acoustic silence, creates reversible gap cuts, and enables light denoise and loudness normalization. No-audio clips skip acoustic analysis.
+2. Choose OpenAI or Gemini using the configured server-side provider. When no transcript is supplied, the selected provider receives compressed mono speech audio; temporary audio is removed afterward.
+3. Choose a palette, font, animation mode and template. Palette/font changes restyle existing text layers. Selecting a template restyles their layout while preserving copy, timing and source anchors. Applying a library template inserts or restyles the selected layer.
+4. Refine text and timing through chat or timeline controls. AI receives existing layer IDs and context; invalid results fail without silently replacing the project with canned text. Saves are serialized and flushed before AI/export, and AI updates require the original revision.
+5. Export an MP4 at the selected canvas dimensions. Source dimensions and portrait/landscape/square presets are available.
 
-Server variables (never VITE-prefixed secrets):
-- OPENAI_API_KEY, REELS_OPENAI_MODEL, REELS_TRANSCRIBE_MODEL for OpenAI.
-- GEMINI_API_KEY (or GOOGLE_API_KEY), REELS_GEMINI_MODEL for Gemini Developer API. This adapter is not Vertex credential routing.
-- REELS_DATA_DIR on a persistent volume; REELS_MEDIA_SECRET must be a private random secret.
-- REELS_FFMPEG_PATH and REELS_FFPROBE_PATH if using system binaries.
-- REELS_WORKER_CONCURRENCY defaults to 1, capped at 2. Use one application/worker process with the current JSON store. Do not deploy multiple replicas against it.
+The six available presets are headline, centered emphasis caption, three-point full-screen card, spotlight callout, before/after text card, and creator lower-third. The two full-screen cards cover footage only during their layer interval; original audio continues and the raw picture resumes afterward. They are built-in presets, not a recreation of an unavailable reference video.
 
-Rendering/analysis stays server-side; a browser or ChatGPT plugin is not a background local worker. Browser-local FFmpeg, worker isolation, per-account byte quotas, and shared database queue locking remain production work. Current bounds: 250 MB/source, 120 seconds/source, 8 sources/project, 60 second output, up to 20 pending jobs globally / 2 per owner, one AI analysis per process, and upload rejection below 2 GiB free space. Job temp directories are cleaned by the existing worker. Finished export files expire after REELS_EXPORT_RETENTION_DAYS (default 7 days); source files persist until deleted; operate storage monitoring and a retention policy before public scale.
+## Brand controls and rendering
 
-## Not complete / not claimed
-- Exact reference-video animation template has not been ported. The UI exposes only the existing headline template; it must not be presented as the supplied reference style.
-- No sound-effect track editor or arbitrary diagrams/full-screen compositions.
-- No word-aligned captions, semantic filler-word cuts, visual frame understanding, automatic HDR tone mapping, or original-container export.
-- No local ChatGPT plugin processing, per-account storage billing, billing integration, or production multi-worker durability.
-- AI network calls need configured credentials and were not live-tested here.
+| Control | Actual output |
+| --- | --- |
+| Background | Full-screen card background and fit-video margins |
+| Surface | Card fill and text boxes |
+| Text | Text glyph color |
+| Accent / secondary | Template strips |
+| Font | Bundled Poppins Bold or Noto Sans Kannada |
+| Animation | None, fade, or slide-up text entrance/exit |
+| Template | Layer layout and matching panel geometry |
 
-Verification commands: `node --test tests/reels*.test.mjs`, `npm run build`. Changes are isolated on codex/reels-workflow; deploying main is not part of this change.
+Preview and export share panel geometry and frame-based animation rules. Panels appear for the layer interval; the text animates. The preview is an editor approximation of browser text rendering; the encoded preview/export remains the rendering authority. Browser audio preview does not apply the server denoise/normalization filters.
 
-Validation: 14 tests passed; production Vite build passed; scripts/reels-smoke.mjs rendered and probed an actual 5-second landscape MP4 with text animation, original audio, denoise and normalization. No live provider or signed-in browser test was run.
+## Run locally
+
+After pulling main, run `npm ci`, then `npm run start` (or run `npm run dev` and `npm run server` in separate terminals). GitHub pushes do not update an already running localhost checkout.
+
+Server configuration:
+
+- `OPENAI_API_KEY`, `REELS_OPENAI_MODEL`, `REELS_TRANSCRIBE_MODEL` for OpenAI.
+- `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) and `REELS_GEMINI_MODEL` for Gemini.
+- `REELS_DATA_DIR` on a persistent private volume.
+- `REELS_MEDIA_SECRET`: a private random value of at least 32 bytes, stable across restarts.
+- `REELS_FFMPEG_PATH` / `REELS_FFPROBE_PATH` when using system binaries with drawtext support.
+- Existing Supabase authentication configuration.
+
+Never put provider or admin secrets in `VITE_*` variables. See [security review](SECURITY_REVIEW_2026-10-24.md) for OAuth configuration and the database migration.
+
+Use one application process with the current JSON store and in-memory OAuth grants. `start:prod` now uses one PM2 instance. Shared database locking, persistent OAuth grants and a distributed queue are prerequisites for multiple replicas.
+
+## Resource limits
+
+250 MB/source; 120 seconds/source; maximum 4K input dimensions; eight sources/project; 60-second output; twenty pending jobs globally and two per owner; one AI operation per process. Reels worker concurrency defaults to one and is capped at two. Uploads are rejected below 2 GiB free disk space. Finished exports expire after `REELS_EXPORT_RETENTION_DAYS` (default seven days). Source clips persist until deleted.
+
+These controls reduce load; they are not per-account storage quotas or a guarantee against disk exhaustion. Rendering is server-side. Browser/local-plugin processing is not implemented.
+
+## Validation and remaining capabilities
+
+CI runs security/unit tests, the production build, a disposable PostgreSQL policy test, and real FFmpeg exports. The video tests inspect encoded pixels for all six templates, palette changes, font changes and animation, verify dimensions/duration/audio, and confirm the raw picture resumes after a full-screen card. Run `npm run test:reels`, `npm run test:security`, and `npm run smoke:reels`.
+
+Exports are MP4/H.264/AAC at 30 fps. Original container/codec/frame-rate/HDR preservation, word-aligned captions, semantic filler-word removal, visual frame understanding, arbitrary motion-graphics compositions and sound-effect tracks are not implemented. Transcript timing is approximate. Live provider requests and a signed-in production browser session have not been tested with deployment credentials.

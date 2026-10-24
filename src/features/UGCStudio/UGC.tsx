@@ -176,13 +176,8 @@ export default function UGC() {
 
   const [activeTab, setActiveTab] = useState<'ugc' | 'podcast' | 'talking-head' | 'ai-avatar' | 'home-tour' | 'edit'>('ugc');
 
-  const getApiKey = () => {
-    if (userProfile?.role === 'admin' || (userProfile as any)?.email?.startsWith('premspaw@gmail')) {
-      return (window as any).__ADMIN_GOOGLE_API_KEY__ || import.meta.env.VITE_ADMIN_GOOGLE_API_KEY || localStorage.getItem('GOOGLE_API_KEY') || (window as any).aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
-    }
-    return localStorage.getItem('GOOGLE_API_KEY') || (window as any).aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
-  };
-
+    // Only user-supplied keys may be used by a browser SDK.
+    const getApiKey = () => localStorage.getItem('GOOGLE_API_KEY') || (window as any).aistudio?.apiKey || '';
   const getAI = () => {
     const key = getApiKey();
     if (!key) throw new Error("No API Key detected. Please provide a Gemini API Key in Settings.");
@@ -755,45 +750,8 @@ export default function UGC() {
     setThDuration('10');
   }, [thEngine]);
 
-  useEffect(() => {
-    const originalFetch = window.fetch;
-    window.fetch = async function (input, init) {
-      const url = typeof input === 'string' ? input : (input as Request).url || '';
-      
-      // Only intercept calls going to our backend APIs
-      if (url.includes('/api/')) {
-        const newInit = { ...init };
-        const headers = new Headers(newInit.headers || {});
-        
-        // 1. Inject x-admin-trial-key if custom key is set
-        const key = getApiKey();
-        if (key && !headers.has('x-admin-trial-key')) {
-          headers.set('x-admin-trial-key', key);
-        }
-
-        // 2. Inject admin password header if admin mode is active
-        if (isAdmin) {
-          headers.set('x-admin-password', 'admin123');
-        }
-
-        // 3. Inject Authorization header if user is logged in
-        try {
-          const session = (await supabase.auth.getSession())?.data?.session;
-          const token = session?.access_token;
-          if (token && !headers.has('Authorization')) {
-            headers.set('Authorization', `Bearer ${token}`);
-          }
-        } catch (_) {}
-
-        newInit.headers = headers;
-        return originalFetch(input, newInit);
-      }
-      return originalFetch(input, init);
-    };
-    return () => {
-      window.fetch = originalFetch;
-    };
-  }, [userProfile, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+  // First-party API authentication is handled by src/lib/authenticatedFetch.js.
+  // Never attach credentials by matching an arbitrary URL substring.
 
   const handleKBUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

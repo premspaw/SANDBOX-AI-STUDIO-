@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "concurrently \"npm run dev\" \"npm run server\"",
-    "start:prod": "pm2 start server.js -i max --node-args=\"--max-old-space-size=4096\"",
+    "start:prod": "pm2 start server.js -i 1 --node-args=\"--max-old-space-size=4096\"",
     "dev": "vite",
     "server": "npx kill-port 3002 && node --max-old-space-size=4096 server.js",
     "hermes": "cd server && start-hermes-bridge.bat",
@@ -13,7 +13,10 @@
     "test": "node --test server/mcp/tests/mcpServer.test.js",
     "mcp:inspector": "npx @modelcontextprotocol/inspector node server/mcp/index.js",
     "lint": "eslint \"src/**/*.{js,jsx}\"",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:security": "node --test server/tests/*.test.js tests/security/*.test.js server/mcp/tests/*.test.js",
+    "test:reels": "node --test tests/reels*.mjs",
+    "smoke:reels": "node scripts/reels-smoke.mjs && node scripts/reels-brand-smoke.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.967.0",

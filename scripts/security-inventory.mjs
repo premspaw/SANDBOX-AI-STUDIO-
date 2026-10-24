@@ -12,6 +12,7 @@ for(const file of paths){
  for(const [kind,re] of [
   ['provider-key',/\b(?:sk-(?:proj-)?[A-Za-z0-9_-]{30,}|AIza[\w-]{30,}|gh[pousr]_[A-Za-z0-9]{30,}|AKIA[A-Z0-9]{16})\b/g],
   ['private-key',/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g],
+  ['legacy-admin-password',/["']admin\d{2,}["']/g],
  ]){
   for(const m of text.matchAll(re))findings.push({file,line:at(m.index),kind});
  }
@@ -29,4 +30,4 @@ for(const file of paths){
  }
 }
 console.log('SECURITY_INVENTORY:'+JSON.stringify({scanned,findings,routeFiles}));
-if(findings.some(f=>['provider-key','private-key','service-role-token'].includes(f.kind)))process.exitCode=1;
+if(findings.some(f=>['provider-key','private-key','service-role-token','legacy-admin-password','browser-environment-key'].includes(f.kind)))process.exitCode=1;

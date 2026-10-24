@@ -45,6 +45,8 @@ jobs:
           cache: npm
       - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: npm ci --ignore-scripts --no-fund
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=critical
       - name: Tracked source credential inventory
         run: node scripts/security-inventory.mjs
       - name: Syntax and database security checks
@@ -62,3 +64,8 @@ jobs:
         run: |
           node scripts/reels-smoke.mjs
           node scripts/reels-brand-smoke.mjs
+      - name: Verify bundled FFmpeg defaults
+        run: |
+          node node_modules/ffmpeg-static/install.js
+          env -u REELS_FFMPEG_PATH -u REELS_FFPROBE_PATH node scripts/reels-smoke.mjs
+          env -u REELS_FFMPEG_PATH -u REELS_FFPROBE_PATH node scripts/reels-brand-smoke.mjs
