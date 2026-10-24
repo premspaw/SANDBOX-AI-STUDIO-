@@ -567,9 +567,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate video.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to generate video.' });
+                
             }
 
             const { prompt, firstFrame, lastFrame, duration, userId, negative_prompt, cfg_scale, model } = req.body;
@@ -736,9 +735,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate motion control video.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to generate motion control video.' });
+                
             }
 
             const { prompt, input_url, video_url, mode = '720p', character_orientation = 'video', userId } = req.body;
@@ -843,9 +841,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate video.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to generate video.' });
+                
             }
 
             const {
@@ -926,9 +923,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to upscale video.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to upscale video.' });
+                
             }
 
             const {

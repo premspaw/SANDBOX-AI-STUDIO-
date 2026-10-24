@@ -930,13 +930,14 @@ async function claimOrCreateSpend(userId, cost, reason = 'generation') {
 
         if (txs && txs.length > 0) {
             const txId = txs[0].id;
-            const { error: claimErr } = await client
+            const { data: claimedRows, error: claimErr } = await client
                 .from('shorts_transactions')
                 .update({ reason: 'claimed' })
                 .eq('id', txId)
-                .is('reason', null);
+                .is('reason', null)
+                .select('id');
 
-            if (!claimErr) {
+            if (!claimErr && claimedRows?.length===1) {
                 console.log(`[Credits] ✅ Claimed recent client-side transaction ${txId} (${Math.abs(txs[0].amount)} credits) for user ${userId} (${reason}). No extra charge.`);
                 return true;
             }

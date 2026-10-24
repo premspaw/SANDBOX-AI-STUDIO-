@@ -11,7 +11,6 @@ const getAI = () => {
     const storeKey = typeof window !== 'undefined' && window.__VEO_API_KEY__;
     const apiKey = storeKey ||
         (typeof globalThis !== 'undefined' && globalThis.process?.env ? globalThis.process.env.GOOGLE_API_KEY : null) ||
-        (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : null) ||
         '';
     return new GoogleGenerativeAI(apiKey);
 };

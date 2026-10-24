@@ -17,7 +17,6 @@ const getAIConfig = () => {
     const storeKey = typeof window !== 'undefined' && window.__VEO_API_KEY__;
     let apiKey = storeKey ||
         (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_API_KEY : null) ||
-        (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : null) ||
         '';
 
     // Admin/server keys must stay on the backend. Browser code may only use public/user-provided keys.

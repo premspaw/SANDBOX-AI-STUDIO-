@@ -302,9 +302,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate video.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to generate video.' });
+                
             }
 
             const {

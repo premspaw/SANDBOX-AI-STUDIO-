@@ -74,7 +74,7 @@ test('OAuth grants bind client, redirect and verifier; codes and refresh tokens 
 });
 test('Widget escapes untrusted markup and rejects active URL schemes',()=>{
  const html=renderWidgetHtml({status:'completed',resultUrl:'javascript:alert(1)',prompt:'<script>alert(1)</script>',error:'"><img src=x onerror=alert(1)>'});
- assert.ok(!html.includes('<script>'));assert.ok(!html.includes('src=x'));assert.ok(!html.includes('javascript:'));
+ assert.ok(!html.includes('<script>'));assert.ok(!html.includes('<img src=x'));assert.ok(!html.includes('javascript:'));
  assert.ok(html.includes('&lt;script&gt;'));assert.ok(html.includes('Content-Security-Policy'));
 });
 test('Job results remain private to the verified owner',async()=>{
