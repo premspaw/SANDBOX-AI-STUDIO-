@@ -10,6 +10,55 @@ function formatSimpleTime(frame, fps) {
   return `${mm}:${ss}`;
 }
 
+let sfxCtx = null;
+function playProceduralSfx(type) {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    if (!sfxCtx) sfxCtx = new AudioContextClass();
+    if (sfxCtx.state === 'suspended') sfxCtx.resume();
+    const now = sfxCtx.currentTime;
+
+    if (type === 'POP') {
+      const osc = sfxCtx.createOscillator();
+      const gain = sfxCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(130, now + 0.09);
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      osc.connect(gain);
+      gain.connect(sfxCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.095);
+    } else if (type === 'WHOOSH') {
+      const bufSize = Math.floor(sfxCtx.sampleRate * 0.22);
+      const buf = sfxCtx.createBuffer(1, bufSize, sfxCtx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+      const noise = sfxCtx.createBufferSource();
+      noise.buffer = buf;
+      const filter = sfxCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.Q.value = 2.0;
+      filter.frequency.setValueAtTime(320, now);
+      filter.frequency.exponentialRampToValueAtTime(1800, now + 0.11);
+      filter.frequency.exponentialRampToValueAtTime(400, now + 0.22);
+      const gain = sfxCtx.createGain();
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.28, now + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(sfxCtx.destination);
+      noise.start(now);
+      noise.stop(now + 0.23);
+    }
+  } catch (err) {
+    console.warn('SFX audio error:', err);
+  }
+}
+
 export function GuidedPlayerPanel({
   project,
   timeline,
@@ -25,6 +74,8 @@ export function GuidedPlayerPanel({
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const [viewportWidth, setViewportWidth] = useState(320);
+  const lastClipIndexRef = useRef(-1);
+  const firedOverlayIdsRef = useRef(new Set());
 
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) => {
@@ -50,14 +101,42 @@ export function GuidedPlayerPanel({
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
 
-  // Segment change seek
+  // Segment change seek + WHOOSH sound effect
   useEffect(() => {
     const video = videoRef.current;
     const mapping = currentMappingRef.current;
     if (!video || !mapping) return;
     video.currentTime = mapping.sourceSec;
-    if (isPlayingRef.current) video.play().catch(() => setIsPlaying(false));
-  }, [activeSegment?.clipId, activeStreamUrl, setIsPlaying]);
+    if (isPlayingRef.current) {
+      if (activeSegment && lastClipIndexRef.current !== -1 && activeSegment.clipIndex !== lastClipIndexRef.current) {
+        playProceduralSfx('WHOOSH');
+      }
+      video.play().catch(() => setIsPlaying(false));
+    }
+    if (activeSegment) {
+      lastClipIndexRef.current = activeSegment.clipIndex;
+    }
+  }, [activeSegment?.clipId, activeStreamUrl, setIsPlaying, activeSegment]);
+
+  // Overlay POP sound trigger
+  useEffect(() => {
+    if (!isPlaying) {
+      firedOverlayIdsRef.current.clear();
+      return;
+    }
+    if (project?.overlays) {
+      project.overlays.forEach((o) => {
+        if (
+          currentFrame >= o.startFrame &&
+          currentFrame < o.startFrame + 4 &&
+          !firedOverlayIdsRef.current.has(o.id)
+        ) {
+          firedOverlayIdsRef.current.add(o.id);
+          playProceduralSfx('POP');
+        }
+      });
+    }
+  }, [isPlaying, currentFrame, project?.overlays]);
 
   // Playhead frame loop
   useEffect(() => {

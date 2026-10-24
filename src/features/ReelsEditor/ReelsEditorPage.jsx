@@ -17,7 +17,6 @@ import { GuidedStepperHeader } from './components/GuidedStepperHeader.jsx';
 import { GuidedPlayerPanel } from './components/GuidedPlayerPanel.jsx';
 import { GuidedBottomBar } from './components/GuidedBottomBar.jsx';
 import { GuidedStepStage } from './components/GuidedStepStage.jsx';
-import { ZeroLensArgonEditPanel } from './components/ZeroLensArgonEditPanel.jsx';
 import { STEPS, COLOUR_PALETTES, FONT_PAIRINGS, HOOK_STYLES, CAPTION_STYLES } from './core/guidedPresets.js';
 
 export default function ReelsEditorPage() {
@@ -27,6 +26,7 @@ export default function ReelsEditorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [uploadProgress, setUploadProgress] = useState(null);
   const [uploadError, setUploadError] = useState(null);
+  const [loadingMessage, setLoadingMessage] = useState('Loading Reel Studio…');
   const fileInputRef = useRef(null);
 
   // Load existing projects on mount
@@ -82,6 +82,7 @@ export default function ReelsEditorPage() {
     if (!file) return;
     setUploadError(null);
     setUploadProgress(0);
+    setLoadingMessage('Uploading raw footage to ZeroLens Studio…');
     setIsLoading(true);
 
     try {
@@ -93,12 +94,16 @@ export default function ReelsEditorPage() {
       }
 
       const res = await reelsApi.uploadSource(targetProjectId, file, {
-        onProgress: (p) => setUploadProgress(p),
+        onProgress: (p) => {
+          setUploadProgress(p);
+          setLoadingMessage(`Uploading raw footage (${p}%)…`);
+        },
       });
 
       let cleaned = res.project;
       if (res.source.meta.hasAudio) {
         setUploadProgress(100);
+        setLoadingMessage('Trimming stumbles and dead air (1:1 EDL math rule)…');
         const job = await reelsApi.detectSilence(targetProjectId, { sourceId: res.source.id });
         let status = job;
         const deadline = Date.now() + 15 * 60 * 1000;
@@ -112,6 +117,21 @@ export default function ReelsEditorPage() {
         cleaned.audio = { denoise: { enabled: true, strength: 'light' }, normalize: { enabled: true, targetLufs: -14 } };
         cleaned = await reelsApi.saveRevision(cleaned.id, res.project.revision, cleaned);
       }
+
+      // ── Auto-Direct with Gemini 4 Argon Skill on upload! ──
+      setLoadingMessage('✨ Gemini 4 Argon: Analyzing footage with video editor skill & generating cut…');
+      try {
+        const aiRes = await reelsApi.applyAiEdit(cleaned.id, {
+          engine: 'gemini',
+          userPrompt: 'Auto-edit this footage into a viral high-retention reel with scroll-stopping hook and captions',
+        });
+        if (aiRes?.project) {
+          cleaned = aiRes.project;
+        }
+      } catch (aiErr) {
+        console.warn('Argon auto-direct notice:', aiErr.message);
+      }
+
       setActiveProjectData(cleaned);
       setUploadProgress(null);
       reelsApi.listProjects().then(setProjectsList).catch(() => {});
@@ -127,8 +147,8 @@ export default function ReelsEditorPage() {
     return (
       <div className="w-full h-full min-h-[600px] flex flex-col items-center justify-center bg-black text-white p-6">
         <Loader2 className="w-8 h-8 animate-spin text-[#c8f135] mb-3" />
-        <p className="font-mono text-xs text-zinc-400 uppercase tracking-widest">
-          {uploadProgress !== null ? 'Uploading and preparing footage…' : 'Loading Reel Studio…'}
+        <p className="font-mono text-xs text-zinc-300 uppercase tracking-widest text-center max-w-sm">
+          {loadingMessage}
         </p>
       </div>
     );
@@ -214,7 +234,6 @@ function GuidedEditorWorkspace({
   // Start on step 2 (Fonts) or step 1 (Colours) matching the user reference photo!
   const [currentStepIndex, setCurrentStepIndex] = useState(2);
   const [completedSteps, setCompletedSteps] = useState(new Set(['colours']));
-  const [studioMode, setStudioMode] = useState('guided');
   const [showSilenceModal, setShowSilenceModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
@@ -307,31 +326,6 @@ function GuidedEditorWorkspace({
     }
   };
 
-  if (studioMode === 'argon') {
-    return (
-      <div className="flex flex-col h-screen w-full bg-black text-white select-none overflow-hidden">
-        <header className="h-14 border-b border-white/10 bg-zinc-950 px-6 flex items-center justify-between shrink-0">
-          <button
-            onClick={() => setStudioMode('guided')}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-zinc-300 hover:text-white transition-all"
-          >
-            ← Return to Guided Stepper
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full">
-              Gemini 4 Argon • 1:1 Jump-Cut & Web Audio Engine
-            </span>
-          </div>
-        </header>
-        <div className="flex-1 overflow-hidden">
-          <ZeroLensArgonEditPanel defaultVideoUrl={activeStreamUrl} />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col h-screen w-full bg-black text-white select-none overflow-hidden">
       {/* ── 1. Top Header Navigation (Stepper) ── */}
       <GuidedStepperHeader
         project={project}
@@ -344,7 +338,6 @@ function GuidedEditorWorkspace({
         onCreateNewProject={onCreateNewProject}
         onOpenAiModal={() => setShowAiModal(true)}
         onOpenExportModal={() => setShowExportModal(true)}
-        onToggleArgonView={() => setStudioMode('argon')}
       />
 
       {/* ── 2. Step Subtitle Bar matching reference image ── */}

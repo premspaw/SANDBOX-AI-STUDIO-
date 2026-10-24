@@ -261,42 +261,74 @@ ${JSON.stringify({
     plan = Plan.parse(JSON.parse(cleanText.trim()));
   } catch (parseErr) {
     console.warn('[REELS-AI] Remote response unparseable, generating high-retention plan:', parseErr.message);
+    const dur = tl.durationSec || 15;
     const hookText = userPrompt?.trim()
-      ? userPrompt.trim().slice(0, 140)
-      : (scriptText ? scriptText.split('\n')[0]?.trim().slice(0, 140) : 'STOP SCROLLING 🛑\nWatch This First');
+      ? userPrompt.trim().slice(0, 80)
+      : (scriptText ? scriptText.split('\n')[0]?.trim().slice(0, 80) : 'STOP SCROLLING 🛑\nWatch This First');
+
+    const dynamicOverlays = [
+      {
+        id: project.overlays[0]?.id || '',
+        text: hookText.toUpperCase(),
+        startSec: 0.0,
+        durationSec: Math.min(3.0, dur),
+        templateId: 'viral-hook',
+      },
+    ];
+
+    if (dur >= 6.5) {
+      dynamicOverlays.push({
+        id: project.overlays[1]?.id || '',
+        text: 'THIS CHANGES\nEVERYTHING ⚡',
+        startSec: 3.2,
+        durationSec: Math.min(2.8, Math.max(1.0, dur - 3.2)),
+        templateId: 'hormozi-caption',
+      });
+    }
+
+    if (dur >= 11) {
+      dynamicOverlays.push({
+        id: project.overlays[2]?.id || '',
+        text: '01 • CURIOSITY HOOK\n02 • KINETIC VALUE\n03 • INSTANT ACTION',
+        startSec: 6.2,
+        durationSec: Math.min(4.0, Math.max(1.0, dur - 6.2)),
+        templateId: 'point-list-3',
+      });
+    }
+
+    if (dur >= 15) {
+      dynamicOverlays.push({
+        id: project.overlays[3]?.id || '',
+        text: '⚡ PRO TIP:\nAlways Lead With The Result',
+        startSec: 10.5,
+        durationSec: Math.min(3.0, Math.max(1.0, dur - 10.5)),
+        templateId: 'spotlight-callout',
+      });
+    }
+
+    if (dur >= 8) {
+      const lastOverlay = dynamicOverlays[dynamicOverlays.length - 1];
+      const outroStart = Math.max(dur - 3.2, lastOverlay.startSec + lastOverlay.durationSec + 0.2);
+      if (outroStart < dur - 0.5) {
+        dynamicOverlays.push({
+          id: project.overlays[4]?.id || '',
+          text: '@zerolens.ai • Save This Reel',
+          startSec: outroStart,
+          durationSec: Math.max(1.0, dur - outroStart),
+          templateId: 'creator-handle',
+        });
+      }
+    }
 
     plan = {
-      paperEditSummary: userPrompt
-        ? `Orchestrated edit for "${userPrompt}".`
-        : 'Generated viral hook headline and retention motion overlays.',
-      overlays: [
-        {
-          id: project.overlays[0]?.id || '',
-          text: hookText.toUpperCase(),
-          startSec: 0.0,
-          durationSec: Math.min(3.0, tl.durationSec || 3.0),
-        },
-        ...(tl.durationSec > 6
-          ? [
-              {
-                id: project.overlays[1]?.id || '',
-                text: 'NEVER MAKE THIS\nONE MISTAKE',
-                startSec: 3.2,
-                durationSec: Math.min(2.8, Math.max(1.0, tl.durationSec - 3.2)),
-              },
-            ]
-          : []),
-        ...(tl.durationSec > 9
-          ? [
-              {
-                id: project.overlays[2]?.id || '',
-                text: '⚡ PRO TIP:\nTry This Method Instead',
-                startSec: 6.5,
-                durationSec: Math.min(3.0, Math.max(1.0, tl.durationSec - 6.5)),
-              },
-            ]
-          : []),
-      ],
+      paperEditSummary: 'ZeroLens Argon skill edit: generated scroll-stopping hook, kinetic captions, value cards, and outro.',
+      brandPatch: {
+        accent: '#c8f135',
+        background: '#0a0a0a',
+        text: '#ffffff',
+        surface: '#18181b',
+      },
+      overlays: dynamicOverlays,
     };
   }
 
