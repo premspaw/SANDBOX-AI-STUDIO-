@@ -251,43 +251,58 @@ function GuidedEditorWorkspace({
     }
   };
 
-  // "Surprise me" feature: Generates an AI-curated aesthetic combo!
-  const handleSurpriseMe = () => {
+  // "Surprise me" feature: Runs Gemini 4 Argon to auto-edit reel with fresh aesthetic & story
+  const handleSurpriseMe = async () => {
     setIsSurprising(true);
-    // Pick random palette
     const randomPalette = COLOUR_PALETTES[Math.floor(Math.random() * COLOUR_PALETTES.length)];
-    // Pick random font pairing
     const randomFont = FONT_PAIRINGS[Math.floor(Math.random() * FONT_PAIRINGS.length)];
-    // Pick random hook style
-    const randomHook = HOOK_STYLES[Math.floor(Math.random() * HOOK_STYLES.length)];
 
-    editor.mutate((p) => {
-      let updated = applyBrand(p, {
-        background: randomPalette.background,
-        surface: randomPalette.surface,
-        text: randomPalette.text,
-        accent: randomPalette.accent,
-        secondary: randomPalette.secondary,
-        font: randomFont.fontKey,
+    try {
+      await editor.flushSave();
+      const res = await reelsApi.applyAiEdit(project.id, {
+        engine: 'gemini',
+        userPrompt: 'Surprise me with a fresh high-converting viral hook, kinetic captions, and optimal pacing',
       });
-
-      // Update overlays font
-      updated = {
-        ...updated,
-        overlays: updated.overlays.map((o) => ({
-          ...o,
-          style: { ...o.style, font: randomFont.fontKey },
-        })),
-      };
-
-      return updated;
-    });
-
-    setSurpriseToast(`✨ Applied: ${randomFont.name} with ${randomPalette.name}!`);
-    setTimeout(() => {
-      setSurpriseToast(null);
-      setIsSurprising(false);
-    }, 3000);
+      if (res?.project) {
+        let updated = applyBrand(res.project, {
+          background: randomPalette.background,
+          surface: randomPalette.surface,
+          text: randomPalette.text,
+          accent: randomPalette.accent,
+          secondary: randomPalette.secondary,
+          font: randomFont.fontKey,
+        });
+        editor.replaceProject(updated);
+        setSurpriseToast(`✨ Gemini 4 Argon auto-edited: ${randomFont.name} + ${randomPalette.name}!`);
+        editor.setCurrentFrame(0);
+        editor.setIsPlaying(true);
+      }
+    } catch {
+      // Offline / fallback styling
+      editor.mutate((p) => {
+        let updated = applyBrand(p, {
+          background: randomPalette.background,
+          surface: randomPalette.surface,
+          text: randomPalette.text,
+          accent: randomPalette.accent,
+          secondary: randomPalette.secondary,
+          font: randomFont.fontKey,
+        });
+        return {
+          ...updated,
+          overlays: updated.overlays.map((o) => ({
+            ...o,
+            style: { ...o.style, font: randomFont.fontKey },
+          })),
+        };
+      });
+      setSurpriseToast(`✨ Surprise combo applied: ${randomFont.name} + ${randomPalette.name}!`);
+    } finally {
+      setTimeout(() => {
+        setSurpriseToast(null);
+        setIsSurprising(false);
+      }, 3500);
+    }
   };
 
   return (

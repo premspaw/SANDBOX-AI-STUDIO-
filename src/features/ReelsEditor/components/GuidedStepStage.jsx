@@ -3,17 +3,16 @@ import {
   Check,
   Sparkles,
   Upload,
-  Volume2,
-  VolumeX,
   Scissors,
   Wand2,
   Film,
-  Download,
   Loader2,
-  MessageSquare,
   Mic,
-  Maximize2,
-  Layers,
+  Cpu,
+  Palette,
+  Type,
+  HelpCircle,
+  Volume2,
 } from 'lucide-react';
 import {
   COLOUR_PALETTES,
@@ -24,7 +23,6 @@ import {
 } from '../core/guidedPresets.js';
 import { applyBrand } from '../core/brand.js';
 import { getTemplateById, instantiateTemplate } from '../core/templates.js';
-import { applyGapRemoval } from '../core/editPlan.js';
 import { reelsApi } from '../services/reelsApi.js';
 
 export function GuidedStepStage({
@@ -34,19 +32,36 @@ export function GuidedStepStage({
   activeStreamUrl,
   onOpenSilenceModal,
   onOpenExportModal,
-  onOpenAiModal,
   fileInputRef,
   onUploadFile,
 }) {
+  const [selectedEngine, setSelectedEngine] = useState('gemini'); // Default: Gemini 4 Argon
+  const [aiTopicPrompt, setAiTopicPrompt] = useState('');
+  const [isAiEditing, setIsAiEditing] = useState(false);
+  const [aiEditSummary, setAiEditSummary] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+
   const [hookInputText, setHookInputText] = useState(
     project.overlays.find((o) => o.templateId === 'viral-hook')?.text ||
       'Quit your job?\nthe part nobody says\nthis was the dream'
   );
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [isAiExecuting, setIsAiExecuting] = useState(false);
-  const [isListening, setIsListening] = useState(false);
 
-  // Helper to apply a colour palette
+  // Current brand colors
+  const brandText = project.brand?.text || '#FFFFFF'; // Font Color
+  const brandBg = project.brand?.background || '#0A0A0A'; // Background Color
+  const brandAccent = project.brand?.accent || '#C8F135'; // Brand Accent Color
+  const brandSurface = project.brand?.surface || '#18181B'; // Surface/Pill Color
+
+  // Helper to update specific brand color
+  const updateBrandColor = (key, hex) => {
+    editor.mutate((p) =>
+      applyBrand(p, {
+        [key]: hex,
+      })
+    );
+  };
+
+  // Helper to apply full palette
   const handleSelectPalette = (palette) => {
     editor.mutate((p) =>
       applyBrand(p, {
@@ -59,12 +74,10 @@ export function GuidedStepStage({
     );
   };
 
-  // Helper to apply a font pairing
+  // Helper to apply font pairing
   const handleSelectFontPair = (fontPair) => {
     editor.mutate((p) => {
-      // Set brand font
       const updatedBrand = { ...p.brand, font: fontPair.fontKey };
-      // Update all existing text overlays to use this font
       const updatedOverlays = p.overlays.map((o) => ({
         ...o,
         style: { ...o.style, font: fontPair.fontKey },
@@ -73,18 +86,16 @@ export function GuidedStepStage({
     });
   };
 
-  // Helper to apply a hook style
+  // Helper to apply hook style
   const handleSelectHookStyle = (hook) => {
     editor.mutate((p) => {
-      const template = getTemplateById('viral-hook');
       const textToUse = hookInputText || hook.defaultText;
-      // Check if there is an existing hook overlay in first 3 seconds
       const existingIdx = p.overlays.findIndex((o) => o.startFrame === 0);
       const newOverlay = {
         kind: 'text',
         text: textToUse,
         startFrame: 0,
-        durationFrames: 90, // 3s
+        durationFrames: 90,
         anchorMode: 'output',
         anchor: null,
         needsReview: false,
@@ -112,13 +123,11 @@ export function GuidedStepStage({
     });
   };
 
-  // Helper to apply a caption style
+  // Helper to apply caption style
   const handleSelectCaptionStyle = (caption) => {
     editor.mutate((p) => {
-      // Find spoken caption overlay or add one
       const existing = p.overlays.filter((o) => o.templateId !== 'viral-hook');
       if (existing.length === 0) {
-        // Add sample caption
         const newCap = {
           id: `caption_${Date.now()}`,
           kind: 'text',
@@ -143,11 +152,10 @@ export function GuidedStepStage({
         };
         return { ...p, overlays: [...p.overlays, newCap] };
       } else {
-        // Update all caption overlays
         return {
           ...p,
           overlays: p.overlays.map((o) => {
-            if (o.startFrame === 0) return o; // keep hook untouched
+            if (o.startFrame === 0) return o;
             return {
               ...o,
               templateId: caption.templateId,
@@ -176,13 +184,11 @@ export function GuidedStepStage({
     } else if (extra.type === 'template') {
       const exists = project.overlays.some((o) => o.templateId === extra.templateId);
       if (exists) {
-        // Remove it
         editor.mutate((p) => ({
           ...p,
           overlays: p.overlays.filter((o) => o.templateId !== extra.templateId),
         }));
       } else {
-        // Add it
         const t = getTemplateById(extra.templateId);
         if (t) {
           editor.applyTemplate(t, Math.round(project.canvas.fps * 3));
@@ -191,24 +197,36 @@ export function GuidedStepStage({
     }
   };
 
-  // Direct AI Director Edit command
-  const handleRunAiDirector = async () => {
-    if (!aiPrompt.trim() || isAiExecuting) return;
-    setIsAiExecuting(true);
+  // ── CORE: Execute AI Video Editor ──
+  const handleRunAiDirector = async (customPrompt = null) => {
+    const promptToUse = customPrompt || aiTopicPrompt;
+    setIsAiEditing(true);
+    setAiEditSummary(null);
+
     try {
       await editor.flushSave();
-      const res = await reelsApi.aiEdit(project.id, {
-        command: aiPrompt,
-        model: 'gemini',
+      const res = await reelsApi.applyAiEdit(project.id, {
+        engine: selectedEngine,
+        userPrompt: promptToUse,
+        style: project.brand?.templateId || 'viral-hook',
+        removeGaps: true,
       });
+
       if (res?.project) {
         editor.replaceProject(res.project);
-        setAiPrompt('');
+        setAiEditSummary({
+          engine: res.engineUsed || selectedEngine,
+          summary: res.paperEditSummary || 'AI analyzed footage and created viral hook, captions, and brand styling.',
+          overlaysCount: res.overlaysCount || res.project.overlays?.length || 0,
+        });
+        // Reset playhead and auto-play to show results live
+        editor.setCurrentFrame(0);
+        editor.setIsPlaying(true);
       }
     } catch (err) {
-      alert(`AI Edit error: ${err.message || 'Failed to apply'}`);
+      alert(`AI Video Editor error: ${err.message || 'Failed to edit with AI'}`);
     } finally {
-      setIsAiExecuting(false);
+      setIsAiEditing(false);
     }
   };
 
@@ -233,7 +251,7 @@ export function GuidedStepStage({
       recognition.onerror = () => setIsListening(false);
       recognition.onresult = (e) => {
         const text = e.results?.[0]?.[0]?.transcript;
-        if (text) setAiPrompt((prev) => (prev ? `${prev} ${text}` : text));
+        if (text) setAiTopicPrompt((prev) => (prev ? `${prev} ${text}` : text));
       };
       recognition.start();
     } catch {
@@ -242,453 +260,731 @@ export function GuidedStepStage({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-      {/* ── STEP 0: START ── */}
-      {currentStepIndex === 0 && (
-        <div className="space-y-6 max-w-4xl">
-          <div>
-            <h2 className="text-xl font-bold text-white">Project & Footage Overview</h2>
-            <p className="text-xs text-zinc-400 mt-1">
-              Check your source video, manage audio cleanup, or upload new footage.
-            </p>
-          </div>
+    <div className="flex-1 flex flex-col h-full overflow-hidden select-none">
+      {/* ── AI DIRECTOR TOP COMMAND STRIP (Always available & prominent) ── */}
+      <div className="p-3 md:p-4 border-b border-white/10 bg-zinc-950/80 backdrop-blur-md shrink-0 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          {/* AI Model Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Cpu className="w-3.5 h-3.5 text-[#c8f135]" />
+              <span>AI Editor:</span>
+            </span>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Raw Footage Card */}
-            <div className="p-5 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#c8f135] bg-[#c8f135]/10 px-2.5 py-1 rounded-full border border-[#c8f135]/20">
-                Active Source
-              </span>
-              <h3 className="text-base font-bold text-white truncate">
-                {project.sources?.[0]?.meta?.width ? `${project.sources[0].meta.width} × ${project.sources[0].meta.height}` : 'HD 1080 × 1920'}
-              </h3>
-              <p className="text-xs text-zinc-400">
-                Duration: {(project.timeline?.totalFrames / (project.canvas?.fps || 30)).toFixed(1)}s • {project.clips?.length || 1} segments
-              </p>
-              <div className="pt-2">
-                <button
-                  onClick={() => fileInputRef?.current?.click()}
-                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-semibold text-white transition-all flex items-center gap-2"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Replace or Add Clip</span>
-                </button>
-              </div>
+            {/* Model Pills */}
+            <div className="flex items-center gap-1.5 bg-black/60 p-1 rounded-xl border border-white/10">
+              <button
+                onClick={() => setSelectedEngine('gemini')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  selectedEngine === 'gemini'
+                    ? 'bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/20'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                title="Google Gemini 4 Argon on Vertex AI (Default, Connected)"
+              >
+                <span>⚡ Gemini 4 Argon</span>
+                <span className="text-[9px] bg-black/20 text-black px-1.5 py-0.2 rounded font-black">
+                  CONNECTED
+                </span>
+              </button>
+
+              <button
+                onClick={() => setSelectedEngine('claude')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  selectedEngine === 'claude'
+                    ? 'bg-amber-500 text-black shadow-md'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                title="Claude 3.5 Sonnet / Opus Editor Skills"
+              >
+                <span>🧠 Claude 3.5 / Opus</span>
+              </button>
+
+              <button
+                onClick={() => setSelectedEngine('openai')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  selectedEngine === 'openai'
+                    ? 'bg-cyan-400 text-black shadow-md'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                title="OpenAI GPT-4o / Astra 6"
+              >
+                <span>🌌 GPT-4o / Astra 6</span>
+              </button>
             </div>
+          </div>
 
-            {/* Smart Silence & Audio Prep */}
-            <div className="p-5 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-400/10 px-2.5 py-1 rounded-full border border-cyan-400/20">
-                Smart Processing
-              </span>
-              <h3 className="text-base font-bold text-white">Acoustic Audio & Gaps</h3>
-              <p className="text-xs text-zinc-400">
-                Silence auto-cut removes awkward pauses while protecting speech and breath boundaries.
-              </p>
-              <div className="pt-2 flex items-center gap-2">
-                <button
-                  onClick={onOpenSilenceModal}
-                  className="px-4 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition-all flex items-center gap-2"
-                >
-                  <Scissors className="w-3.5 h-3.5" />
-                  <span>Inspect Silence Gaps</span>
-                </button>
-              </div>
-            </div>
+          {/* Quick Skill Action Pills */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[
+              { label: '⚡ Full Viral Edit', prompt: 'Turn this raw video into a viral reel with a killer hook headline, 3 kinetic subtitles and clean pauses' },
+              { label: '✂️ Silence Cut & Pace', prompt: 'Cut acoustic silence gaps, speed up transitions, and add punchy captions' },
+              { label: '📊 3-Point Value List', prompt: 'Extract 3 key takeaways from the video and display a 3-point animated list' },
+              { label: '🔥 Contrarian Hook', prompt: 'Create a contrarian scroll-stopping hook: Why everything you know is wrong' },
+            ].map((skill) => (
+              <button
+                key={skill.label}
+                onClick={() => {
+                  setAiTopicPrompt(skill.prompt);
+                  handleRunAiDirector(skill.prompt);
+                }}
+                disabled={isAiEditing}
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-40 border border-white/5 text-[11px] font-semibold text-zinc-300 hover:text-white transition-colors"
+              >
+                {skill.label}
+              </button>
+            ))}
           </div>
         </div>
-      )}
 
-      {/* ── STEP 1: COLOURS ── */}
-      {currentStepIndex === 1 && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {COLOUR_PALETTES.map((palette, idx) => {
-              const isSelected =
-                project.brand?.accent?.toLowerCase() === palette.accent.toLowerCase() &&
-                project.brand?.background?.toLowerCase() === palette.background.toLowerCase();
-
-              return (
-                <div
-                  key={palette.id}
-                  onClick={() => handleSelectPalette(palette)}
-                  className={`group relative rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all border ${
-                    isSelected
-                      ? 'border-[#c8f135] bg-zinc-900 shadow-[0_0_20px_rgba(200,241,53,0.15)] ring-1 ring-[#c8f135]'
-                      : 'border-white/10 bg-zinc-950/70 hover:border-white/30 hover:bg-zinc-900/40'
-                  }`}
-                  style={{ minHeight: '260px' }}
-                >
-                  {/* Top Badge: Number */}
-                  <div className="flex items-center justify-between">
-                    <span className="w-6 h-6 rounded-full bg-black/60 border border-white/20 text-white font-mono text-xs flex items-center justify-center font-bold">
-                      {idx + 1}
-                    </span>
-                    {isSelected && (
-                      <span className="text-[10px] font-bold text-[#c8f135] bg-[#c8f135]/15 px-2 py-0.5 rounded-full border border-[#c8f135]/30 flex items-center gap-1">
-                        <Check className="w-3 h-3 stroke-[2.5]" />
-                        <span>Active</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Visual simulated palette mockup */}
-                  <div
-                    className="my-3 flex-1 rounded-xl p-3 flex flex-col justify-center items-center text-center shadow-inner relative overflow-hidden"
-                    style={{ backgroundColor: palette.background }}
-                  >
-                    <div
-                      className="px-3 py-1.5 rounded-lg border text-xs font-black tracking-tight mb-2"
-                      style={{
-                        backgroundColor: palette.surface,
-                        borderColor: `${palette.accent}40`,
-                        color: palette.text,
-                      }}
-                    >
-                      Quit your job?
-                    </div>
-                    <div
-                      className="text-[11px] font-semibold"
-                      style={{ color: palette.accent }}
-                    >
-                      the part nobody says
-                    </div>
-                    <div
-                      className="text-[10px] font-bold mt-1"
-                      style={{ color: palette.secondary }}
-                    >
-                      this was the dream
-                    </div>
-                  </div>
-
-                  {/* Footer Labels */}
-                  <div className="pt-2 border-t border-white/5">
-                    <h4 className="text-sm font-bold text-white group-hover:text-[#c8f135] transition-colors truncate">
-                      {palette.name}
-                    </h4>
-                    <p className="text-[11px] text-zinc-400 mt-0.5 truncate">{palette.vibe}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── STEP 2: FONTS (Exact match to reference photo!) ── */}
-      {currentStepIndex === 2 && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {FONT_PAIRINGS.map((fontPair, idx) => {
-              const isSelected = project.brand?.font === fontPair.fontKey;
-
-              return (
-                <div
-                  key={fontPair.id}
-                  onClick={() => handleSelectFontPair(fontPair)}
-                  className={`group relative rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all border ${
-                    isSelected
-                      ? 'border-[#c8f135] bg-zinc-900 shadow-[0_0_20px_rgba(200,241,53,0.15)] ring-1 ring-[#c8f135]'
-                      : 'border-white/10 bg-zinc-950/70 hover:border-white/30 hover:bg-zinc-900/40'
-                  }`}
-                  style={{ minHeight: '300px' }}
-                >
-                  {/* Top Badge: 1, 2, 3, etc. */}
-                  <div className="flex items-center justify-between">
-                    <span className="w-6 h-6 rounded-full bg-black/60 border border-white/20 text-white font-mono text-xs flex items-center justify-center font-bold">
-                      {idx + 1}
-                    </span>
-                    {isSelected && (
-                      <span className="text-[10px] font-bold text-[#c8f135] bg-[#c8f135]/15 px-2 py-0.5 rounded-full border border-[#c8f135]/30 flex items-center gap-1">
-                        <Check className="w-3 h-3 stroke-[2.5]" />
-                        <span>Active</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* 9:16 Video preview container with stylized text exactly matching reference photo */}
-                  <div className="my-3 flex-1 rounded-xl p-3 flex flex-col justify-center items-center text-center bg-black/70 border border-white/5 relative overflow-hidden group-hover:scale-[1.02] transition-transform">
-                    {activeStreamUrl && (
-                      <video
-                        src={activeStreamUrl}
-                        playsInline
-                        muted
-                        className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
-                      />
-                    )}
-
-                    {/* Styled Sample Text in Font Pairing */}
-                    <div className="relative z-10 space-y-1">
-                      <div
-                        style={{ fontFamily: fontPair.titleFont }}
-                        className="text-base md:text-lg font-black text-white leading-tight drop-shadow-md"
-                      >
-                        {fontPair.sampleTitle}
-                      </div>
-                      <div
-                        style={{ fontFamily: fontPair.scriptFont }}
-                        className="text-xs md:text-sm font-semibold text-amber-300 drop-shadow-sm"
-                      >
-                        {fontPair.sampleSubtitle}
-                      </div>
-                      <div
-                        style={{ fontFamily: fontPair.scriptFont }}
-                        className="text-xs md:text-sm font-bold text-white drop-shadow-sm italic"
-                      >
-                        {fontPair.sampleScript}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer Label */}
-                  <div className="pt-2 border-t border-white/5">
-                    <h4 className="text-sm font-bold text-white group-hover:text-[#c8f135] transition-colors truncate">
-                      {fontPair.name}
-                    </h4>
-                    <p className="text-[11px] text-zinc-400 mt-0.5 truncate">{fontPair.vibe}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── STEP 3: HOOK ── */}
-      {currentStepIndex === 3 && (
-        <div className="space-y-5">
-          {/* Editable Hook Input Bar */}
-          <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-2.5">
-            <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-              <span>Your Hook Copy</span>
-              <span className="text-[11px] text-zinc-500 font-normal">(displayed in first 3 seconds)</span>
-            </label>
+        {/* Prompt Input + Execute Button */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
             <input
               type="text"
-              value={hookInputText}
-              onChange={(e) => setHookInputText(e.target.value)}
-              placeholder="e.g. Quit your job? The part nobody says..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-black border border-white/10 focus:border-[#c8f135] text-sm text-white outline-none font-medium transition-colors"
+              value={aiTopicPrompt}
+              onChange={(e) => setAiTopicPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleRunAiDirector()}
+              placeholder="Tell AI what to edit or enter a topic (e.g. 'Viral hook on quitting 9-5, kinetic subtitles, and 3 key takeaways')..."
+              className="w-full pl-3.5 pr-10 py-2 rounded-xl bg-black border border-white/15 focus:border-[#c8f135] text-xs text-white outline-none font-medium placeholder:text-zinc-600 transition-colors"
             />
-            {/* Quick Inspiration Pills */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mr-1">
-                Try:
-              </span>
-              {[
-                'Quit your job?',
-                'Stop scrolling 🛑',
-                'The 1 secret nobody told you',
-                'Why everything you know is wrong',
-                'How I got 100k views in 30 days',
-              ].map((chip) => (
-                <button
-                  key={chip}
-                  onClick={() => setHookInputText(chip)}
-                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-[11px] text-zinc-300 hover:text-white transition-colors"
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={handleToggleVoice}
+              className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${
+                isListening
+                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse'
+                  : 'text-zinc-500 hover:text-white'
+              }`}
+              title="Voice Dictation"
+            >
+              <Mic className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          {/* Grid of 6 Hook Style Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {HOOK_STYLES.map((hook, idx) => (
-              <div
-                key={hook.id}
-                onClick={() => handleSelectHookStyle(hook)}
-                className="group relative rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all border border-white/10 bg-zinc-950/70 hover:border-white/30 hover:bg-zinc-900/40"
-                style={{ minHeight: '260px' }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="w-6 h-6 rounded-full bg-black/60 border border-white/20 text-white font-mono text-xs flex items-center justify-center font-bold">
-                    {idx + 1}
-                  </span>
-                </div>
+          <button
+            onClick={() => handleRunAiDirector()}
+            disabled={isAiEditing}
+            className="px-4 py-2 rounded-xl bg-[#c8f135] text-black font-black text-xs uppercase tracking-wider hover:scale-105 active:scale-95 disabled:opacity-50 transition-all shadow-md shadow-[#c8f135]/20 flex items-center gap-1.5 shrink-0"
+          >
+            {isAiEditing ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>AI Editing…</span>
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-3.5 h-3.5 fill-current" />
+                <span>Auto-Edit with AI</span>
+              </>
+            )}
+          </button>
+        </div>
 
-                <div className="my-3 flex-1 rounded-xl p-3 flex flex-col justify-center items-center text-center bg-black/70 border border-white/5 relative overflow-hidden">
-                  <p className="text-xs font-bold text-white whitespace-pre-line leading-snug">
-                    {hookInputText || hook.defaultText}
+        {/* AI Director Result Summary Banner */}
+        {aiEditSummary && (
+          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-2.5 text-xs text-emerald-300">
+            <Sparkles className="w-4 h-4 text-[#c8f135] shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <span className="font-bold text-white capitalize mr-1.5">
+                {aiEditSummary.engine === 'gemini' ? 'Gemini 4 Argon' : aiEditSummary.engine} Edited Your Reel:
+              </span>
+              <span>{aiEditSummary.summary}</span>
+              <span className="text-zinc-400 ml-2 font-mono text-[10px]">
+                ({aiEditSummary.overlaysCount} layers placed)
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── STEP CONTENT AREA ── */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        {/* ── STEP 0: START ── */}
+        {currentStepIndex === 0 && (
+          <div className="space-y-6 max-w-4xl">
+            <div>
+              <h2 className="text-xl font-bold text-white">Project & Footage Overview</h2>
+              <p className="text-xs text-zinc-400 mt-1">
+                Check your source video, manage audio cleanup, or upload new footage.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-5 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#c8f135] bg-[#c8f135]/10 px-2.5 py-1 rounded-full border border-[#c8f135]/20">
+                  Active Source
+                </span>
+                <h3 className="text-base font-bold text-white truncate">
+                  {project.sources?.[0]?.meta?.width
+                    ? `${project.sources[0].meta.width} × ${project.sources[0].meta.height}`
+                    : 'HD 1080 × 1920'}
+                </h3>
+                <p className="text-xs text-zinc-400">
+                  Duration: {(project.timeline?.totalFrames / (project.canvas?.fps || 30)).toFixed(1)}s •{' '}
+                  {project.clips?.length || 1} segments
+                </p>
+                <div className="pt-2">
+                  <button
+                    onClick={() => fileInputRef?.current?.click()}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-semibold text-white transition-all flex items-center gap-2"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Replace or Add Clip</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-400/10 px-2.5 py-1 rounded-full border border-cyan-400/20">
+                  Smart Processing
+                </span>
+                <h3 className="text-base font-bold text-white">Acoustic Audio & Gaps</h3>
+                <p className="text-xs text-zinc-400">
+                  Silence auto-cut removes awkward pauses while protecting speech and breath boundaries.
+                </p>
+                <div className="pt-2 flex items-center gap-2">
+                  <button
+                    onClick={onOpenSilenceModal}
+                    className="px-4 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition-all flex items-center gap-2"
+                  >
+                    <Scissors className="w-3.5 h-3.5" />
+                    <span>Inspect Silence Gaps</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 1: COLOURS (Brand Studio: Font Color, Background Color, Brand Accent) ── */}
+        {currentStepIndex === 1 && (
+          <div className="space-y-6">
+            {/* Direct Brand Color Controls (Font Color, Background Color, Brand Color) */}
+            <div className="p-5 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-[#c8f135]" />
+                    <span>Brand Colors (Font Color & Background Color)</span>
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Configure your exact font color, video background, and brand accent.
                   </p>
                 </div>
 
-                <div className="pt-2 border-t border-white/5">
-                  <h4 className="text-sm font-bold text-white group-hover:text-[#c8f135] transition-colors truncate">
-                    {hook.name}
-                  </h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5 truncate">{hook.vibe}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── STEP 4: CAPTIONS ── */}
-      {currentStepIndex === 4 && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {CAPTION_STYLES.map((caption, idx) => (
-              <div
-                key={caption.id}
-                onClick={() => handleSelectCaptionStyle(caption)}
-                className="group relative rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all border border-white/10 bg-zinc-950/70 hover:border-white/30 hover:bg-zinc-900/40"
-                style={{ minHeight: '260px' }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="w-6 h-6 rounded-full bg-black/60 border border-white/20 text-white font-mono text-xs flex items-center justify-center font-bold">
-                    {idx + 1}
-                  </span>
-                </div>
-
-                <div className="my-3 flex-1 rounded-xl p-3 flex flex-col justify-center items-center text-center bg-black/70 border border-white/5 relative overflow-hidden">
-                  <div
-                    className="px-2.5 py-1 rounded text-xs font-black uppercase tracking-tight text-center whitespace-pre-line"
-                    style={{
-                      backgroundColor: caption.boxColor,
-                      color: caption.color,
-                    }}
-                  >
-                    {caption.sampleText}
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-white/5">
-                  <h4 className="text-sm font-bold text-white group-hover:text-[#c8f135] transition-colors truncate">
-                    {caption.name}
-                  </h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5 truncate">{caption.vibe}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── STEP 5: EXTRAS ── */}
-      {currentStepIndex === 5 && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {EXTRAS_PRESETS.map((extra) => {
-              let isEnabled = false;
-              if (extra.type === 'silence') {
-                isEnabled = true; // silence gap removal active in timeline
-              } else if (extra.type === 'audio') {
-                isEnabled = Boolean(project.audio?.denoise?.enabled);
-              } else if (extra.type === 'template') {
-                isEnabled = project.overlays.some((o) => o.templateId === extra.templateId);
-              }
-
-              return (
+                {/* Live Swatch Pill */}
                 <div
-                  key={extra.id}
-                  onClick={() => handleToggleExtra(extra)}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
-                    isEnabled
-                      ? 'border-[#c8f135]/40 bg-zinc-900/90 shadow-md'
-                      : 'border-white/10 bg-zinc-950/70 hover:border-white/20'
-                  }`}
-                  style={{ minHeight: '140px' }}
+                  className="px-3.5 py-1.5 rounded-xl border flex items-center gap-2 text-xs font-bold"
+                  style={{ backgroundColor: brandBg, borderColor: brandAccent, color: brandText }}
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="text-sm font-bold text-white">{extra.name}</h4>
-                      <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{extra.vibe}</p>
-                    </div>
-                    {/* Toggle Switch */}
-                    <div
-                      className={`w-11 h-6 rounded-full transition-colors flex items-center p-0.5 shrink-0 ml-3 ${
-                        isEnabled ? 'bg-[#c8f135]' : 'bg-zinc-800'
-                      }`}
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full bg-black transition-transform ${
-                          isEnabled ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </div>
-                  </div>
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: brandAccent }} />
+                  <span>Preview Copy</span>
+                </div>
+              </div>
 
-                  <div className="pt-2 flex items-center justify-between text-[11px] font-mono">
-                    <span className={isEnabled ? 'text-[#c8f135] font-bold' : 'text-zinc-500'}>
-                      {isEnabled ? 'Enabled' : 'Click to add'}
-                    </span>
-                    {extra.type === 'silence' && (
-                      <span className="text-cyan-400">Configure gaps →</span>
-                    )}
+              {/* 4 Core Color Fields */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {/* 1. Font Color (Text Color) */}
+                <div className="p-3 rounded-xl bg-black/60 border border-white/10 space-y-2">
+                  <label className="text-[11px] font-bold text-zinc-300 flex items-center justify-between">
+                    <span>Font Color (Text)</span>
+                    <span className="font-mono text-zinc-500">{brandText}</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={brandText}
+                      onChange={(e) => updateBrandColor('text', e.target.value)}
+                      className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                    />
+                    <div className="flex gap-1">
+                      {['#FFFFFF', '#FFE600', '#C8F135', '#F6F4EE', '#38BDF8'].map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => updateBrandColor('text', c)}
+                          style={{ backgroundColor: c }}
+                          className="w-5 h-5 rounded-md border border-white/20 hover:scale-110 transition-transform"
+                          title={c}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
-      {/* ── STEP 6: WATCH & EXPORT ── */}
-      {currentStepIndex === 6 && (
-        <div className="space-y-6 max-w-3xl">
-          <div className="p-6 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-4">
-            <div className="flex items-center justify-between">
+                {/* 2. Background Color */}
+                <div className="p-3 rounded-xl bg-black/60 border border-white/10 space-y-2">
+                  <label className="text-[11px] font-bold text-zinc-300 flex items-center justify-between">
+                    <span>Background Color</span>
+                    <span className="font-mono text-zinc-500">{brandBg}</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={brandBg}
+                      onChange={(e) => updateBrandColor('background', e.target.value)}
+                      className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                    />
+                    <div className="flex gap-1">
+                      {['#000000', '#0A0A0A', '#18181B', '#0B132B', '#1C1917'].map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => updateBrandColor('background', c)}
+                          style={{ backgroundColor: c }}
+                          className="w-5 h-5 rounded-md border border-white/20 hover:scale-110 transition-transform"
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Brand Accent Color */}
+                <div className="p-3 rounded-xl bg-black/60 border border-white/10 space-y-2">
+                  <label className="text-[11px] font-bold text-zinc-300 flex items-center justify-between">
+                    <span>Brand Accent Color</span>
+                    <span className="font-mono text-zinc-500">{brandAccent}</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={brandAccent}
+                      onChange={(e) => updateBrandColor('accent', e.target.value)}
+                      className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                    />
+                    <div className="flex gap-1">
+                      {['#C8F135', '#06B6D4', '#F97316', '#D4AF37', '#EC4899'].map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => updateBrandColor('accent', c)}
+                          style={{ backgroundColor: c }}
+                          className="w-5 h-5 rounded-md border border-white/20 hover:scale-110 transition-transform"
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Surface Color (Card / Pill) */}
+                <div className="p-3 rounded-xl bg-black/60 border border-white/10 space-y-2">
+                  <label className="text-[11px] font-bold text-zinc-300 flex items-center justify-between">
+                    <span>Surface Card / Pill</span>
+                    <span className="font-mono text-zinc-500">{brandSurface}</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={brandSurface}
+                      onChange={(e) => updateBrandColor('surface', e.target.value)}
+                      className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                    />
+                    <div className="flex gap-1">
+                      {['#18181B', '#202B42', '#27272A', '#000000', '#1F2937'].map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => updateBrandColor('surface', c)}
+                          style={{ backgroundColor: c }}
+                          className="w-5 h-5 rounded-md border border-white/20 hover:scale-110 transition-transform"
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 6 Curated Brand Palette Presets */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                Or Pick a Curated 1-Click Brand Palette
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {COLOUR_PALETTES.map((palette, idx) => {
+                  const isSelected =
+                    brandAccent.toLowerCase() === palette.accent.toLowerCase() &&
+                    brandBg.toLowerCase() === palette.background.toLowerCase();
+
+                  return (
+                    <div
+                      key={palette.id}
+                      onClick={() => handleSelectPalette(palette)}
+                      className={`group relative rounded-2xl p-3 flex flex-col justify-between cursor-pointer transition-all border ${
+                        isSelected
+                          ? 'border-[#c8f135] bg-zinc-900 shadow-md ring-1 ring-[#c8f135]'
+                          : 'border-white/10 bg-zinc-950/70 hover:border-white/30 hover:bg-zinc-900/40'
+                      }`}
+                      style={{ minHeight: '180px' }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="w-5 h-5 rounded-full bg-black/60 border border-white/20 text-white font-mono text-[10px] flex items-center justify-center font-bold">
+                          {idx + 1}
+                        </span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-[#c8f135] stroke-[2.5]" />}
+                      </div>
+
+                      {/* Mockup Card */}
+                      <div
+                        className="my-2 rounded-xl p-2.5 flex flex-col justify-center items-center text-center shadow-inner"
+                        style={{ backgroundColor: palette.background }}
+                      >
+                        <div
+                          className="px-2 py-0.5 rounded text-[10px] font-black tracking-tight mb-1"
+                          style={{ backgroundColor: palette.surface, color: palette.text }}
+                        >
+                          Quit job?
+                        </div>
+                        <div className="text-[9px] font-bold" style={{ color: palette.accent }}>
+                          nobody says
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-xs font-bold text-white group-hover:text-[#c8f135] transition-colors truncate">
+                          {palette.name}
+                        </h4>
+                        <p className="text-[10px] text-zinc-500 truncate">{palette.vibe}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 2: FONTS ── */}
+        {currentStepIndex === 2 && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {FONT_PAIRINGS.map((fontPair, idx) => {
+                const isSelected = project.brand?.font === fontPair.fontKey;
+
+                return (
+                  <div
+                    key={fontPair.id}
+                    onClick={() => handleSelectFontPair(fontPair)}
+                    className={`group relative rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all border ${
+                      isSelected
+                        ? 'border-[#c8f135] bg-zinc-900 shadow-[0_0_20px_rgba(200,241,53,0.15)] ring-1 ring-[#c8f135]'
+                        : 'border-white/10 bg-zinc-950/70 hover:border-white/30 hover:bg-zinc-900/40'
+                    }`}
+                    style={{ minHeight: '300px' }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="w-6 h-6 rounded-full bg-black/60 border border-white/20 text-white font-mono text-xs flex items-center justify-center font-bold">
+                        {idx + 1}
+                      </span>
+                      {isSelected && (
+                        <span className="text-[10px] font-bold text-[#c8f135] bg-[#c8f135]/15 px-2 py-0.5 rounded-full border border-[#c8f135]/30 flex items-center gap-1">
+                          <Check className="w-3 h-3 stroke-[2.5]" />
+                          <span>Active</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="my-3 flex-1 rounded-xl p-3 flex flex-col justify-center items-center text-center bg-black/70 border border-white/5 relative overflow-hidden group-hover:scale-[1.02] transition-transform">
+                      {activeStreamUrl && (
+                        <video
+                          src={activeStreamUrl}
+                          playsInline
+                          muted
+                          className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
+                        />
+                      )}
+                      <div className="relative z-10 space-y-1">
+                        <div
+                          style={{ fontFamily: fontPair.titleFont }}
+                          className="text-base md:text-lg font-black text-white leading-tight drop-shadow-md"
+                        >
+                          {fontPair.sampleTitle}
+                        </div>
+                        <div
+                          style={{ fontFamily: fontPair.scriptFont }}
+                          className="text-xs md:text-sm font-semibold text-amber-300 drop-shadow-sm"
+                        >
+                          {fontPair.sampleSubtitle}
+                        </div>
+                        <div
+                          style={{ fontFamily: fontPair.scriptFont }}
+                          className="text-xs md:text-sm font-bold text-white drop-shadow-sm italic"
+                        >
+                          {fontPair.sampleScript}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-white/5">
+                      <h4 className="text-sm font-bold text-white group-hover:text-[#c8f135] transition-colors truncate">
+                        {fontPair.name}
+                      </h4>
+                      <p className="text-[11px] text-zinc-400 mt-0.5 truncate">{fontPair.vibe}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 3: HOOK ── */}
+        {currentStepIndex === 3 && (
+          <div className="space-y-5">
+            {/* Explainer Banner */}
+            <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-start gap-3">
+              <HelpCircle className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-base font-bold text-white">Export Ready Reel</h3>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  1080 × 1920 (9:16 Portrait) • 30 FPS • H.264 AAC
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                  What is a Hook?
+                </h4>
+                <p className="text-xs text-purple-200 mt-0.5 leading-relaxed">
+                  The Hook is the scroll-stopping title that appears in the first 3 seconds (0:00 - 0:03). It grabs viewers before they swipe away on Instagram Reels or TikTok.
                 </p>
               </div>
-              <button
-                onClick={onOpenExportModal}
-                className="px-6 py-3 rounded-xl bg-[#c8f135] text-black font-black text-sm uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#c8f135]/25 flex items-center gap-2"
-              >
-                <Film className="w-4 h-4 fill-current" />
-                <span>Export Reel MP4</span>
-              </button>
             </div>
-          </div>
 
-          {/* AI Director Command Bar */}
-          <div className="p-5 rounded-2xl bg-zinc-900/40 border border-white/10 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-white">
-              <Sparkles className="w-4 h-4 text-[#c8f135]" />
-              <span>Ask Gemini 4 Argon for any custom edit</span>
-            </div>
-            <div className="flex items-center gap-2">
+            {/* Editable Hook Input Bar */}
+            <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-zinc-300">
+                  Opening Hook Headline
+                </label>
+                <button
+                  onClick={() => handleRunAiDirector('Generate a high-converting viral hook for this reel')}
+                  disabled={isAiEditing}
+                  className="text-xs font-bold text-[#c8f135] hover:underline flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>AI Generate Best Hook</span>
+                </button>
+              </div>
               <input
                 type="text"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleRunAiDirector()}
-                placeholder="e.g. 'Make the hook text larger and change palette to sunset'..."
-                className="flex-1 px-4 py-2.5 rounded-xl bg-black border border-white/10 focus:border-[#c8f135] text-xs text-white outline-none"
+                value={hookInputText}
+                onChange={(e) => setHookInputText(e.target.value)}
+                placeholder="e.g. Quit your job? The part nobody says this was the dream..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-black border border-white/10 focus:border-[#c8f135] text-sm text-white outline-none font-medium transition-colors"
               />
-              <button
-                onClick={handleToggleVoice}
-                className={`p-2.5 rounded-xl border transition-colors ${
-                  isListening
-                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse'
-                    : 'bg-zinc-900 text-zinc-400 hover:text-white border-white/10'
-                }`}
-                title="Voice Dictate Prompt"
-              >
-                <Mic className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleRunAiDirector}
-                disabled={isAiExecuting || !aiPrompt.trim()}
-                className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 border border-white/15 text-xs font-bold text-white transition-all flex items-center gap-1.5"
-              >
-                {isAiExecuting ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Wand2 className="w-3.5 h-3.5" />
-                )}
-                <span>Apply</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mr-1">
+                  Try:
+                </span>
+                {[
+                  'Quit your job?',
+                  'Stop scrolling 🛑',
+                  'The 1 secret nobody told you',
+                  'Why everything you know is wrong',
+                  'How I got 100k views in 30 days',
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    onClick={() => {
+                      setHookInputText(chip);
+                      handleSelectHookStyle({ style: { x: 0.5, y: 0.28, fontSize: 84, boxOpacity: 0.85 }, animation: { in: 'slide-up', durationFrames: 10 }, defaultText: chip });
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-[11px] text-zinc-300 hover:text-white transition-colors"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Grid of 6 Hook Style Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {HOOK_STYLES.map((hook, idx) => (
+                <div
+                  key={hook.id}
+                  onClick={() => handleSelectHookStyle(hook)}
+                  className="group relative rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all border border-white/10 bg-zinc-950/70 hover:border-white/30 hover:bg-zinc-900/40"
+                  style={{ minHeight: '260px' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="w-6 h-6 rounded-full bg-black/60 border border-white/20 text-white font-mono text-xs flex items-center justify-center font-bold">
+                      {idx + 1}
+                    </span>
+                  </div>
+
+                  <div className="my-3 flex-1 rounded-xl p-3 flex flex-col justify-center items-center text-center bg-black/70 border border-white/5 relative overflow-hidden">
+                    <p className="text-xs font-bold text-white whitespace-pre-line leading-snug">
+                      {hookInputText || hook.defaultText}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/5">
+                    <h4 className="text-sm font-bold text-white group-hover:text-[#c8f135] transition-colors truncate">
+                      {hook.name}
+                    </h4>
+                    <p className="text-[11px] text-zinc-400 mt-0.5 truncate">{hook.vibe}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* ── STEP 4: CAPTIONS ── */}
+        {currentStepIndex === 4 && (
+          <div className="space-y-5">
+            {/* Explainer Banner */}
+            <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-start gap-3">
+              <HelpCircle className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                  What are Kinetic Captions?
+                </h4>
+                <p className="text-xs text-cyan-200 mt-0.5 leading-relaxed">
+                  Dynamic animated subtitles that highlight speech word-by-word. Over 80% of viewers watch Reels on mute, so kinetic captions are essential for retention.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {CAPTION_STYLES.map((caption, idx) => (
+                <div
+                  key={caption.id}
+                  onClick={() => handleSelectCaptionStyle(caption)}
+                  className="group relative rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all border border-white/10 bg-zinc-950/70 hover:border-white/30 hover:bg-zinc-900/40"
+                  style={{ minHeight: '260px' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="w-6 h-6 rounded-full bg-black/60 border border-white/20 text-white font-mono text-xs flex items-center justify-center font-bold">
+                      {idx + 1}
+                    </span>
+                  </div>
+
+                  <div className="my-3 flex-1 rounded-xl p-3 flex flex-col justify-center items-center text-center bg-black/70 border border-white/5 relative overflow-hidden">
+                    <div
+                      className="px-2.5 py-1 rounded text-xs font-black uppercase tracking-tight text-center whitespace-pre-line"
+                      style={{
+                        backgroundColor: caption.boxColor,
+                        color: caption.color,
+                      }}
+                    >
+                      {caption.sampleText}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/5">
+                    <h4 className="text-sm font-bold text-white group-hover:text-[#c8f135] transition-colors truncate">
+                      {caption.name}
+                    </h4>
+                    <p className="text-[11px] text-zinc-400 mt-0.5 truncate">{caption.vibe}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 5: EXTRAS ── */}
+        {currentStepIndex === 5 && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {EXTRAS_PRESETS.map((extra) => {
+                let isEnabled = false;
+                if (extra.type === 'silence') {
+                  isEnabled = true;
+                } else if (extra.type === 'audio') {
+                  isEnabled = Boolean(project.audio?.denoise?.enabled);
+                } else if (extra.type === 'template') {
+                  isEnabled = project.overlays.some((o) => o.templateId === extra.templateId);
+                }
+
+                return (
+                  <div
+                    key={extra.id}
+                    onClick={() => handleToggleExtra(extra)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                      isEnabled
+                        ? 'border-[#c8f135]/40 bg-zinc-900/90 shadow-md'
+                        : 'border-white/10 bg-zinc-950/70 hover:border-white/20'
+                    }`}
+                    style={{ minHeight: '140px' }}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{extra.name}</h4>
+                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{extra.vibe}</p>
+                      </div>
+                      <div
+                        className={`w-11 h-6 rounded-full transition-colors flex items-center p-0.5 shrink-0 ml-3 ${
+                          isEnabled ? 'bg-[#c8f135]' : 'bg-zinc-800'
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full bg-black transition-transform ${
+                            isEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-between text-[11px] font-mono">
+                      <span className={isEnabled ? 'text-[#c8f135] font-bold' : 'text-zinc-500'}>
+                        {isEnabled ? 'Enabled' : 'Click to add'}
+                      </span>
+                      {extra.type === 'silence' && (
+                        <span className="text-cyan-400">Configure gaps →</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 6: WATCH & EXPORT ── */}
+        {currentStepIndex === 6 && (
+          <div className="space-y-6 max-w-3xl">
+            <div className="p-6 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-white">Export Ready Reel</h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    1080 × 1920 (9:16 Portrait) • 30 FPS • H.264 AAC Audio
+                  </p>
+                </div>
+                <button
+                  onClick={onOpenExportModal}
+                  className="px-6 py-3 rounded-xl bg-[#c8f135] text-black font-black text-sm uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#c8f135]/25 flex items-center gap-2"
+                >
+                  <Film className="w-4 h-4 fill-current" />
+                  <span>Export Reel MP4</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Overlays Summary */}
+            <div className="p-5 rounded-2xl bg-zinc-900/40 border border-white/10 space-y-3">
+              <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                Layers in this Reel ({project.overlays?.length || 0})
+              </h4>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {project.overlays.map((o, i) => (
+                  <div
+                    key={o.id || i}
+                    className="p-2.5 rounded-xl bg-black/60 border border-white/5 flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-[#c8f135] bg-[#c8f135]/10 px-1.5 py-0.5 rounded">
+                        {o.templateId || 'overlay'}
+                      </span>
+                      <span className="text-white font-medium truncate max-w-[280px]">
+                        {o.text.replace(/\n/g, ' ')}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-zinc-500">
+                      {(o.startFrame / (project.canvas?.fps || 30)).toFixed(1)}s
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

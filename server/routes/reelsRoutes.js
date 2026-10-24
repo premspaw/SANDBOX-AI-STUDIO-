@@ -186,7 +186,7 @@ export default function createReelsRouter(deps) {
 
   // ───────────────────────── AI Auto-Editor & Engines ─────────────────────────
   router.get('/ai-engines', handle(async (req, res) => {
-    res.json({ engines: getAvailableEngines() });
+    res.json({ engines: getAvailableEngines({ all: true }) });
   }));
 
   let activeAi = 0;
