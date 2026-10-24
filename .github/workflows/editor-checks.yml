@@ -16,9 +16,16 @@ jobs:
       REELS_FFMPEG_PATH: /usr/bin/ffmpeg
       REELS_FFPROBE_PATH: /usr/bin/ffprobe
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          persist-credentials: false
+      # Public checkout avoids pre-existing orphan submodule entries.
+      # No GitHub credentials are stored in the checkout or passed to app code.
+      - name: Check out source
+        env:
+          CHECKOUT_REF: ${{ github.sha }}
+        run: |
+          git init .
+          git remote add origin https://github.com/premspaw/SANDBOX-AI-STUDIO-.git
+          git fetch --no-tags --depth=1 origin "$CHECKOUT_REF"
+          git checkout --detach FETCH_HEAD
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
@@ -30,4 +37,6 @@ jobs:
       - name: Production build
         run: npm run build
       - name: Real video export
-        run: node scripts/reels-smoke.mjs
+        run: |
+          node scripts/reels-smoke.mjs
+          node scripts/reels-brand-smoke.mjs

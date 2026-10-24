@@ -34,7 +34,7 @@ export const REEL_TEMPLATES = [
     category: 'Captions & Speech',
     tag: 'Viral Standard',
     badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-    description: 'Ultra-punchy electric yellow text inside a solid black pill. Maximizes viewer focus and keeps retention above 80%.',
+    description: 'Ultra-punchy electric yellow text inside a solid black pill. A centered emphasis caption for short phrases.',
     defaultText: "THIS ONE HABIT\nCHANGED EVERYTHING",
     suggestedDurationSec: 2.5,
     style: {
@@ -57,7 +57,7 @@ export const REEL_TEMPLATES = [
     category: 'List & Value',
     tag: 'Educational',
     badgeColor: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-    description: 'Clean structured bullet cards (01, 02, 03) designed for tutorials, growth hacks, and value-packed videos.',
+    description: 'Full-screen branded text card for three key takeaways. Original footage and audio stay on the timeline.',
     defaultText: '01 • HOOK ATTENTION\n02 • DELIVER PROMISE\n03 • STRONG CTA',
     suggestedDurationSec: 4.0,
     style: {
@@ -99,11 +99,11 @@ export const REEL_TEMPLATES = [
   },
   {
     id: 'before-after-split',
-    name: 'Before & After Split',
+    name: 'Before & After Card',
     category: 'Comparison',
     tag: 'Transformation',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-    description: 'High-contrast split banner for makeover, color grade, camera lens, or prompt result comparisons.',
+    description: 'Full-screen branded text comparison card for before and after descriptions.',
     defaultText: 'BEFORE: Flat & Dull ❌\nAFTER: 4K Cinematic ✨',
     suggestedDurationSec: 3.5,
     style: {

@@ -14,6 +14,8 @@
  *    remapped through buildTimeline() after every trim/reorder/speed change.
  */
 import { z } from 'zod';
+import { REEL_TEMPLATES } from './templates.js';
+import { brandLayer } from './brand.js';
 
 export const SCHEMA_VERSION = 1;
 export const RENDERER = Object.freeze({ name: 'zerolens-ffmpeg', version: '1.0.0' });
@@ -143,7 +145,7 @@ export const ProjectSchema = z.strictObject({
     height: Int.min(64).max(3840).multipleOf(2),
     fps: z.strictObject({ num: z.literal(30), den: z.literal(1) }),
   }),
-  brand: z.strictObject({background: Hex, surface: Hex, text: Hex, accent: Hex, secondary: Hex, font: z.enum(Object.keys(FONTS)), animation: z.enum(ANIMATIONS), templateId: z.literal('viral-hook')}).optional(),
+  brand: z.strictObject({background: Hex, surface: Hex, text: Hex, accent: Hex, secondary: Hex, font: z.enum(Object.keys(FONTS)), animation: z.enum(ANIMATIONS), templateId: z.enum(REEL_TEMPLATES.map(t=>t.id))}).optional(),
   sources: z.array(Source).max(LIMITS.maxSources),
   clips: z.array(Clip).max(LIMITS.maxClips),
   overlays: z.array(Overlay).max(LIMITS.maxOverlays),
@@ -457,7 +459,7 @@ export function addTextOverlay(project, frame, patch = {}) {
     templateVersion: null,
     ...patch,
   };
-  return touch(project, { overlays: [...project.overlays, overlay] });
+  return touch(project, { overlays: [...project.overlays, brandLayer(overlay, project.brand)] });
 }
 
 export function updateOverlay(project, overlayId, patch) {

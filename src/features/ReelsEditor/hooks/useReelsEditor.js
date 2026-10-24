@@ -16,6 +16,7 @@ import {
   LIMITS,
 } from '../core/editPlan.js';
 import { instantiateTemplate } from '../core/templates.js';
+import { brandLayer } from '../core/brand.js';
 import { reelsApi } from '../services/reelsApi.js';
 
 export function useReelsEditor(initialProject, onProjectUpdated) {
@@ -176,13 +177,14 @@ export function useReelsEditor(initialProject, onProjectUpdated) {
           templateVersion: '1.0.0',
         };
         if (textOverride) patch.text = textOverride;
-        return updateOverlay(p, targetId, patch);
+        const branded = brandLayer({...p.overlays.find(o=>o.id===targetId),...patch},p.brand);
+        return updateOverlay(p, targetId, {...patch,style:branded.style,animation:branded.animation});
       }
       // Insert new template overlay at playhead
       const fps = p.canvas.fps.num / p.canvas.fps.den;
       const raw = instantiateTemplate(template, currentFrame, fps, textOverride);
-      if(p.brand){raw.style={...raw.style,color:p.brand.text,boxColor:p.brand.surface,font:p.brand.font};raw.animation.in=p.brand.animation;}
-      const withId = { ...raw, id: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}` };
+      const branded=brandLayer(raw,p.brand);
+      const withId = { ...branded, id: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}` };
       setSelectedOverlayId(withId.id);
       return { ...p, overlays: [...p.overlays, withId] };
     }, 'applyTemplate');

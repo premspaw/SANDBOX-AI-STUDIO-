@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { REEL_TEMPLATES as ALL_TEMPLATES, TEMPLATE_CATEGORIES } from '../core/templates.js';
 
-const REEL_TEMPLATES = ALL_TEMPLATES.filter(t => t.id === 'viral-hook');
+const REEL_TEMPLATES = ALL_TEMPLATES;
 export function TemplateLibraryModal({
   isOpen,
   onClose,
@@ -60,11 +60,11 @@ export function TemplateLibraryModal({
                   Cinematic Reel Templates
                 </h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#c8f135]/15 border border-[#c8f135]/30 text-[#c8f135]">
-                  HYPERFRAMES READY
+                  EDITABLE PRESETS
                 </span>
               </div>
               <p className="text-xs text-zinc-400">
-                Studio-grade viral motion graphic presets optimized for 9:16 portrait retention.
+                Title, callout and full-screen text presets. Apply your brand in the editor.
               </p>
             </div>
           </div>

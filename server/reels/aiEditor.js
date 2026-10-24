@@ -36,7 +36,7 @@ export async function executeAiEdit({project,ownerId,engine='gemini',userPrompt=
   const b=project.brand;
   return {...old,id:old?.id||newId('t'),kind:'text',text:o.text,startFrame,durationFrames,anchorMode:'output',anchor:null,needsReview:false,
    style:old?.style||{...template.style,...(b?{color:b.text,boxColor:b.surface,font:b.font}: {})},
-   animation:old?.animation||{...template.animation,...(b?{in:b.animation}: {})},templateId:old?.templateId||template.id,templateVersion:'1.0.0'};
+   animation:old?.animation||{...template.animation,...(b?{in:b.animation,durationFrames:b.animation==='none'?0:(template.animation.durationFrames||9)}: {})},templateId:old?.templateId||template.id,templateVersion:'1.0.0'};
  });
  const next={...project,overlays};const check=validateProject(next);if(!check.ok)throw new Error(check.errors.join('; '));
  return {project:next,engineUsed:engine,overlaysCount:overlays.length,silenceRemoved:false,paperEditSummary:plan.paperEditSummary};

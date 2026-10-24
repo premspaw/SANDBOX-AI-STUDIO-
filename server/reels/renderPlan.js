@@ -11,6 +11,8 @@
  */
 import { buildTimeline, FONTS, SLIDE_DISTANCE, RENDERER } from '../../src/features/ReelsEditor/core/editPlan.js';
 
+import { templatePanels } from '../../src/features/ReelsEditor/core/brand.js';
+
 export const PROFILES = Object.freeze({
   export: { width: 1080, height: 1920, crf: 20, preset: 'veryfast', audioBitrate: '160k' },
   preview: { width: 540, height: 960, crf: 30, preset: 'ultrafast', audioBitrate: '96k' },
@@ -27,11 +29,11 @@ function atempoChain(speed) {
   return parts.filter((v) => Math.abs(v - 1) > 1e-6).map((v) => `atempo=${f6(v)}`);
 }
 
-function framing(crop, W, H) {
+function framing(crop, W, H, background = '#000000') {
   if (crop.mode === 'fit') {
     return [
       `scale=${W}:${H}:force_original_aspect_ratio=decrease:force_divisible_by=2`,
-      `pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black`,
+      `pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=0x${background.slice(1)}`,
     ];
   }
   const zw = Math.round((W * crop.zoom) / 2) * 2;
@@ -116,7 +118,7 @@ export function buildRenderPlan(project, { sourcePaths, profile = 'export', rang
       `trim=start=${f6(seg.inSec)}:end=${f6(seg.outSec)}`,
       `setpts=(PTS-STARTPTS)/${f6(seg.speed)}`,
       `fps=${fps}`,
-      ...framing(clip.crop, W, H),
+      ...framing(clip.crop, W, H, project.brand?.background),
       'setsar=1',
       'format=yuv420p',
       // Clone the last frame if rounding left us short, then cut to the exact frame count.
@@ -164,6 +166,9 @@ export function buildRenderPlan(project, { sourcePaths, profile = 'export', rang
       const name = `layer${j}.txt`;
       textFiles.push({ name, content: o.text });
       fonts.add(FONTS[o.style.font].file);
+      for (const r of templatePanels(o, project.brand, W, H)) {
+        post.push(`drawbox=x=${r.x}:y=${r.y}:w=${r.width}:h=${r.height}:color=0x${r.color.slice(1)}:t=fill:enable='between(n,${o.startFrame},${o.startFrame+o.durationFrames-1})'`);
+      }
       post.push(drawtext(o, name, W, H));
     });
   if (range) post.push(`trim=start_frame=${range.startFrame}:end_frame=${range.endFrame}`, 'setpts=PTS-STARTPTS');
