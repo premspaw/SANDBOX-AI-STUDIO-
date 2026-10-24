@@ -20,7 +20,7 @@ export default function createRouter(deps) {
         VERTEX_LOCATION
     } = deps;
 
-    router.get('/test-key-image', async (req, res) => {
+    router.get('/test-key-image', utilityAuth, async (req, res) => {
         try {
             if (process.env.NODE_ENV === 'production') {
                 return res.status(404).json({ error: 'Endpoint not found' });
@@ -74,9 +74,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate images.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to generate images.' });
+                
             }
 
             const { model } = req.body;
@@ -186,9 +185,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to edit images.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to edit images.' });
+                
             }
 
             const { imageBase64, maskBase64, prompt, referenceImage, userId, model = 'gemini' } = req.body;
@@ -471,9 +469,8 @@ export default function createRouter(deps) {
             try {
                 await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required' });
-                }
+                return res.status(401).json({ error: 'Authentication required' });
+                
             }
             const { intent, tone, projectType } = req.body;
             const systemPrompt = `You are a professional marketing copywriter. Create short, bold poster copy for a ${projectType}. Tone: ${tone}. Rules: Headline max 6 words, Subtext max 10 words, CTA max 3 words. Return JSON only with keys: headline, subtext, cta.`;
@@ -495,9 +492,8 @@ export default function createRouter(deps) {
             try {
                 await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required' });
-                }
+                return res.status(401).json({ error: 'Authentication required' });
+                
             }
             const { prompt, width, height } = req.body;
             let size = "1024x1024";
@@ -527,9 +523,8 @@ export default function createRouter(deps) {
             try {
                 await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required' });
-                }
+                return res.status(401).json({ error: 'Authentication required' });
+                
             }
             const { context, url, brandName, projectType } = req.body;
             const systemPrompt = `You are an expert Creative Director. Analyze the request for a "${projectType}".
@@ -555,9 +550,8 @@ export default function createRouter(deps) {
             try {
                 await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required' });
-                }
+                return res.status(401).json({ error: 'Authentication required' });
+                
             }
             const { category, recipeData, medicalData, specialIngredients, brandColors, selectedStyle, referenceImage } = req.body;
             const isMedical = category === 'medical';

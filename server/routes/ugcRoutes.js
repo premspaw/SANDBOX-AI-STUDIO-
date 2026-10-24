@@ -47,9 +47,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate video.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to generate video.' });
+                
             }
 
             const { image, script, bible, userId, duration, resolution, model, aspect_ratio } = req.body;
@@ -720,7 +719,7 @@ Return ONLY valid JSON.`
     // Compile Ad
     router.post('/compile-ad', async (req, res) => {
         try {
-            await requireAuth(req);
+            const user=await requireAuth(req);
             const { script, sceneVideos, bgMusicPath, nodeId } = req.body;
             validateExportInput({ script, sceneVideos, bgMusicPath, nodeId });
             if (!script || !sceneVideos || !sceneVideos.length) {
@@ -728,6 +727,7 @@ Return ONLY valid JSON.`
             }
 
             const taskId = `ugc-export-${nodeId || Date.now()}`;
+            await deps.updateJobStatus?.(taskId,'processing',{userId:user.id});
 
             masterExportService.compileUGCAd(
                 taskId,
@@ -823,9 +823,8 @@ Return ONLY valid JSON.`
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to view assets.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to view assets.' });
+                
             }
 
             let { userId } = req.params;

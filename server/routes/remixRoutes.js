@@ -1,4 +1,5 @@
 import express from 'express';
+import {createUtilityAuth} from '../utils/utilityAuth.js';
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
@@ -31,6 +32,7 @@ function sanitizeServerError(rawMsg) {
 
 export default function createRouter(deps) {
     const router = express.Router();
+    const authenticate=createUtilityAuth(deps.requireAuth);
     const { 
         uploadVideoToSupabase, 
         uploadImageToSupabase,
@@ -64,8 +66,8 @@ export default function createRouter(deps) {
     }
 
     // ── Genjutsu Motion Transfer (v1.0) ───────────────────────────────────────
-    router.post(['/motion-transfer', '/api/remix/motion-transfer'], async (req, res) => {
-        const userId = req.headers['x-user-id'] || req.body.userId || 'anonymous';
+    router.post(['/motion-transfer', '/api/remix/motion-transfer'], authenticate, async (req, res) => {
+        const userId = req.utilityUser.id;
         const { 
             prompt = '', 
             video_url, 
@@ -135,6 +137,8 @@ export default function createRouter(deps) {
 
             const shouldPollServerSide = req.body.sync === true;
 
+            if(!deps.claimOrCreateSpend)throw new Error('Billing service unavailable');
+            await deps.claimOrCreateSpend(userId,({ '480p':36,'720p':63,'1080p':90 })[chosenResolution],creditKey);
             const result = await client.subscribe(
                 'higgsfield/genjutsu/motion-transfer/v1.0',
                 {
@@ -148,6 +152,7 @@ export default function createRouter(deps) {
                 }
             );
 
+            if(result?.request_id)await deps.updateJobStatus?.(result.request_id,result.status,{userId});
             console.log(`[REMIX] Job response received:`, {
                 status: result.status,
                 request_id: result.request_id,
@@ -277,8 +282,8 @@ export default function createRouter(deps) {
     });
 
     // ── Genjutsu Object Swap (v1.0) ───────────────────────────────────────────
-    router.post(['/object-swap', '/api/remix/object-swap', '/api/object-swap'], async (req, res) => {
-        const userId = req.headers['x-user-id'] || req.body.userId || 'anonymous';
+    router.post(['/object-swap', '/api/remix/object-swap', '/api/object-swap'], authenticate, async (req, res) => {
+        const userId = req.utilityUser.id;
         const { 
             prompt = '', 
             video_url, 
@@ -349,6 +354,8 @@ export default function createRouter(deps) {
 
             const shouldPollServerSide = req.body.sync === true;
 
+            if(!deps.claimOrCreateSpend)throw new Error('Billing service unavailable');
+            await deps.claimOrCreateSpend(userId,({ '480p':36,'720p':63,'1080p':90 })[chosenResolution],creditKey);
             const result = await client.subscribe(
                 'higgsfield/genjutsu/object-swap/v1.0',
                 {
@@ -362,6 +369,7 @@ export default function createRouter(deps) {
                 }
             );
 
+            if(result?.request_id)await deps.updateJobStatus?.(result.request_id,result.status,{userId});
             console.log(`[OBJECT-SWAP] Job response received:`, {
                 status: result.status,
                 request_id: result.request_id,
@@ -500,8 +508,10 @@ export default function createRouter(deps) {
     });
 
     // ── Check Higgsfield Job Status by Request ID (Fault-Tolerant, Never Aborts Early) ──
-    router.get(['/status/:requestId', '/api/remix/status/:requestId'], async (req, res) => {
+    router.get(['/status/:requestId', '/api/remix/status/:requestId'], authenticate, async (req, res) => {
         const { requestId } = req.params;
+        const ownedJob=await deps.getJobStatus?.(requestId);
+        if(!ownedJob || ownedJob.userId!==req.utilityUser.id)return res.status(404).json({error:'Job not found'});
         const activeCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
         if (!activeCredentials) {
             return res.status(500).json({ error: 'Service temporarily unavailable. Please contact support@zerolens.in.' });
@@ -626,8 +636,8 @@ export default function createRouter(deps) {
     });
 
     // ── Higgsfield AI Influencer Character Sheet Generation (v1.0) ───────────
-    router.post(['/ai-influencer', '/api/remix/ai-influencer', '/api/ai-influencer'], async (req, res) => {
-        const userId = req.headers['x-user-id'] || req.body.userId || 'anonymous';
+    router.post(['/ai-influencer', '/api/remix/ai-influencer', '/api/ai-influencer'], authenticate, async (req, res) => {
+        const userId = req.utilityUser.id;
         const {
             tier = 'normal',
             brief = '',
@@ -702,6 +712,8 @@ export default function createRouter(deps) {
 
             const shouldPollServerSide = req.body.sync === true;
 
+            if(!deps.claimOrCreateSpend)throw new Error('Billing service unavailable');
+            await deps.claimOrCreateSpend(userId,6,'ai_influencer');
             const result = await client.subscribe(
                 'higgsfield/ai-influencer',
                 {
@@ -710,6 +722,7 @@ export default function createRouter(deps) {
                 }
             );
 
+            if(result?.request_id)await deps.updateJobStatus?.(result.request_id,result.status,{userId});
             console.log(`[AI-INFLUENCER] Job response received:`, {
                 status: result.status,
                 request_id: result.request_id,

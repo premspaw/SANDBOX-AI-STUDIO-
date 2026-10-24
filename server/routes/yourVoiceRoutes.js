@@ -117,9 +117,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate speech.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to generate speech.' });
+                
             }
 
             const { prompt, voiceName = 'Kore', model = 'gemini-3.1-flash-tts-preview', userId, style, pace, accent, language } = req.body;
@@ -360,9 +359,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required.' });
-                }
+                return res.status(401).json({ error: 'Authentication required.' });
+                
             }
             const targetUserId = user ? user.id : (req.query.userId || 'anon');
             const dbPath = `users/${targetUserId}/yourvoice-pricing-history.json`;
@@ -389,9 +387,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required.' });
-                }
+                return res.status(401).json({ error: 'Authentication required.' });
+                
             }
             const { id, userId } = req.body;
             if (!id) {

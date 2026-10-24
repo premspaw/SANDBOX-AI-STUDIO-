@@ -2,6 +2,8 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Maximize2, Shield, Eye, AlertCircle } from 'lucide-react';
 import { outputFrameToSource, overlayStateAt, FONTS, SLIDE_DISTANCE } from '../core/editPlan.js';
 
+import { templatePanels } from '../core/brand.js';
+
 function formatTimecode(frame, fps) {
   const totalSeconds = Math.floor(frame / fps);
   const ff = String(frame % fps).padStart(2, '0');
@@ -28,6 +30,12 @@ export function ReelsPlayer({
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(-1);
   const [isMuted, setIsMuted] = useState(false);
 
+  const [viewportWidth, setViewportWidth] = useState(360);
+  useEffect(() => {
+    const observer = new ResizeObserver(([entry]) => setViewportWidth(entry.contentRect.width));
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
   const fps = timeline.fps || 30;
 
   // Determine current active segment and source time for the playhead frame
@@ -36,8 +44,17 @@ export function ReelsPlayer({
   }, [timeline, currentFrame]);
 
   const activeSegment = currentMapping?.segment || null;
+  const activeClip = activeSegment ? project.clips[activeSegment.clipIndex] : null;
   const activeSourceId = activeSegment?.sourceId || null;
   const activeStreamUrl = activeSourceId ? sourceUrls[activeSourceId] : null;
+
+  // A cut may jump inside the same raw video, so seek on segment changes too.
+  useEffect(() => {
+    const video=videoRef.current;
+    if (!video || !currentMapping) return;
+    video.currentTime=currentMapping.sourceSec;
+    if (isPlaying) video.play().catch(()=>setIsPlaying(false));
+  }, [activeSegment?.clipId, activeStreamUrl]);
 
   // Track playback frame loop
   useEffect(() => {
@@ -99,7 +116,7 @@ export function ReelsPlayer({
       const clip = project.clips[activeSegment.clipIndex];
       if (clip) {
         videoRef.current.playbackRate = clip.speed;
-        videoRef.current.volume = clip.muted ? 0 : clip.volume;
+        videoRef.current.volume = clip.muted || clip.audioPolicy === 'mute' ? 0 : Math.min(1, clip.volume);
       }
     }
   }, [activeSegment, project.clips]);
@@ -149,9 +166,10 @@ export function ReelsPlayer({
     <div className="flex flex-col items-center justify-center w-full h-full p-2 select-none">
       {/* 9:16 Canvas Viewport Container */}
       <div
+        style={{aspectRatio: `${project.canvas.width}/${project.canvas.height}`, maxWidth: '100%', backgroundColor:project.brand?.background || '#000000'}}
         ref={containerRef}
         onClick={() => setSelectedOverlayId(null)}
-        className="relative aspect-[9/16] w-auto h-[60vh] md:h-[68vh] max-h-[720px] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group"
+        className="relative w-auto h-[60vh] md:h-[68vh] max-h-[720px] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group"
       >
         {/* Source Video Tag */}
         {activeStreamUrl ? (
@@ -161,7 +179,15 @@ export function ReelsPlayer({
             playsInline
             muted={isMuted}
             preload="auto"
-            className="w-full h-full object-cover pointer-events-none"
+            className="w-full h-full pointer-events-none"
+            style={{objectFit:activeClip?.crop.mode==='fit'?'contain':'cover',
+              objectPosition:`${(activeClip?.crop.focusX??.5)*100}% ${(activeClip?.crop.focusY??.5)*100}%`,
+              transform:activeClip?.crop.mode==='fit'?undefined:`scale(${activeClip?.crop.zoom||1})`,
+              transformOrigin:`${(activeClip?.crop.focusX??.5)*100}% ${(activeClip?.crop.focusY??.5)*100}%`}}
+            onLoadedMetadata={()=>{
+              if(videoRef.current && currentMapping) videoRef.current.currentTime=currentMapping.sourceSec;
+              if(isPlaying) videoRef.current?.play().catch(()=>setIsPlaying(false));
+            }}
             onEnded={() => {
               if (isPlaying) {
                 const nextFrame = activeSegment ? activeSegment.endFrame : currentFrame;
@@ -184,7 +210,7 @@ export function ReelsPlayer({
         {/* Dynamic Text Overlays on Canvas */}
         {project.overlays.map((overlay) => {
           const state = overlayStateAt(overlay, currentFrame);
-          if (!state) return null; // not active at this frame
+          if (!state || overlay.needsReview) return null; // not active at this frame
           const isSelected = selectedOverlayId === overlay.id;
           const fontConfig = FONTS[overlay.style.font] || FONTS.poppins;
 
@@ -192,14 +218,17 @@ export function ReelsPlayer({
           const leftPercent = overlay.style.x * 100;
           const topPercent = overlay.style.y * 100;
           // Scale font proportional to container (1080 -> 100%)
-          const containerWidth = containerRef.current?.clientWidth || 360;
-          const scaleFactor = containerWidth / 1080;
-          const scaledFontSize = Math.max(12, Math.round(overlay.style.fontSize * scaleFactor));
-          const boxPaddingPx = Math.round(scaledFontSize * 0.28);
+          const containerWidth = viewportWidth;
+          const scaleFactor = containerWidth / project.canvas.width;
+          const scaledFontSize = overlay.style.fontSize * scaleFactor;
+          const boxPaddingPx = Math.round(overlay.style.fontSize * 0.28) * scaleFactor;
 
           return (
+            <React.Fragment key={overlay.id}>
+            {templatePanels(overlay,project.brand,project.canvas.width,project.canvas.height).map((r,i)=>
+              <div key={i} style={{position:'absolute',pointerEvents:'none',left:`${r.x/project.canvas.width*100}%`,top:`${r.y/project.canvas.height*100}%`,
+                width:`${r.width/project.canvas.width*100}%`,height:`${r.height/project.canvas.height*100}%`,backgroundColor:r.color}} />)}
             <div
-              key={overlay.id}
               onPointerDown={(e) => handleOverlayPointerDown(e, overlay)}
               style={{
                 position: 'absolute',
@@ -216,12 +245,12 @@ export function ReelsPlayer({
                         .toString(16)
                         .padStart(2, '0')}`
                     : 'transparent',
-                padding: overlay.style.boxOpacity > 0 ? `${boxPaddingPx * 0.6}px ${boxPaddingPx}px` : 0,
-                borderRadius: '6px',
+                padding: overlay.style.boxOpacity > 0 ? `${boxPaddingPx}px` : 0,
+                borderRadius: 0,
                 textAlign: 'center',
-                whiteSpace: 'pre-wrap',
+                whiteSpace: 'pre',
                 cursor: 'grab',
-                zIndex: isSelected ? 40 : 20,
+                zIndex: 'auto',
               }}
               className={`transition-shadow leading-tight ${
                 isSelected
@@ -236,6 +265,7 @@ export function ReelsPlayer({
                 </span>
               )}
             </div>
+            </React.Fragment>
           );
         })}
 

@@ -12,7 +12,7 @@ import fsp from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import * as store from '../reels/store.js';
-import { probeMedia, sha256File } from '../reels/media.js';
+import { probeMedia, sha256File, FFMPEG_RUNTIME } from '../reels/media.js';
 import { enqueue, cancelJob, startWorker, isTerminal } from '../reels/jobQueue.js';
 import { getAvailableEngines, executeAiEdit } from '../reels/aiEditor.js';
 import {
@@ -22,8 +22,8 @@ import {
 const MAX_UPLOAD_MB = Number(process.env.REELS_MAX_UPLOAD_MB) || 250;
 const MAX_SOURCE_SEC = Number(process.env.REELS_MAX_SOURCE_SEC) || LIMITS.maxSourceSec;
 const MEDIA_TTL_SEC = 15 * 60;
-const MEDIA_SECRET = process.env.REELS_MEDIA_SECRET
-  || crypto.createHash('sha256').update(`reels-media:${process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || 'local-dev'}`).digest('hex');
+const MEDIA_SECRET = process.env.REELS_MEDIA_SECRET && Buffer.byteLength(process.env.REELS_MEDIA_SECRET)>=32
+  ? process.env.REELS_MEDIA_SECRET : crypto.randomBytes(32).toString('hex');
 
 const isLoopback = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket?.remoteAddress);
 
@@ -95,14 +95,14 @@ export default function createReelsRouter(deps) {
     throw Object.assign(new Error('Sign in required'), { status: 401 });
   }
 
-  const handle = (fn) => async (req, res) => {
+  const handle = (fn) => async (req, res, next) => {
     try {
       req.ownerId = await getOwner(req);
     } catch (err) {
       return res.status(err.status === 503 ? 503 : 401).json({ error: err.status === 503 ? 'Authentication service unavailable' : 'Sign in required' });
     }
     try {
-      await fn(req, res);
+      await fn(req, res, next);
     } catch (err) {
       const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
       if (status === 500) console.error('[REELS]', err);
@@ -129,7 +129,7 @@ export default function createReelsRouter(deps) {
   router.get('/config', handle(async (req, res) => {
     res.json({
       limits: { ...LIMITS, maxUploadMb: MAX_UPLOAD_MB, maxSourceSec: MAX_SOURCE_SEC },
-      renderer: RENDERER,
+      renderer: { ...RENDERER, available: FFMPEG_RUNTIME.available, error: FFMPEG_RUNTIME.error },
       fonts: Object.entries(FONTS).map(([id, f]) => ({ id, label: f.label, family: f.family, url: `/api/reels/fonts/${f.file}` })),
       capabilities: {
         manualEditing: { available: true },
@@ -137,12 +137,12 @@ export default function createReelsRouter(deps) {
         denoise: { available: true, note: 'FFmpeg afftdn; audible in rendered previews/exports only.' },
         normalize: { available: true, note: 'FFmpeg loudnorm (single pass).' },
         speed: { available: true, note: 'Constant speed 0.25×–4×. Slowed footage repeats source frames; no interpolation.' },
-        transcription: { available: false, note: 'No transcription provider configured yet.' },
-        storyPlanning: { available: false, note: 'Needs transcript analysis — planned milestone.' },
-        templates: { available: false, note: 'Template registry ships in the templates milestone.' },
+        transcription: { available: getAvailableEngines().some(e=>e.available), note: 'Selected provider analyzes compressed speech audio; timing is approximate.' },
+        storyPlanning: { available: getAvailableEngines().some(e=>e.available), note: 'Uses speech/transcript and existing timeline context.' },
+        templates: { available: true, note: 'Six brand-aware text and card presets.' },
         autoCutout: { available: false, note: 'Requires a segmentation model — not configured.' },
       },
-      processing: 'Footage is uploaded to ZeroLens servers and processed there. It is not sent to external AI providers.',
+      processing: 'Footage is stored and rendered on the server. AI editing sends transcript and timeline context to the selected provider, plus compressed speech audio when no transcript is supplied.',
     });
   }));
 
@@ -189,6 +189,7 @@ export default function createReelsRouter(deps) {
     res.json({ engines: getAvailableEngines() });
   }));
 
+  let activeAi = 0;
   router.post('/projects/:id/ai-edit', express.json({ limit: '64kb' }), handle(async (req, res) => {
     const project = await loadProject(req);
     const {
@@ -200,6 +201,9 @@ export default function createReelsRouter(deps) {
       referenceNotes = '',
       proofNotes = '',
     } = req.body || {};
+    if(activeAi >= 1) return res.status(429).json({error:'AI editor is busy. Try again shortly.'});
+    activeAi++;
+    try {
     const result = await executeAiEdit({
       project,
       ownerId: req.ownerId,
@@ -212,7 +216,7 @@ export default function createReelsRouter(deps) {
       proofNotes,
     });
     const saved = await store.saveRevision(req.ownerId, project.id, {
-      mutate: () => result.project,
+      baseRevision: project.revision, incoming: result.project,
     });
     res.json({
       project: saved,
@@ -221,6 +225,7 @@ export default function createReelsRouter(deps) {
       silenceRemoved: result.silenceRemoved,
       paperEditSummary: result.paperEditSummary,
     });
+    } finally { activeAi--; }
   }));
 
   // ───────────────────────── Source upload ─────────────────────────
@@ -233,7 +238,12 @@ export default function createReelsRouter(deps) {
     fileFilter: (req, file, cb) => cb(null, /^video\//.test(file.mimetype) || file.mimetype === 'application/octet-stream'),
   });
 
-  router.post('/projects/:id/sources', upload.single('file'), handle(async (req, res) => {
+  router.post('/projects/:id/sources', handle(async (req,res,next) => {
+    await store.ensureDirs();
+    const disk = await fsp.statfs(store.DATA_ROOT);
+    if (disk.bavail * disk.bsize < 2 * 1024 ** 3) return res.status(507).json({error:'Media storage is nearly full. Delete unused projects before uploading.'});
+    next();
+  }), upload.single('file'), handle(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Attach a video file in the "file" field' });
     const tmp = req.file.path;
     try {
@@ -248,6 +258,7 @@ export default function createReelsRouter(deps) {
       if (probe.durationSec > MAX_SOURCE_SEC + 0.5) {
         return res.status(422).json({ error: `This clip is ${probe.durationSec.toFixed(1)}s. The current limit is ${MAX_SOURCE_SEC}s per source clip — trim it before uploading.` });
       }
+      if(Math.max(probe.width,probe.height)>3840 || probe.width*probe.height>3840*2160)return res.status(422).json({error:'Upload footage up to 4K resolution.'});
       const checksum = await sha256File(tmp);
       const source = {
         id: newId('s'),
@@ -330,6 +341,7 @@ export default function createReelsRouter(deps) {
 
   router.post('/projects/:id/renders', express.json({ limit: '8kb' }), handle(async (req, res) => {
     const project = await loadProject(req);
+    if (!FFMPEG_RUNTIME.available) return res.status(503).json({error:FFMPEG_RUNTIME.error});
     const profile = req.body?.profile === 'preview' ? 'preview' : 'export';
     const revision = Number(req.body?.revision);
     // Export renders exactly the requested saved revision.

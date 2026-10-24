@@ -110,6 +110,7 @@ const STUDIO_KNOWLEDGE_DOCS = [
  * Handle execution of search tool
  */
 export async function executeSearch(args, user, deps = {}) {
+  if(!user?.id)throw new Error('Unauthorized');
   const query = (args.query || '').trim();
   const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 25);
   const appBaseUrl = (process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
@@ -135,14 +136,7 @@ export async function executeSearch(args, user, deps = {}) {
         .order('created_at', { ascending: false })
         .limit(100);
 
-      // If authenticated user, scope to their assets or public studio assets
-      if (user?.id) {
-        if (typeof queryBuilder.or === 'function') {
-          queryBuilder = queryBuilder.or(`user_id.eq.${user.id},user_id.is.null`);
-        } else if (typeof queryBuilder.eq === 'function') {
-          queryBuilder = queryBuilder.eq('user_id', user.id);
-        }
-      }
+      queryBuilder=queryBuilder.eq('user_id',user.id);
 
       const { data: dbAssets, error } = await queryBuilder;
 
@@ -183,6 +177,7 @@ export async function executeSearch(args, user, deps = {}) {
 
         if (Array.isArray(localAssets)) {
           for (const asset of localAssets) {
+            if(asset.user_id!==user.id)continue;
             const prompt = (asset.prompt || asset.name || '').toLowerCase();
             const matches = queryTerms.some(term => prompt.includes(term));
 
@@ -234,6 +229,7 @@ export async function executeSearch(args, user, deps = {}) {
  * Handle execution of fetch tool
  */
 export async function executeFetch(args, user, deps = {}) {
+  if(!user?.id)throw new Error('Unauthorized');
   const rawId = (args.id || '').trim();
   const appBaseUrl = (process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
 
@@ -266,6 +262,7 @@ export async function executeFetch(args, user, deps = {}) {
         .from('assets')
         .select('*')
         .eq('id', assetId)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (!error && asset) {
@@ -313,7 +310,7 @@ export async function executeFetch(args, user, deps = {}) {
     if (fs.existsSync(localFile)) {
       const localAssets = JSON.parse(fs.readFileSync(localFile, 'utf8'));
       const found = localAssets.find(a => (a.id === assetId || a._id === assetId));
-      if (found) {
+      if (found && found.user_id === user.id) {
         return {
           id: `asset_${found.id || found._id}`,
           title: found.name || found.prompt?.slice(0, 60) || 'Local Asset',

@@ -1,11 +1,11 @@
 # Build stage
-FROM node:20-slim AS builder
+FROM node:22-trixie-slim AS builder
 
 WORKDIR /app
 
 # Install dependencies for both client and server
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -26,16 +26,16 @@ ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 RUN npm run build
 
 # Production stage
-FROM node:20-slim
+FROM node:22-trixie-slim
 
 WORKDIR /app
 
-# Install ffmpeg for media processing (optional based on your app needs)
+# Full FFmpeg is required for Reels text rendering (the npm Linux bundle lacks drawtext).
 RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 # Copy package.json and install production dependencies
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 # Copy the built dist folder, server.js, services, and necessary src files
 COPY --from=builder /app/dist ./dist
@@ -45,12 +45,15 @@ COPY --from=builder /app/services ./services
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/src/services ./src/services
 COPY --from=builder /app/src/config ./src/config
+COPY --from=builder /app/src/features/ReelsEditor/core ./src/features/ReelsEditor/core
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/models_list.json ./models_list.json
 COPY --from=builder /app/cors.json ./cors.json
 
 # Set Environment Variables
 ENV NODE_ENV=production
+ENV REELS_FFMPEG_PATH=/usr/bin/ffmpeg
+ENV REELS_FFPROBE_PATH=/usr/bin/ffprobe
 ENV PORT=8080
 
 # Cloud Run uses the PORT env var

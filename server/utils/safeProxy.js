@@ -1,3 +1,4 @@
+import nodeFetch from 'node-fetch';
 import { Transform } from 'node:stream';
 import dns from 'node:dns/promises';
 import net from 'node:net';
@@ -42,7 +43,7 @@ export const validateProxyUrl = async (rawUrl, options = {}) => (await resolvePr
 
 export async function fetchAllowedProxyResponse(rawUrl, options = {}) {
     let currentUrl = rawUrl;
-    const fetchImpl = options.fetchImpl || globalThis.fetch;
+    const fetchImpl = options.fetchImpl || nodeFetch;
     const timeout = AbortSignal.timeout(options.timeoutMs || 30000);
     const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
     for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {

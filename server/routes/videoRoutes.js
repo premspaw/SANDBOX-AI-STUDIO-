@@ -1,4 +1,5 @@
 import express from 'express';
+import {fetchAllowedProxyResource} from '../utils/safeProxy.js';
 import * as musicService from '../../services/musicService.js';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
@@ -93,15 +94,16 @@ export default function createRouter(deps) {
     // Queue Status Polling Endpoints
     router.get('/job-status/:jobId', async (req, res) => {
         try {
+            const user=await requireAuth(req);
             const { jobId } = req.params;
             const statusData = await getJobStatus(jobId);
-            if (!statusData) {
+            if (!statusData || statusData.userId !== user.id) {
                 return res.status(404).json({ error: 'Job not found or expired' });
             }
             res.json(statusData);
         } catch (err) {
             console.error('Job Status Error:', err);
-            res.status(500).json({ error: err.message });
+            res.status(err.status===401?401:500).json({ error: err.status===401?'Authentication required':'Could not read job status' });
         }
     });
 
@@ -173,11 +175,8 @@ export default function createRouter(deps) {
                         return null;
                     }
                     const fullUrl = imgSrc.startsWith('//') ? `https:${imgSrc}` : imgSrc;
-                    const imgResp = await fetch(fullUrl);
-                    if (!imgResp.ok) throw new Error(`Failed to fetch image: ${imgResp.statusText}`);
-                    const buffer = await imgResp.arrayBuffer();
-                    imageData = Buffer.from(buffer).toString('base64');
-                    const contentType = imgResp.headers.get('content-type');
+                    const {buffer,contentType}=await fetchAllowedProxyResource(fullUrl,{maxBytes:25*1024*1024});
+                    imageData=buffer.toString('base64');
                     if (contentType) mimeType = contentType;
                 } else if (typeof imgSrc === 'string') {
                     imageData = imgSrc;
@@ -568,9 +567,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate video.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to generate video.' });
+                
             }
 
             const { prompt, firstFrame, lastFrame, duration, userId, negative_prompt, cfg_scale, model } = req.body;
@@ -737,9 +735,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate motion control video.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to generate motion control video.' });
+                
             }
 
             const { prompt, input_url, video_url, mode = '720p', character_orientation = 'video', userId } = req.body;
@@ -820,6 +817,7 @@ export default function createRouter(deps) {
 
             if (updateJobStatus) {
                 await updateJobStatus(taskId, 'processing', {
+                    userId:targetUserId,
                     prompt: prompt || 'Motion Control Video',
                     model: 'kling-3.0/motion-control'
                 });
@@ -843,9 +841,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate video.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to generate video.' });
+                
             }
 
             const {
@@ -892,7 +889,7 @@ export default function createRouter(deps) {
                     removeOnComplete: { age: 3600 },   // keep completed jobs 1hr
                     removeOnFail:    { age: 86400 }    // keep failed jobs 24hr
                 });
-                await updateJobStatus(job.id, 'queued');
+                await updateJobStatus(job.id, 'queued', {userId:targetUserId});
                 console.log(`[VIDEO-QUEUE] ✅ Job ${job.id} queued | provider: ${provider}`);
                 return res.json({ jobId: job.id, status: 'queued' });
             }
@@ -926,9 +923,8 @@ export default function createRouter(deps) {
             try {
                 user = await requireAuth(req);
             } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to upscale video.' });
-                }
+                return res.status(401).json({ error: 'Authentication required to upscale video.' });
+                
             }
 
             const {

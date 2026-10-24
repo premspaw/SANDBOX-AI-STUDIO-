@@ -18,7 +18,7 @@ import { buildRenderPlan } from './renderPlan.js';
 import { FFMPEG, runProcess, probeMedia, detectSilence } from './media.js';
 import { validateForExport, proposeGaps } from '../../src/features/ReelsEditor/core/editPlan.js';
 
-const CONCURRENCY = Math.max(1, Number(process.env.REELS_WORKER_CONCURRENCY) || 1);
+const CONCURRENCY = Math.min(2, Math.max(1, Number(process.env.REELS_WORKER_CONCURRENCY) || 1));
 const JOB_TIMEOUT_MS = Number(process.env.REELS_JOB_TIMEOUT_MS) || 15 * 60 * 1000;
 const STALE_MS = 60 * 1000;
 const TERMINAL = new Set(['succeeded', 'failed', 'cancelled']);
@@ -30,6 +30,8 @@ const WORKER_ID = `${os.hostname()}:${process.pid}`;
 export const isTerminal = (status) => TERMINAL.has(status);
 
 export async function enqueue(job) {
+  const pending = await store.listJobs(j => !TERMINAL.has(j.status));
+  if (pending.length >= 20 || pending.filter(j => j.ownerId === job.ownerId).length >= 2) throw Object.assign(new Error('Render queue full; wait for your current jobs'), {status:429});
   const now = new Date().toISOString();
   const record = {
     status: 'queued', stage: 'queued', progress: null, attempts: 0, maxAttempts: 2,
@@ -62,9 +64,11 @@ export function startWorker({ log = console } = {}) {
   started = true;
   store.ensureDirs()
     .then(recover)
+    .then(expireOutputs)
     .then(() => {
       setInterval(() => tick().catch((e) => log.error?.('[REELS] tick', e)), 1000).unref();
       setInterval(() => recoverStale().catch(() => {}), 30000).unref();
+      setInterval(() => expireOutputs().catch(e => log.error?.('[REELS] expiry',e)), 3600000).unref();
       log.log?.(`[REELS] Render worker ready (concurrency ${CONCURRENCY})`);
     })
     .catch((e) => log.error?.('[REELS] Worker failed to start', e));
@@ -245,4 +249,15 @@ async function runSilence(job, signal, setStage) {
   });
   const gaps = proposeGaps(silences, { sourceId, minGapSec: minSilenceSec, paddingSec });
   return { result: { sourceId, silences, gaps, settings: { noiseDb, minSilenceSec, paddingSec } } };
+}
+
+/** Only disposable finished render outputs expire; sources and project revisions are preserved. */
+async function expireOutputs() {
+  const days = Math.max(1, Number(process.env.REELS_EXPORT_RETENTION_DAYS) || 7);
+  const cutoff = Date.now() - days * 86400000;
+  const jobs = await store.listJobs(j => TERMINAL.has(j.status) && j.finishedAt && Date.parse(j.finishedAt) < cutoff && j.output);
+  for(const job of jobs){
+    await fsp.rm(store.paths.export(job.ownerId,job.id),{force:true});
+    await store.updateJob(job.id,{output:null,note:'Export expired; render again from your saved project.'});
+  }
 }

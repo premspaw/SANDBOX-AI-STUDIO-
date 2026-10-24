@@ -84,6 +84,7 @@ export function getAllMcpTools() {
  * Dispatch an MCP tool call by name
  */
 export async function dispatchMcpToolCall(name, args, user, deps = {}) {
+  if(!user?.id)throw new Error('Unauthorized');
   switch (name) {
     case 'search':
       return await executeSearch(args, user, deps);

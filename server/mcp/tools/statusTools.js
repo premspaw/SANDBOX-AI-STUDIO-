@@ -33,6 +33,7 @@ export function getStatusToolDefinitions() {
  * Handle execution of check_generation tool
  */
 export async function executeCheckGeneration(args, user, deps) {
+  if(!user?.id)throw new Error('Unauthorized');
   const { generation_id } = args;
 
   if (!generation_id || typeof generation_id !== 'string') {
@@ -53,7 +54,7 @@ export async function executeCheckGeneration(args, user, deps) {
   if (typeof getJobStatus === 'function') {
     try {
       const jobData = await getJobStatus(generation_id);
-      if (jobData) {
+      if (jobData && jobData.userId === user.id) {
         status = jobData.state || jobData.status || status;
         resultUrl = jobData.url || jobData.videoUrl || null;
         error = jobData.error || null;
@@ -77,6 +78,7 @@ export async function executeCheckGeneration(args, user, deps) {
         .from('assets')
         .select('*')
         .eq('id', generation_id)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (asset) {

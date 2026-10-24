@@ -1,4 +1,5 @@
 import express from 'express';
+import {createUtilityAuth} from '../utils/utilityAuth.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -175,7 +176,7 @@ export default function createMotionStudioRouter(deps = {}) {
     };
 
     // POST /api/motion-studio/choreograph
-    router.post('/choreograph', async (req, res) => {
+    router.post('/choreograph', createUtilityAuth(deps.requireAuth), async (req, res) => {
         try {
             const {
                 model = 'gemini-4-argon',
@@ -190,6 +191,11 @@ export default function createMotionStudioRouter(deps = {}) {
                 intensity = 'Balanced'
             } = req.body;
 
+            if(typeof selectedSkill!=='string'||selectedSkill!=='auto'&&!/^motion-[a-z0-9-]{1,80}$/.test(selectedSkill))
+                return res.status(400).json({error:'Invalid motion template'});
+            if(!Number.isFinite(Number(duration))||Number(duration)<1||Number(duration)>60
+              ||typeof brief!=='string'||brief.length>20000||typeof lyrics!=='string'||lyrics.length>20000)
+                return res.status(400).json({error:'Invalid duration, brief or lyrics'});
             const isClaude = String(model).toLowerCase().startsWith('claude');
             const isOpenAI = String(model).toLowerCase().startsWith('gpt') || String(model).toLowerCase().startsWith('o3');
             const targetSkill = selectedSkill && selectedSkill !== 'auto' ? selectedSkill : null;
@@ -334,7 +340,7 @@ ${lyrics ? `LYRICS / TIMING INPUT:\n${lyrics}` : `MOTION BRIEF / THEME:\n${brief
                     });
 
                     const genConfig = {
-                        maxOutputTokens: 1048576,
+                        maxOutputTokens: 8192,
                         temperature: 0.4,
                         systemInstruction: systemPrompt,
                         thinkingConfig: { thinkingLevel: 'MEDIUM' }

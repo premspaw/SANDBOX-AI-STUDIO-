@@ -18,8 +18,9 @@ const requireAuth=req=>requireAppUser(req,verifier);
 async function withApp(app,run){const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));const origin=`http://127.0.0.1:${server.address().port}`;const browserFetch=createAuthenticatedFetch({fetch,getSession:async()=>({data:{session:{access_token:'fixture-session'}}}),origin});try{await run({origin,browserFetch});}finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}}
 const json=body=>({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 
-test('release fixtures execute the installed Multer 2.4 parser',()=>{
-  assert.equal(createRequire(import.meta.url)('multer/package.json').version,'2.4.0');
+test('release fixtures execute the installed patched Multer 2 parser',()=>{
+  const [major,minor]=createRequire(import.meta.url)('multer/package.json').version.split('.').map(Number);
+  assert.equal(major,2);assert.ok(minor>=5);
 });
 
 test('browser bearer JSON utility calls work while anonymous calls do not reach provider',async()=>{

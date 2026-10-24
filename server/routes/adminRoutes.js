@@ -69,7 +69,7 @@ export default function createRouter(deps) {
                 .eq('id', user.id)
                 .single();
 
-            if (profile?.role === 'admin' || profile?.email?.startsWith('premspaw@gmail')) {
+            if (profile?.role === 'admin') {
                 return res.json({
                     configured: Boolean(process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY),
                     mode: 'server'
@@ -81,15 +81,16 @@ export default function createRouter(deps) {
         }
     });
 
-    // Verify admin login password (prevents shipping password in client bundle)
-    // Verify admin login password (secured with strict rate limiting & timing-safe check)
-    router.post('/admin/verify-login', adminLoginLimiter, (req, res) => {
-        const { password } = req.body;
+    // An admin password never grants privileges to an unauthenticated/non-admin user.
+    router.post('/admin/verify-login', adminLoginLimiter, async (req, res) => {
+        try { await requireAdmin(req); }
+        catch (err) { return res.status(err.status || 500).json({ error: err.message }); }
+        const { password } = req.body || {};
         const configuredPassword = process.env.ADMIN_PASSWORD;
-        if (process.env.NODE_ENV === 'production' && !configuredPassword) {
+        if (!configuredPassword) {
             return res.status(503).json({ error: 'Admin password is not configured' });
         }
-        const correctPassword = configuredPassword || 'admin123';
+        const correctPassword = configuredPassword;
         const inputBuf = Buffer.from(String(password || ''));
         const correctBuf = Buffer.from(String(correctPassword));
         const isMatch = inputBuf.length === correctBuf.length && crypto.timingSafeEqual(inputBuf, correctBuf);

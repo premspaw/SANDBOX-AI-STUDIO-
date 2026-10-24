@@ -295,13 +295,8 @@ export default function DirectorAgentPage() {
     const userId = userProfile?.id;
     const { refresh: refreshShorts } = useShorts() || { refresh: () => {} };
 
-    const getApiKey = () => {
-        if (userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com') {
-            return window.__ADMIN_GOOGLE_API_KEY__ || import.meta.env.VITE_ADMIN_GOOGLE_API_KEY || localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
-        }
-        return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
-    };
-
+    // Only user-supplied keys may be used by a browser SDK.
+    const getApiKey = () => localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || '';
     // --- State: Project Setup ---
     const [projectName, setProjectName] = useState('Director Cut: Untitled Commercial');
     const [videoDuration, setVideoDuration] = useState('60 sec');

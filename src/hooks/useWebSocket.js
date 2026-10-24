@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '../lib/supabase';
 import { getWsUrl } from '../config/apiConfig';
 
 /**
@@ -16,14 +17,16 @@ export function useWebSocket(url = getWsUrl()) {
             const ws = new WebSocket(url);
             wsRef.current = ws;
 
-            ws.onopen = () => {
-                console.log('[WS] Connected to studio server');
-                setIsConnected(true);
+            ws.onopen = async () => {
+                const {data}=await supabase.auth.getSession();
+                if(!data?.session?.access_token)return ws.close();
+                if(ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'authenticate',token:data.session.access_token}));
             };
 
             ws.onmessage = (event) => {
                 try {
                     const msg = JSON.parse(event.data);
+                    if(msg.type==='connected')setIsConnected(true);
 
                     if (msg.type === 'progress') {
                         setTasks(prev => ({
