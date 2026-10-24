@@ -15,6 +15,8 @@ import {
   Wand2,
   LayoutTemplate,
 } from 'lucide-react';
+import { BrandSettings } from './components/BrandSettings.jsx';
+import { applyGapRemoval } from './core/editPlan.js';
 import { reelsApi } from './services/reelsApi.js';
 import { useReelsEditor } from './hooks/useReelsEditor.js';
 import { ReelsPlayer } from './components/ReelsPlayer.jsx';
@@ -94,6 +96,7 @@ export default function ReelsEditorPage() {
     if (!file) return;
     setUploadError(null);
     setUploadProgress(0);
+    setIsLoading(true);
 
     try {
       let targetProjectId = activeProjectId;
@@ -107,14 +110,30 @@ export default function ReelsEditorPage() {
         onProgress: (p) => setUploadProgress(p),
       });
 
-      setActiveProjectData(res.project);
+      let cleaned = res.project;
+      if (res.source.meta.hasAudio) {
+        setUploadProgress(100);
+        const job = await reelsApi.detectSilence(targetProjectId, {sourceId:res.source.id});
+        let status = job;
+        const deadline = Date.now() + 15*60*1000;
+        while (!['succeeded','failed','cancelled'].includes(status.status)) {
+          if (Date.now() > deadline) throw new Error('Cleanup timed out. Source is saved; reopen the project to retry.');
+          await new Promise(r => setTimeout(r,1500));
+          status = await reelsApi.getJobStatus(job.id);
+        }
+        if(status.status !== 'succeeded') throw new Error(status.error || 'Cleanup failed; original footage is saved.');
+        cleaned = applyGapRemoval(cleaned, status.result?.gaps || []);
+        cleaned.audio = {denoise:{enabled:true,strength:'light'},normalize:{enabled:true,targetLufs:-14}};
+        cleaned = await reelsApi.saveRevision(cleaned.id, res.project.revision, cleaned);
+      }
+      setActiveProjectData(cleaned);
       setUploadProgress(null);
       // Refresh projects list
       reelsApi.listProjects().then(setProjectsList).catch(() => {});
     } catch (err) {
       setUploadError(err.message || 'Failed to upload video');
       setUploadProgress(null);
-    }
+    } finally { setIsLoading(false); }
   };
 
   if (isLoading) {
@@ -122,7 +141,7 @@ export default function ReelsEditorPage() {
       <div className="w-full h-full flex flex-col items-center justify-center bg-black text-white p-6">
         <Loader2 className="w-8 h-8 animate-spin text-[#c8f135] mb-3" />
         <p className="font-mono text-xs text-zinc-400 uppercase tracking-widest">
-          Loading Reels Studio...
+          {uploadProgress !== null ? 'Uploading and cleaning source…' : 'Loading Reels Studio…'}
         </p>
       </div>
     );
@@ -169,7 +188,7 @@ export default function ReelsEditorPage() {
             </div>
             <div>
               <p className="font-bold text-sm text-white group-hover:text-[#c8f135] transition-colors">
-                Choose or drag raw footage
+                Upload raw footage
               </p>
               <p className="text-[11px] text-zinc-500 mt-0.5">
                 MP4, MOV, WebM • Up to 250 MB • Up to 120s
@@ -180,7 +199,7 @@ export default function ReelsEditorPage() {
           {uploadProgress !== null && (
             <div className="space-y-2 p-4 rounded-2xl bg-zinc-900 border border-white/10 text-xs">
               <div className="flex justify-between font-mono text-zinc-400">
-                <span>Uploading footage...</span>
+                <span>Uploading / cleaning footage...</span>
                 <span>{uploadProgress}%</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
@@ -204,7 +223,7 @@ export default function ReelsEditorPage() {
 
   return (
     <EditorWorkspace
-      key={activeProjectData.id}
+      key={`${activeProjectData.id}:${activeProjectData.revision}`}
       initialProject={activeProjectData}
       projectsList={projectsList}
       onSelectProject={handleSelectProject}
@@ -253,7 +272,7 @@ function EditorWorkspace({
             {showDropdown && (
               <div className="absolute top-full left-0 mt-1.5 w-60 rounded-2xl bg-zinc-950 border border-white/10 shadow-2xl p-1.5 z-50">
                 <button
-                  onClick={onCreateNewProject}
+                  onClick={async () => {try {await editor.flushSave();onCreateNewProject();} catch {}}}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs font-bold text-[#c8f135] hover:bg-white/5 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -264,7 +283,7 @@ function EditorWorkspace({
                   {projectsList.map((p) => (
                     <button
                       key={p.id}
-                      onClick={() => onSelectProject(p.id)}
+                      onClick={async () => {try {await editor.flushSave();onSelectProject(p.id);} catch {}}}
                       className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium truncate transition-colors ${
                         p.id === project.id
                           ? 'bg-[#c8f135]/15 text-[#c8f135] font-bold'
@@ -283,7 +302,7 @@ function EditorWorkspace({
           <input
             type="text"
             value={project.name}
-            onChange={(e) => editor.setProject({ ...project, name: e.target.value })}
+            onChange={(e) => editor.mutate(p => ({ ...p, name: e.target.value }))}
             className="bg-transparent border border-transparent hover:border-white/10 focus:border-[#c8f135] rounded-lg px-2 py-1 text-xs text-white font-semibold outline-none max-w-[200px] transition-colors"
           />
 
@@ -358,13 +377,13 @@ function EditorWorkspace({
             ref={fileInputRef}
             type="file"
             accept="video/*"
-            onChange={onUploadNewSource}
+            onChange={async e => { try { await editor.flushSave(); await onUploadNewSource(e); } catch {} }}
             className="hidden"
           />
 
           {/* Export Button */}
           <button
-            onClick={() => setShowExportModal(true)}
+            onClick={async () => { try { await editor.flushSave(); setShowExportModal(true); } catch {} }}
             className="px-5 py-2 rounded-xl bg-[#c8f135] text-black font-black text-xs uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#c8f135]/25 flex items-center gap-1.5"
           >
             <Film className="w-3.5 h-3.5 fill-current" />
@@ -373,6 +392,8 @@ function EditorWorkspace({
         </div>
       </header>
 
+      <BrandSettings editor={editor} />
+      {editor.saveError && <p role="alert" className="p-2 text-red-300">{editor.saveError}</p>}
       {/* ── Main Middle Layout: Player + Inspector ── */}
       <div className="flex-1 flex overflow-hidden">
         {/* Player Canvas Area */}
@@ -408,6 +429,7 @@ function EditorWorkspace({
 
       {/* ── AI Director Command & Dictation Chat Bar (Powered by Gemini 4 Argon) ── */}
       <AiDirectorChatBar
+        beforeEdit={editor.flushSave}
         projectId={project.id}
         onProjectUpdated={editor.replaceProject}
         onOpenFullModal={() => setShowAiEditModal(true)}
@@ -444,6 +466,7 @@ function EditorWorkspace({
       <AiSmartEditModal
         isOpen={showAiEditModal}
         onClose={() => setShowAiEditModal(false)}
+        beforeEdit={editor.flushSave}
         projectId={project.id}
         onProjectUpdated={editor.replaceProject}
       />

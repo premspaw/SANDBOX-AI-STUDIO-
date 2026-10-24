@@ -73,24 +73,31 @@ export function useReelsEditor(initialProject, onProjectUpdated) {
   const saveTimeoutRef = useRef(null);
   const baseRevisionRef = useRef(project.revision);
 
-  const syncToServer = useCallback((nextProject) => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(async () => {
-      setIsSaving(true);
-      setSaveError(null);
+  const pendingRef = useRef(null);
+  const chainRef = useRef(Promise.resolve());
+  const flushSave = useCallback(async () => {
+    clearTimeout(saveTimeoutRef.current);
+    const work = async () => {
+      if (!pendingRef.current) return;
+      const next = pendingRef.current; pendingRef.current = null;
+      setIsSaving(true); setSaveError(null);
       try {
-        const saved = await reelsApi.saveRevision(nextProject.id, baseRevisionRef.current, nextProject);
+        const saved = await reelsApi.saveRevision(next.id, baseRevisionRef.current, next);
         baseRevisionRef.current = saved.revision;
-        setProject((cur) => (cur.id === saved.id && cur.revision < saved.revision ? { ...cur, revision: saved.revision } : cur));
-        if (onProjectUpdated) onProjectUpdated(saved);
-      } catch (err) {
-        console.error('Failed to save project:', err);
-        setSaveError(err.message || 'Save failed');
-      } finally {
-        setIsSaving(false);
-      }
-    }, 1200);
+        setProject(cur => ({...cur, revision:saved.revision}));
+        onProjectUpdated?.(saved);
+      } catch(e) { pendingRef.current ||= next; setSaveError(e.message); throw e; }
+      finally { setIsSaving(false); }
+    };
+    chainRef.current = chainRef.current.catch(()=>{}).then(work);
+    await chainRef.current;
   }, [onProjectUpdated]);
+  const syncToServer = useCallback(next => {
+    pendingRef.current = next; setIsSaving(true);
+    clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(()=>flushSave().catch(()=>{}),1200);
+  },[flushSave]);
+  useEffect(()=>()=>clearTimeout(saveTimeoutRef.current),[]);
 
   // State mutator with Undo / Redo tracking
   const mutate = useCallback((updater, label = 'edit') => {
@@ -163,8 +170,8 @@ export function useReelsEditor(initialProject, onProjectUpdated) {
       if (targetId && p.overlays.some((o) => o.id === targetId)) {
         // Restyle existing selected overlay
         const patch = {
-          style: { ...template.style },
-          animation: { ...template.animation },
+          style: { ...template.style, ...(p.brand ? {color:p.brand.text,boxColor:p.brand.surface,font:p.brand.font} : {}) },
+          animation: { ...template.animation, ...(p.brand ? {in:p.brand.animation} : {}) },
           templateId: template.id,
           templateVersion: '1.0.0',
         };
@@ -174,6 +181,7 @@ export function useReelsEditor(initialProject, onProjectUpdated) {
       // Insert new template overlay at playhead
       const fps = p.canvas.fps.num / p.canvas.fps.den;
       const raw = instantiateTemplate(template, currentFrame, fps, textOverride);
+      if(p.brand){raw.style={...raw.style,color:p.brand.text,boxColor:p.brand.surface,font:p.brand.font};raw.animation.in=p.brand.animation;}
       const withId = { ...raw, id: `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}` };
       setSelectedOverlayId(withId.id);
       return { ...p, overlays: [...p.overlays, withId] };
@@ -181,6 +189,7 @@ export function useReelsEditor(initialProject, onProjectUpdated) {
   }, [currentFrame, selectedOverlayId, mutate]);
 
   const replaceProject = useCallback((newProject) => {
+    clearTimeout(saveTimeoutRef.current); pendingRef.current = null;
     baseRevisionRef.current = newProject.revision;
     setProject(newProject);
     setUndoStack([]);
@@ -225,6 +234,8 @@ export function useReelsEditor(initialProject, onProjectUpdated) {
 
   return {
     project,
+    mutate,
+    flushSave,
     setProject,
     timeline,
     currentFrame,

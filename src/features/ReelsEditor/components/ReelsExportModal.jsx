@@ -158,7 +158,7 @@ export function ReelsExportModal({
                 <span>
                   {activeJob.stage === 'queued' && 'Queued for isolated render worker...'}
                   {activeJob.stage === 'compose' && 'Composing frame graph and text layers...'}
-                  {activeJob.stage === 'encode' && 'Encoding 1080×1920 H.264 video with AAC audio...'}
+                  {activeJob.stage === 'encode' && 'Encoding the selected resolution as H.264 video with AAC audio...'}
                   {activeJob.stage === 'validate' && 'Validating output streams and decoding integrity...'}
                   {activeJob.stage === 'done' && 'Video successfully rendered and verified!'}
                 </span>
@@ -218,7 +218,7 @@ export function ReelsExportModal({
                       : 'bg-zinc-900 border-white/5 text-zinc-400 hover:text-white'
                   }`}
                 >
-                  <p className="font-bold text-sm">Full HD (1080×1920)</p>
+                  <p className="font-bold text-sm">{project.canvas.width} × {project.canvas.height} · MP4</p>
                   <p className="text-[11px] text-zinc-400 mt-1">
                     30 fps • H.264 High • Production quality
                   </p>

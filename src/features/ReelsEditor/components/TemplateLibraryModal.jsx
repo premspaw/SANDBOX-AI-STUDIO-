@@ -11,8 +11,9 @@ import {
   ArrowRight,
   Eye,
 } from 'lucide-react';
-import { REEL_TEMPLATES, TEMPLATE_CATEGORIES } from '../core/templates.js';
+import { REEL_TEMPLATES as ALL_TEMPLATES, TEMPLATE_CATEGORIES } from '../core/templates.js';
 
+const REEL_TEMPLATES = ALL_TEMPLATES.filter(t => t.id === 'viral-hook');
 export function TemplateLibraryModal({
   isOpen,
   onClose,

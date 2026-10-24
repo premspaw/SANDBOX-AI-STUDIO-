@@ -139,10 +139,11 @@ export const ProjectSchema = z.strictObject({
   revision: Int.min(0),
   name: z.string().min(1).max(120),
   canvas: z.strictObject({
-    width: z.literal(1080),
-    height: z.literal(1920),
+    width: Int.min(64).max(3840).multipleOf(2),
+    height: Int.min(64).max(3840).multipleOf(2),
     fps: z.strictObject({ num: z.literal(30), den: z.literal(1) }),
   }),
+  brand: z.strictObject({background: Hex, surface: Hex, text: Hex, accent: Hex, secondary: Hex, font: z.enum(Object.keys(FONTS)), animation: z.enum(ANIMATIONS), templateId: z.literal('viral-hook')}).optional(),
   sources: z.array(Source).max(LIMITS.maxSources),
   clips: z.array(Clip).max(LIMITS.maxClips),
   overlays: z.array(Overlay).max(LIMITS.maxOverlays),

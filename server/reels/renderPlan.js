@@ -81,10 +81,12 @@ function drawtext(overlay, textFile, W, H) {
  * @param options.range optional { startFrame, endFrame } for short previews
  */
 export function buildRenderPlan(project, { sourcePaths, profile = 'export', range = null }) {
-  const prof = PROFILES[profile];
+  let prof = PROFILES[profile];
   if (!prof) throw new Error(`Unknown profile ${profile}`);
   const W = project.canvas.width;
   const H = project.canvas.height;
+  const scale = profile === 'preview' ? Math.min(1, 960 / Math.max(W, H)) : 1;
+  prof = {...prof, width: Math.round(W * scale / 2) * 2, height: Math.round(H * scale / 2) * 2};
   const tl = buildTimeline(project);
   if (!tl.segments.length) throw new Error('Nothing to render');
   const fps = tl.fps;

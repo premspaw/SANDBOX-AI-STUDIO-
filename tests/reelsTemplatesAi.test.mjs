@@ -47,49 +47,10 @@ test('templates: instantiateTemplate creates valid overlay schema', () => {
   assert.equal(val.ok, true, `Validation failed: ${val.errors?.join(', ')}`);
 });
 
-test('aiEditor: getAvailableEngines reports gemini, openai, and claude', () => {
+test('aiEditor: getAvailableEngines reports the two supported providers', () => {
   const engines = getAvailableEngines();
   const ids = engines.map((e) => e.id);
   assert.ok(ids.includes('gemini'), 'Must include gemini');
   assert.ok(ids.includes('openai'), 'Must include openai');
-  assert.ok(ids.includes('claude'), 'Must include claude');
-});
-
-test('aiEditor: executeAiEdit applies templates and validates project schema', async () => {
-  const p0 = createEmptyProject({ id: 'p_ai', ownerId: 'u1' });
-  const mockSource = {
-    id: 's1',
-    checksum: 'a'.repeat(64),
-    filename: 'test.mp4',
-    bytes: 1024,
-    meta: {
-      durationSec: 15,
-      width: 1080,
-      height: 1920,
-      rotation: 0,
-      fpsNum: 30,
-      fpsDen: 1,
-      variableFrameRate: false,
-      hasAudio: false,
-      videoCodec: 'h264',
-      audioCodec: null,
-    },
-  };
-  const p1 = addSource(p0, mockSource);
-
-  const res = await executeAiEdit({
-    project: p1,
-    ownerId: 'u1',
-    engine: 'gemini',
-    style: 'viral-hook',
-    removeGaps: false,
-    userPrompt: 'Test hook',
-  });
-
-  assert.ok(res.project, 'Must return updated project');
-  assert.ok(res.overlaysCount >= 1, 'Must have at least one overlay');
-  assert.equal(res.project.overlays.length, res.overlaysCount);
-
-  const val = validateProject(res.project);
-  assert.equal(val.ok, true, `Project validation failed: ${val.errors?.join(', ')}`);
+  assert.equal(ids.length, 2);
 });

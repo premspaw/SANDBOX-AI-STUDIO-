@@ -149,9 +149,10 @@ export function ReelsPlayer({
     <div className="flex flex-col items-center justify-center w-full h-full p-2 select-none">
       {/* 9:16 Canvas Viewport Container */}
       <div
+        style={{aspectRatio: `${project.canvas.width}/${project.canvas.height}`, maxWidth: '100%'}}
         ref={containerRef}
         onClick={() => setSelectedOverlayId(null)}
-        className="relative aspect-[9/16] w-auto h-[60vh] md:h-[68vh] max-h-[720px] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group"
+        className="relative w-auto h-[60vh] md:h-[68vh] max-h-[720px] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group"
       >
         {/* Source Video Tag */}
         {activeStreamUrl ? (
@@ -193,7 +194,7 @@ export function ReelsPlayer({
           const topPercent = overlay.style.y * 100;
           // Scale font proportional to container (1080 -> 100%)
           const containerWidth = containerRef.current?.clientWidth || 360;
-          const scaleFactor = containerWidth / 1080;
+          const scaleFactor = containerWidth / project.canvas.width;
           const scaledFontSize = Math.max(12, Math.round(overlay.style.fontSize * scaleFactor));
           const boxPaddingPx = Math.round(scaledFontSize * 0.28);
 

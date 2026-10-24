@@ -95,14 +95,14 @@ export default function createReelsRouter(deps) {
     throw Object.assign(new Error('Sign in required'), { status: 401 });
   }
 
-  const handle = (fn) => async (req, res) => {
+  const handle = (fn) => async (req, res, next) => {
     try {
       req.ownerId = await getOwner(req);
     } catch (err) {
       return res.status(err.status === 503 ? 503 : 401).json({ error: err.status === 503 ? 'Authentication service unavailable' : 'Sign in required' });
     }
     try {
-      await fn(req, res);
+      await fn(req, res, next);
     } catch (err) {
       const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
       if (status === 500) console.error('[REELS]', err);
@@ -189,6 +189,7 @@ export default function createReelsRouter(deps) {
     res.json({ engines: getAvailableEngines() });
   }));
 
+  let activeAi = 0;
   router.post('/projects/:id/ai-edit', express.json({ limit: '64kb' }), handle(async (req, res) => {
     const project = await loadProject(req);
     const {
@@ -200,6 +201,9 @@ export default function createReelsRouter(deps) {
       referenceNotes = '',
       proofNotes = '',
     } = req.body || {};
+    if(activeAi >= 1) return res.status(429).json({error:'AI editor is busy. Try again shortly.'});
+    activeAi++;
+    try {
     const result = await executeAiEdit({
       project,
       ownerId: req.ownerId,
@@ -212,7 +216,7 @@ export default function createReelsRouter(deps) {
       proofNotes,
     });
     const saved = await store.saveRevision(req.ownerId, project.id, {
-      mutate: () => result.project,
+      baseRevision: project.revision, incoming: result.project,
     });
     res.json({
       project: saved,
@@ -221,6 +225,7 @@ export default function createReelsRouter(deps) {
       silenceRemoved: result.silenceRemoved,
       paperEditSummary: result.paperEditSummary,
     });
+    } finally { activeAi--; }
   }));
 
   // ───────────────────────── Source upload ─────────────────────────
@@ -233,7 +238,12 @@ export default function createReelsRouter(deps) {
     fileFilter: (req, file, cb) => cb(null, /^video\//.test(file.mimetype) || file.mimetype === 'application/octet-stream'),
   });
 
-  router.post('/projects/:id/sources', upload.single('file'), handle(async (req, res) => {
+  router.post('/projects/:id/sources', handle(async (req,res,next) => {
+    await store.ensureDirs();
+    const disk = await fsp.statfs(store.DATA_ROOT);
+    if (disk.bavail * disk.bsize < 2 * 1024 ** 3) return res.status(507).json({error:'Media storage is nearly full. Delete unused projects before uploading.'});
+    next();
+  }), upload.single('file'), handle(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Attach a video file in the "file" field' });
     const tmp = req.file.path;
     try {
