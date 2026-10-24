@@ -8,6 +8,7 @@ import ProjectVaultModal from '../common/ProjectVaultModal'
 
 const FULL_BLEED_TABS = new Set([
     'home',
+    'reels',
     'forge',
     'playground',
     'avatar',

@@ -952,7 +952,7 @@ export default function CinematicStudio() {
   const [useCameraSettings, setUseCameraSettings] = useState(() => localStorage.getItem('cs_useCameraSettings') !== 'false');
   const [omniTask, setOmniTask] = useState(() => localStorage.getItem('cs_omniTask') || 'auto');
   const [showSidePanel, setShowSidePanel] = useState(false);
-  const [panelTab, setPanelTab] = useState('veo'); // 'veo' | 'omni'
+  const [panelTab, setPanelTab] = useState('omni-multi'); // 'omni-multi' | 'seedance' | 'seedance-2.5' | 'transition' | 'remix' | 'motion'
   const galleryContainerRef = useRef(null);
 
   const isSeed = useMemo(() => activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine === 'seedance-2.5', [activeEngine]);

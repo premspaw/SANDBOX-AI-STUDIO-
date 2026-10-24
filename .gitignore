@@ -62,3 +62,5 @@ k.toLowerCase().includes('film')
 *.timestamp-*.mjs
 local_assets.json
 .google-credentials-temp.json
+
+server/data/reels/

@@ -221,7 +221,7 @@ export default function createRouter(deps) {
 
                 if (multiRefNotes) {
                     if (boardType === 'LOCATION') {
-                        prompt = `[Visual Atmosphere Reference Notes:\n${multiRefNotes}Match the environmental lighting and aesthetic mood of the reference image for this cinematic location scene. Remember: completely empty, no people.]\n\n${prompt}`;
+                        prompt = `[Visual Atmosphere Reference Notes:\n${multiRefNotes}Match the architectural styling, environmental lighting, and aesthetic mood of the reference image for this cinematic location scene. The scene must be completely empty, vacant, and deserted with NO humans or people present.]\n\n${prompt}`;
                     } else if (boardType === 'OBJECT') {
                         prompt = `[Visual Prop Reference Notes:\n${multiRefNotes}Match the prop design, materials, and form factor of the reference image. Remember: isolated on a neutral light gray studio background, no text, no hands.]\n\n${prompt}`;
                     } else {

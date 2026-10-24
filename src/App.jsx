@@ -76,6 +76,7 @@ const StoryboardStudio = lazyWithRetry(() => import('./components/pages/Storyboa
 const RemixStudio = lazyWithRetry(() => import('./components/pages/RemixStudio'));
 const ObjectSwapStudio = lazyWithRetry(() => import('./components/pages/ObjectSwapStudio'));
 const TemplatesPage = lazyWithRetry(() => import('./components/pages/TemplatesPage'));
+const ReelsEditor = lazyWithRetry(() => import('./features/ReelsEditor/ReelsEditorPage'));
 
 
 
@@ -140,6 +141,7 @@ function StudioLoader() {
 
 const FULL_HEIGHT_TABS = new Set([
   'home',
+  'reels',
   'playground',
   'avatar',
   'living-avatar',
@@ -193,6 +195,7 @@ function App() {
     if (!isAdmin) {
       const allowedForRegular = new Set([
         'ugc',
+        'reels',
         'avatar',
         'cinematic-studio',
         'studio',
@@ -440,6 +443,8 @@ function App() {
         return <StoryboardStudio />;
       case 'templates':
         return <TemplatesPage />;
+      case 'reels':
+        return <ReelsEditor />;
       case 'remix':
         return <RemixStudio initialMode="motion-transfer" />;
       case 'object-swap':
