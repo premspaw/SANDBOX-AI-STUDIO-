@@ -326,6 +326,8 @@ function GuidedEditorWorkspace({
     }
   };
 
+  return (
+    <div className="flex flex-col h-screen w-full bg-black text-white select-none overflow-hidden">
       {/* ── 1. Top Header Navigation (Stepper) ── */}
       <GuidedStepperHeader
         project={project}
