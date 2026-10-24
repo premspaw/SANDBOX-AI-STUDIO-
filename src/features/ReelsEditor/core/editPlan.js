@@ -36,8 +36,13 @@ export const LIMITS = Object.freeze({
 
 /** Fonts bundled in server/reels/assets/fonts (SIL OFL). Preview loads the same files. */
 export const FONTS = Object.freeze({
-  poppins: { label: 'Poppins Bold', file: 'Poppins-Bold.ttf', family: 'ZL Poppins Bold' },
-  'noto-kannada': { label: 'Noto Sans Kannada', file: 'NotoSansKannada.ttf', family: 'ZL Noto Kannada' },
+  poppins: { label: 'Poppins Bold', file: 'Poppins-Bold.ttf', family: 'ZL Poppins Bold, Poppins, sans-serif', titleFont: 'Poppins', bodyFont: 'Poppins' },
+  'noto-kannada': { label: 'Noto Sans Kannada', file: 'NotoSansKannada.ttf', family: 'ZL Noto Kannada, "Noto Sans Kannada", sans-serif', titleFont: 'Noto Sans Kannada', bodyFont: 'Noto Sans Kannada' },
+  'montserrat-caveat': { label: 'Montserrat + Caveat', file: 'Poppins-Bold.ttf', family: '"Montserrat", "Caveat", sans-serif', titleFont: 'Montserrat', bodyFont: 'Caveat' },
+  'playfair-inter': { label: 'Playfair + Inter', file: 'Poppins-Bold.ttf', family: '"Playfair Display", "Inter", serif', titleFont: 'Playfair Display', bodyFont: 'Inter' },
+  'anton-inter': { label: 'Anton + Inter', file: 'Poppins-Bold.ttf', family: '"Anton", "Inter", sans-serif', titleFont: 'Anton', bodyFont: 'Inter' },
+  'poppins-gochi': { label: 'Poppins + Gochi Hand', file: 'Poppins-Bold.ttf', family: '"Poppins", "Gochi Hand", cursive', titleFont: 'Poppins', bodyFont: 'Gochi Hand' },
+  'syne-outfit': { label: 'Syne + Outfit', file: 'Poppins-Bold.ttf', family: '"Syne", "Outfit", sans-serif', titleFont: 'Syne', bodyFont: 'Outfit' },
 });
 
 export const ANIMATIONS = Object.freeze(['none', 'fade', 'slide-up']);

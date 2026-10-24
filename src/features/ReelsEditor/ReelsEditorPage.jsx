@@ -3,30 +3,21 @@ import {
   Upload,
   Film,
   Plus,
-  Undo2,
-  Redo2,
-  Save,
-  Check,
-  AlertCircle,
   Loader2,
   Sparkles,
-  ChevronDown,
-  FolderOpen,
-  Wand2,
-  LayoutTemplate,
 } from 'lucide-react';
-import { BrandSettings } from './components/BrandSettings.jsx';
-import { applyGapRemoval } from './core/editPlan.js';
 import { reelsApi } from './services/reelsApi.js';
 import { useReelsEditor } from './hooks/useReelsEditor.js';
-import { ReelsPlayer } from './components/ReelsPlayer.jsx';
-import { ReelsTimeline } from './components/ReelsTimeline.jsx';
-import { ReelsInspector } from './components/ReelsInspector.jsx';
+import { applyGapRemoval } from './core/editPlan.js';
+import { applyBrand } from './core/brand.js';
 import { SilenceModal } from './components/SilenceModal.jsx';
 import { ReelsExportModal } from './components/ReelsExportModal.jsx';
-import { TemplateLibraryModal } from './components/TemplateLibraryModal.jsx';
 import { AiSmartEditModal } from './components/AiSmartEditModal.jsx';
-import { AiDirectorChatBar } from './components/AiDirectorChatBar.jsx';
+import { GuidedStepperHeader, STEPS } from './components/GuidedStepperHeader.jsx';
+import { GuidedPlayerPanel } from './components/GuidedPlayerPanel.jsx';
+import { GuidedBottomBar } from './components/GuidedBottomBar.jsx';
+import { GuidedStepStage } from './components/GuidedStepStage.jsx';
+import { COLOUR_PALETTES, FONT_PAIRINGS, HOOK_STYLES, CAPTION_STYLES } from './core/guidedPresets.js';
 
 export default function ReelsEditorPage() {
   const [projectsList, setProjectsList] = useState([]);
@@ -35,9 +26,6 @@ export default function ReelsEditorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [uploadProgress, setUploadProgress] = useState(null);
   const [uploadError, setUploadError] = useState(null);
-  const [showSilenceModal, setShowSilenceModal] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const fileInputRef = useRef(null);
 
   // Load existing projects on mount
@@ -61,9 +49,7 @@ export default function ReelsEditorPage() {
     init();
   }, []);
 
-  // When activeProjectId changes, fetch full project
   const handleSelectProject = async (id) => {
-    setShowProjectDropdown(false);
     setIsLoading(true);
     try {
       const full = await reelsApi.getProject(id);
@@ -77,7 +63,6 @@ export default function ReelsEditorPage() {
   };
 
   const handleCreateNewProject = async () => {
-    setShowProjectDropdown(false);
     setIsLoading(true);
     try {
       const created = await reelsApi.createProject(`Reel #${projectsList.length + 1}`);
@@ -113,47 +98,45 @@ export default function ReelsEditorPage() {
       let cleaned = res.project;
       if (res.source.meta.hasAudio) {
         setUploadProgress(100);
-        const job = await reelsApi.detectSilence(targetProjectId, {sourceId:res.source.id});
+        const job = await reelsApi.detectSilence(targetProjectId, { sourceId: res.source.id });
         let status = job;
-        const deadline = Date.now() + 15*60*1000;
-        while (!['succeeded','failed','cancelled'].includes(status.status)) {
-          if (Date.now() > deadline) throw new Error('Cleanup timed out. Source is saved; reopen the project to retry.');
-          await new Promise(r => setTimeout(r,1500));
+        const deadline = Date.now() + 15 * 60 * 1000;
+        while (!['succeeded', 'failed', 'cancelled'].includes(status.status)) {
+          if (Date.now() > deadline) throw new Error('Cleanup timed out.');
+          await new Promise((r) => setTimeout(r, 1500));
           status = await reelsApi.getJobStatus(job.id);
         }
-        if(status.status !== 'succeeded') throw new Error(status.error || 'Cleanup failed; original footage is saved.');
+        if (status.status !== 'succeeded') throw new Error(status.error || 'Cleanup failed');
         cleaned = applyGapRemoval(cleaned, status.result?.gaps || []);
-        cleaned.audio = {denoise:{enabled:true,strength:'light'},normalize:{enabled:true,targetLufs:-14}};
+        cleaned.audio = { denoise: { enabled: true, strength: 'light' }, normalize: { enabled: true, targetLufs: -14 } };
         cleaned = await reelsApi.saveRevision(cleaned.id, res.project.revision, cleaned);
       }
       setActiveProjectData(cleaned);
       setUploadProgress(null);
-      // Refresh projects list
       reelsApi.listProjects().then(setProjectsList).catch(() => {});
     } catch (err) {
       setUploadError(err.message || 'Failed to upload video');
       setUploadProgress(null);
-    } finally { setIsLoading(false); }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isLoading) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-black text-white p-6">
+      <div className="w-full h-full min-h-[600px] flex flex-col items-center justify-center bg-black text-white p-6">
         <Loader2 className="w-8 h-8 animate-spin text-[#c8f135] mb-3" />
         <p className="font-mono text-xs text-zinc-400 uppercase tracking-widest">
-          {uploadProgress !== null ? 'Uploading and cleaning source…' : 'Loading Reels Studio…'}
+          {uploadProgress !== null ? 'Uploading and preparing footage…' : 'Loading Reel Studio…'}
         </p>
       </div>
     );
   }
 
-  // If no project or current project has no footage yet, show upload welcome view
+  // Welcome upload screen if no sources
   if (!activeProjectData || activeProjectData.sources.length === 0) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-black text-white p-6 relative select-none">
-        {/* Background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#c8f135]/5 rounded-full blur-[140px] pointer-events-none" />
-
+      <div className="w-full h-full min-h-[600px] flex flex-col items-center justify-center bg-black text-white p-6 relative select-none">
         <div className="max-w-md w-full text-center space-y-6 z-10">
           <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-[#c8f135] to-emerald-500 flex items-center justify-center shadow-2xl shadow-[#c8f135]/20">
             <Film className="w-10 h-10 text-black" />
@@ -161,17 +144,16 @@ export default function ReelsEditorPage() {
 
           <div className="space-y-2">
             <span className="text-[10px] font-black uppercase tracking-[0.25em] bg-[#c8f135]/15 border border-[#c8f135]/30 text-[#c8f135] px-3 py-1 rounded-full">
-              AI Reels Editor
+              AI Reels Studio
             </span>
             <h1 className="text-3xl font-black italic uppercase tracking-tighter bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent mt-2">
               Transform Raw Footage
             </h1>
             <p className="text-zinc-400 text-xs leading-relaxed max-w-sm mx-auto font-medium">
-              Upload raw video footage to edit cuts, remove silence gaps, enhance audio, add animated text, and export portrait Reels.
+              Upload raw video to easily create viral portrait Reels with custom colours, fonts, hooks, and animations.
             </p>
           </div>
 
-          {/* Upload Drop Area */}
           <div
             onClick={() => fileInputRef.current?.click()}
             className="p-8 rounded-3xl border-2 border-dashed border-white/10 hover:border-[#c8f135]/60 bg-zinc-950/80 hover:bg-zinc-900/40 cursor-pointer transition-all space-y-3 group"
@@ -191,25 +173,10 @@ export default function ReelsEditorPage() {
                 Upload raw footage
               </p>
               <p className="text-[11px] text-zinc-500 mt-0.5">
-                MP4, MOV, WebM • Up to 250 MB • Up to 120s
+                MP4, MOV, WebM • Up to 250 MB
               </p>
             </div>
           </div>
-
-          {uploadProgress !== null && (
-            <div className="space-y-2 p-4 rounded-2xl bg-zinc-900 border border-white/10 text-xs">
-              <div className="flex justify-between font-mono text-zinc-400">
-                <span>Uploading / cleaning footage...</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                <div
-                  className="h-full bg-[#c8f135] transition-all duration-200"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
 
           {uploadError && (
             <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
@@ -222,7 +189,7 @@ export default function ReelsEditorPage() {
   }
 
   return (
-    <EditorWorkspace
+    <GuidedEditorWorkspace
       key={`${activeProjectData.id}:${activeProjectData.revision}`}
       initialProject={activeProjectData}
       projectsList={projectsList}
@@ -234,8 +201,8 @@ export default function ReelsEditorPage() {
   );
 }
 
-// Inner workspace with active project state
-function EditorWorkspace({
+// ── Main Guided Studio Workspace ──
+function GuidedEditorWorkspace({
   initialProject,
   projectsList,
   onSelectProject,
@@ -243,235 +210,166 @@ function EditorWorkspace({
   onUploadNewSource,
   fileInputRef,
 }) {
+  // Start on step 2 (Fonts) or step 1 (Colours) matching the user reference photo!
+  const [currentStepIndex, setCurrentStepIndex] = useState(2);
+  const [completedSteps, setCompletedSteps] = useState(new Set(['colours']));
   const [showSilenceModal, setShowSilenceModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
-  const [showAiEditModal, setShowAiEditModal] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [surpriseToast, setSurpriseToast] = useState(null);
+  const [isSurprising, setIsSurprising] = useState(false);
 
   const editor = useReelsEditor(initialProject);
   const { project, timeline } = editor;
 
+  // Active stream URL for video preview
+  const activeSourceId = project.clips?.[0]?.sourceId || project.sources?.[0]?.id;
+  const activeStreamUrl = activeSourceId ? editor.sourceUrls[activeSourceId] : null;
+
+  const currentStep = STEPS[currentStepIndex];
+
+  // Step navigation
+  const handleSelectStep = (idx) => {
+    setCurrentStepIndex(idx);
+    if (idx > 0) {
+      setCompletedSteps((prev) => new Set([...prev, STEPS[idx - 1].id]));
+    }
+  };
+
+  const handleNextStep = () => {
+    if (currentStepIndex < STEPS.length - 1) {
+      setCompletedSteps((prev) => new Set([...prev, currentStep.id]));
+      setCurrentStepIndex((prev) => prev + 1);
+    } else {
+      setShowExportModal(true);
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex((prev) => prev - 1);
+    }
+  };
+
+  // "Surprise me" feature: Generates an AI-curated aesthetic combo!
+  const handleSurpriseMe = () => {
+    setIsSurprising(true);
+    // Pick random palette
+    const randomPalette = COLOUR_PALETTES[Math.floor(Math.random() * COLOUR_PALETTES.length)];
+    // Pick random font pairing
+    const randomFont = FONT_PAIRINGS[Math.floor(Math.random() * FONT_PAIRINGS.length)];
+    // Pick random hook style
+    const randomHook = HOOK_STYLES[Math.floor(Math.random() * HOOK_STYLES.length)];
+
+    editor.mutate((p) => {
+      let updated = applyBrand(p, {
+        background: randomPalette.background,
+        surface: randomPalette.surface,
+        text: randomPalette.text,
+        accent: randomPalette.accent,
+        secondary: randomPalette.secondary,
+        font: randomFont.fontKey,
+      });
+
+      // Update overlays font
+      updated = {
+        ...updated,
+        overlays: updated.overlays.map((o) => ({
+          ...o,
+          style: { ...o.style, font: randomFont.fontKey },
+        })),
+      };
+
+      return updated;
+    });
+
+    setSurpriseToast(`✨ Applied: ${randomFont.name} with ${randomPalette.name}!`);
+    setTimeout(() => {
+      setSurpriseToast(null);
+      setIsSurprising(false);
+    }, 3000);
+  };
+
   return (
     <div className="flex flex-col h-screen w-full bg-black text-white select-none overflow-hidden">
-      {/* ── Top Navigation Bar ── */}
-      <header className="h-14 border-b border-white/10 bg-zinc-950 px-4 flex items-center justify-between z-40 shrink-0">
-        {/* Left: Project Selector & Name */}
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-xs font-semibold text-white transition-colors"
-            >
-              <FolderOpen className="w-3.5 h-3.5 text-[#c8f135]" />
-              <span className="max-w-[140px] truncate">{project.name}</span>
-              <ChevronDown className="w-3 h-3 text-zinc-400" />
-            </button>
+      {/* ── 1. Top Header Navigation (Stepper) ── */}
+      <GuidedStepperHeader
+        project={project}
+        currentStepIndex={currentStepIndex}
+        onSelectStep={handleSelectStep}
+        completedSteps={completedSteps}
+        editor={editor}
+        projectsList={projectsList}
+        onSelectProject={onSelectProject}
+        onCreateNewProject={onCreateNewProject}
+        onOpenAiModal={() => setShowAiModal(true)}
+        onOpenExportModal={() => setShowExportModal(true)}
+      />
 
-            {/* Dropdown list */}
-            {showDropdown && (
-              <div className="absolute top-full left-0 mt-1.5 w-60 rounded-2xl bg-zinc-950 border border-white/10 shadow-2xl p-1.5 z-50">
-                <button
-                  onClick={async () => {try {await editor.flushSave();onCreateNewProject();} catch {}}}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs font-bold text-[#c8f135] hover:bg-white/5 transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Start New Reel</span>
-                </button>
-                <div className="my-1 border-t border-white/5" />
-                <div className="max-h-48 overflow-y-auto space-y-0.5">
-                  {projectsList.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={async () => {try {await editor.flushSave();onSelectProject(p.id);} catch {}}}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium truncate transition-colors ${
-                        p.id === project.id
-                          ? 'bg-[#c8f135]/15 text-[#c8f135] font-bold'
-                          : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+      {/* ── 2. Step Subtitle Bar matching reference image ── */}
+      <div className="px-6 py-2 border-b border-white/5 bg-zinc-950/60 flex items-center justify-between text-xs text-zinc-400 shrink-0">
+        <div className="font-medium text-zinc-500">
+          Step adds to the preview
+        </div>
+        {currentStep.stepNumber > 0 && (
+          <div className="font-medium text-zinc-300">
+            <span className="text-white font-bold">
+              Step {currentStep.stepNumber} of 6. {currentStep.title}.
+            </span>{' '}
+            <span className="text-zinc-400">{currentStep.description}</span>
           </div>
-
-          {/* Editable project name input */}
-          <input
-            type="text"
-            value={project.name}
-            onChange={(e) => editor.mutate(p => ({ ...p, name: e.target.value }))}
-            className="bg-transparent border border-transparent hover:border-white/10 focus:border-[#c8f135] rounded-lg px-2 py-1 text-xs text-white font-semibold outline-none max-w-[200px] transition-colors"
-          />
-
-          {/* Revision & Auto-save status */}
-          <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-500 pl-2">
-            <span>Rev #{project.revision}</span>
-            {editor.isSaving ? (
-              <span className="flex items-center gap-1 text-amber-400">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                <span>Saving...</span>
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-emerald-400">
-                <Check className="w-3 h-3" />
-                <span>Saved</span>
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Center: Undo / Redo */}
-        <div className="flex items-center gap-1 bg-zinc-900/60 p-1 rounded-xl border border-white/5">
-          <button
-            onClick={editor.undo}
-            disabled={!editor.canUndo}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
-            title="Undo"
-          >
-            <Undo2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={editor.redo}
-            disabled={!editor.canRedo}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
-            title="Redo"
-          >
-            <Redo2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2">
-          {/* AI Magic Reel Multi-Model Auto-Editor */}
-          <button
-            onClick={() => setShowAiEditModal(true)}
-            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-[#c8f135] text-black font-black text-xs uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-lg shadow-purple-500/25 flex items-center gap-1.5 group"
-            title="Auto-Edit Reel with Gemini, GPT-4o, or Claude"
-          >
-            <Wand2 className="w-3.5 h-3.5 text-white group-hover:rotate-12 transition-transform" />
-            <span className="text-white font-black tracking-tight">AI Magic Reel</span>
-          </button>
-
-          {/* Templates Library Launcher */}
-          <button
-            onClick={() => setShowTemplatesModal(true)}
-            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-300 hover:text-white transition-colors flex items-center gap-1.5"
-            title="Cinematic Templates Library"
-          >
-            <LayoutTemplate className="w-3.5 h-3.5 text-[#c8f135]" />
-            <span>Templates</span>
-          </button>
-
-          {/* Add more footage button */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-300 hover:text-white transition-colors"
-          >
-            <Upload className="w-3.5 h-3.5 inline mr-1" />
-            <span>Add Clip</span>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/*"
-            onChange={async e => { try { await editor.flushSave(); await onUploadNewSource(e); } catch {} }}
-            className="hidden"
-          />
-
-          {/* Export Button */}
-          <button
-            onClick={async () => { try { await editor.flushSave(); setShowExportModal(true); } catch {} }}
-            className="px-5 py-2 rounded-xl bg-[#c8f135] text-black font-black text-xs uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#c8f135]/25 flex items-center gap-1.5"
-          >
-            <Film className="w-3.5 h-3.5 fill-current" />
-            <span>Export Reel</span>
-          </button>
-        </div>
-      </header>
-
-      <BrandSettings editor={editor} />
-      {editor.saveError && <p role="alert" className="p-2 text-red-300">{editor.saveError}</p>}
-      {/* ── Main Middle Layout: Player + Inspector ── */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Player Canvas Area */}
-        <div className="flex-1 flex items-center justify-center bg-[#070707] relative overflow-hidden">
-          <ReelsPlayer
-            project={project}
-            timeline={timeline}
-            currentFrame={editor.currentFrame}
-            setCurrentFrame={editor.setCurrentFrame}
-            isPlaying={editor.isPlaying}
-            setIsPlaying={editor.setIsPlaying}
-            sourceUrls={editor.sourceUrls}
-            selectedOverlayId={editor.selectedOverlayId}
-            setSelectedOverlayId={editor.setSelectedOverlayId}
-            onUpdateOverlay={editor.updateText}
-          />
-        </div>
-
-        {/* Right Inspector Panel */}
-        <ReelsInspector
-          project={project}
-          selectedClipId={editor.selectedClipId}
-          onUpdateClip={editor.updateClipProps}
-          onDeleteClip={editor.removeClip}
-          selectedOverlayId={editor.selectedOverlayId}
-          onUpdateOverlay={editor.updateText}
-          onDeleteOverlay={editor.removeText}
-          onOpenTemplates={() => setShowTemplatesModal(true)}
-          onSetAudioDenoise={editor.setAudioDenoise}
-          onSetAudioNormalize={editor.setAudioNormalize}
-        />
+        )}
       </div>
 
-      {/* ── AI Director Command & Dictation Chat Bar (Powered by Gemini 4 Argon) ── */}
-      <AiDirectorChatBar
-        beforeEdit={editor.flushSave}
-        projectId={project.id}
-        onProjectUpdated={editor.replaceProject}
-        onOpenFullModal={() => setShowAiEditModal(true)}
+      {/* Surprise Toast Notification */}
+      {surpriseToast && (
+        <div className="fixed top-20 right-6 z-50 px-4 py-2.5 rounded-2xl bg-[#c8f135] text-black font-bold text-xs shadow-2xl shadow-[#c8f135]/30 animate-bounce">
+          {surpriseToast}
+        </div>
+      )}
+
+      {/* ── 3. Main Split Stage: Left Player (9:16) + Right Step Cards Grid ── */}
+      <div className="flex-1 flex overflow-hidden p-4 md:p-6 gap-6">
+        {/* Left: 9:16 Portrait Video Preview */}
+        <GuidedPlayerPanel
+          project={project}
+          timeline={timeline}
+          currentFrame={editor.currentFrame}
+          setCurrentFrame={editor.setCurrentFrame}
+          isPlaying={editor.isPlaying}
+          setIsPlaying={editor.setIsPlaying}
+          sourceUrls={editor.sourceUrls}
+          selectedOverlayId={editor.selectedOverlayId}
+          setSelectedOverlayId={editor.setSelectedOverlayId}
+          onUpdateOverlay={editor.updateText}
+        />
+
+        {/* Right: Active Step Preset Cards Grid */}
+        <div className="flex-1 rounded-3xl bg-zinc-950/40 border border-white/10 flex flex-col overflow-hidden">
+          <GuidedStepStage
+            currentStepIndex={currentStepIndex}
+            project={project}
+            editor={editor}
+            activeStreamUrl={activeStreamUrl}
+            onOpenSilenceModal={() => setShowSilenceModal(true)}
+            onOpenExportModal={() => setShowExportModal(true)}
+            onOpenAiModal={() => setShowAiModal(true)}
+            fileInputRef={fileInputRef}
+            onUploadFile={onUploadNewSource}
+          />
+        </div>
+      </div>
+
+      {/* ── 4. Bottom Navigation Bar matching reference image ── */}
+      <GuidedBottomBar
+        currentStepIndex={currentStepIndex}
+        onPreviousStep={handlePreviousStep}
+        onNextStep={handleNextStep}
+        onSurpriseMe={handleSurpriseMe}
+        isSurprising={isSurprising}
       />
 
-      {/* ── Bottom Timeline ── */}
-      <ReelsTimeline
-        project={project}
-        timeline={timeline}
-        currentFrame={editor.currentFrame}
-        onSeek={editor.seekToFrame}
-        selectedClipId={editor.selectedClipId}
-        onSelectClip={editor.setSelectedClipId}
-        selectedOverlayId={editor.selectedOverlayId}
-        onSelectOverlay={editor.setSelectedOverlayId}
-        onSplit={editor.splitClipAtPlayhead}
-        onUpdateClip={editor.updateClipProps}
-        onMoveClip={editor.reorderClip}
-        onDeleteClip={editor.removeClip}
-        onAddText={editor.addText}
-        onOpenTemplates={() => setShowTemplatesModal(true)}
-        onOpenSilenceModal={() => setShowSilenceModal(true)}
-      />
-
-      {/* Templates Library Modal */}
-      <TemplateLibraryModal
-        isOpen={showTemplatesModal}
-        onClose={() => setShowTemplatesModal(false)}
-        onApplyTemplate={editor.applyTemplate}
-        selectedOverlay={project.overlays.find((o) => o.id === editor.selectedOverlayId)}
-      />
-
-      {/* AI Smart Edit / Auto-Director Modal */}
-      <AiSmartEditModal
-        isOpen={showAiEditModal}
-        onClose={() => setShowAiEditModal(false)}
-        beforeEdit={editor.flushSave}
-        projectId={project.id}
-        onProjectUpdated={editor.replaceProject}
-      />
-
-      {/* Silence Cleanup Modal */}
+      {/* Silence Modal */}
       <SilenceModal
         isOpen={showSilenceModal}
         onClose={() => setShowSilenceModal(false)}
@@ -480,11 +378,20 @@ function EditorWorkspace({
         onApplyGaps={editor.applyGaps}
       />
 
-      {/* Export & Render Modal */}
+      {/* Export Modal */}
       <ReelsExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
         project={project}
+      />
+
+      {/* AI Smart Edit / Auto-Director Modal */}
+      <AiSmartEditModal
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        beforeEdit={editor.flushSave}
+        projectId={project.id}
+        onProjectUpdated={editor.replaceProject}
       />
     </div>
   );
