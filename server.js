@@ -2450,6 +2450,7 @@ import createAdsStudioRouter from './server/routes/adsStudioRoutes.js';
 import createMcpRouter from './server/routes/mcpRoutes.js';
 import createReelsRouter from './server/routes/reelsRoutes.js';
 import createMotionStudioRouter from './server/routes/motionStudioRoutes.js';
+import { upload as argonUpload, handleArgonAutoEditRequest, DEFAULT_PHOTOSYNTHESIS_MANIFEST } from './server/argonAutoEdit.js';
 import { getOAuthMetadata } from './server/mcp/auth/oauthHandler.js';
 
 // ── MCP (Model Context Protocol & ChatGPT Actions Gateway) ───────────────────
@@ -2527,6 +2528,10 @@ app.use('/api/ads-studio', createAdsStudioRouter(deps));
 
 // ── Reels Editor ─────────────────────────────────────────────────────────────
 app.use('/api/reels', createReelsRouter(deps));
+
+// ── ZeroLens Argon 4 Autonomous Video Editor ─────────────────────────────────
+app.get('/api/argon-auto-edit', (req, res) => res.json(DEFAULT_PHOTOSYNTHESIS_MANIFEST));
+app.post('/api/argon-auto-edit', argonUpload.single('video'), handleArgonAutoEditRequest);
 
 // ── Motion Studio (Gemini 4 Argon & Claude Procedural Choreography) ───────────
 app.use('/api/motion-studio', createMotionStudioRouter(deps));

@@ -24,6 +24,7 @@ export function GuidedStepperHeader({
   onCreateNewProject,
   onOpenAiModal,
   onOpenExportModal,
+  onToggleArgonView,
 }) {
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
 
@@ -152,6 +153,17 @@ export function GuidedStepperHeader({
 
       {/* Right: AI Quick Action & Export Trigger */}
       <div className="flex items-center gap-2">
+        {onToggleArgonView && (
+          <button
+            onClick={onToggleArgonView}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition-all shadow-sm shadow-emerald-500/10"
+            title="Switch to Gemini 4 Argon Autonomous Studio"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <span className="hidden sm:inline">✨ Argon 4 Studio</span>
+          </button>
+        )}
+
         <button
           onClick={onOpenAiModal}
           className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:text-white text-xs font-bold transition-all"

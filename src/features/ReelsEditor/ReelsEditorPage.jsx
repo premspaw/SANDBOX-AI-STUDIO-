@@ -17,6 +17,7 @@ import { GuidedStepperHeader } from './components/GuidedStepperHeader.jsx';
 import { GuidedPlayerPanel } from './components/GuidedPlayerPanel.jsx';
 import { GuidedBottomBar } from './components/GuidedBottomBar.jsx';
 import { GuidedStepStage } from './components/GuidedStepStage.jsx';
+import { ZeroLensArgonEditPanel } from './components/ZeroLensArgonEditPanel.jsx';
 import { STEPS, COLOUR_PALETTES, FONT_PAIRINGS, HOOK_STYLES, CAPTION_STYLES } from './core/guidedPresets.js';
 
 export default function ReelsEditorPage() {
@@ -213,6 +214,7 @@ function GuidedEditorWorkspace({
   // Start on step 2 (Fonts) or step 1 (Colours) matching the user reference photo!
   const [currentStepIndex, setCurrentStepIndex] = useState(2);
   const [completedSteps, setCompletedSteps] = useState(new Set(['colours']));
+  const [studioMode, setStudioMode] = useState('guided');
   const [showSilenceModal, setShowSilenceModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
@@ -305,6 +307,29 @@ function GuidedEditorWorkspace({
     }
   };
 
+  if (studioMode === 'argon') {
+    return (
+      <div className="flex flex-col h-screen w-full bg-black text-white select-none overflow-hidden">
+        <header className="h-14 border-b border-white/10 bg-zinc-950 px-6 flex items-center justify-between shrink-0">
+          <button
+            onClick={() => setStudioMode('guided')}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-zinc-300 hover:text-white transition-all"
+          >
+            ← Return to Guided Stepper
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full">
+              Gemini 4 Argon • 1:1 Jump-Cut & Web Audio Engine
+            </span>
+          </div>
+        </header>
+        <div className="flex-1 overflow-hidden">
+          <ZeroLensArgonEditPanel defaultVideoUrl={activeStreamUrl} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen w-full bg-black text-white select-none overflow-hidden">
       {/* ── 1. Top Header Navigation (Stepper) ── */}
@@ -319,6 +344,7 @@ function GuidedEditorWorkspace({
         onCreateNewProject={onCreateNewProject}
         onOpenAiModal={() => setShowAiModal(true)}
         onOpenExportModal={() => setShowExportModal(true)}
+        onToggleArgonView={() => setStudioMode('argon')}
       />
 
       {/* ── 2. Step Subtitle Bar matching reference image ── */}
