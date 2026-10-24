@@ -14,6 +14,15 @@ console.log(`[STARTUP-ENV-CHECK] HF_CREDENTIALS configured: ${Boolean(process.en
 import dns from 'dns';
 import net from 'net';
 dns.setDefaultResultOrder('ipv4first');
+
+// Process-level crash guards for transient network errors (e.g. Supabase ECONNRESET)
+process.on('unhandledRejection', (reason) => {
+    console.warn('[SERVER-GUARD] Caught unhandled rejection:', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('[SERVER-GUARD] Caught uncaught exception:', err?.message || err);
+});
+
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
