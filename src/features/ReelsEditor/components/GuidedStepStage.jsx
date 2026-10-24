@@ -13,6 +13,13 @@ import {
   Type,
   HelpCircle,
   Volume2,
+  FileText,
+  Flame,
+  Target,
+  AlertTriangle,
+  ArrowRight,
+  RotateCcw,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   COLOUR_PALETTES,
@@ -40,6 +47,13 @@ export function GuidedStepStage({
   const [isAiEditing, setIsAiEditing] = useState(false);
   const [aiEditSummary, setAiEditSummary] = useState(null);
   const [isListening, setIsListening] = useState(false);
+
+  // Script & Hook analysis states
+  const [scriptText, setScriptText] = useState('');
+  const [isExtractingScript, setIsExtractingScript] = useState(false);
+  const [isAnalyzingHooks, setIsAnalyzingHooks] = useState(false);
+  const [suggestedHooks, setSuggestedHooks] = useState(null);
+  const [appliedHookId, setAppliedHookId] = useState(null);
 
   const [hookInputText, setHookInputText] = useState(
     project.overlays.find((o) => o.templateId === 'viral-hook')?.text ||
@@ -208,6 +222,7 @@ export function GuidedStepStage({
       const res = await reelsApi.applyAiEdit(project.id, {
         engine: selectedEngine,
         userPrompt: promptToUse,
+        scriptText: scriptText,
         style: project.brand?.templateId || 'viral-hook',
         removeGaps: true,
       });
@@ -228,6 +243,154 @@ export function GuidedStepStage({
     } finally {
       setIsAiEditing(false);
     }
+  };
+
+  // ── Script Extraction & Hook Generation Handlers ──
+  const handleExtractScript = async () => {
+    if (!project.sources?.length) {
+      alert('Please upload a video clip first in Step 1.');
+      return;
+    }
+    setIsExtractingScript(true);
+    try {
+      const res = await reelsApi.extractScript(project.id, { engine: selectedEngine });
+      if (res?.transcript) {
+        setScriptText(res.transcript);
+        // Automatically analyze hooks with the extracted script
+        handleAnalyzeHooks(res.transcript);
+      } else {
+        alert('No clear speech was extracted from the audio. You can paste your script or talking points directly in the box below.');
+      }
+    } catch (err) {
+      alert(`Script extraction error: ${err.message || 'Failed to transcribe'}`);
+    } finally {
+      setIsExtractingScript(false);
+    }
+  };
+
+  const handleAnalyzeHooks = async (textOverride = null) => {
+    const textToUse = textOverride !== null ? textOverride : scriptText;
+    setIsAnalyzingHooks(true);
+    try {
+      const res = await reelsApi.analyzeHooks(project.id, {
+        scriptText: textToUse,
+        userPrompt: aiTopicPrompt,
+        engine: selectedEngine,
+      });
+      if (res?.hooks?.length) {
+        setSuggestedHooks(res.hooks);
+        if (res.transcript && !scriptText) {
+          setScriptText(res.transcript);
+        }
+      }
+    } catch (err) {
+      alert(`Hook generation error: ${err.message || 'Failed to generate hooks'}`);
+    } finally {
+      setIsAnalyzingHooks(false);
+    }
+  };
+
+  const handleApplySuggestedHook = (hook) => {
+    setHookInputText(hook.headline);
+    setAppliedHookId(hook.id);
+    editor.mutate((p) => {
+      const existingIdx = p.overlays.findIndex((o) => o.startFrame === 0);
+      const newOverlay = {
+        kind: 'text',
+        text: hook.headline,
+        startFrame: 0,
+        durationFrames: 90,
+        anchorMode: 'output',
+        anchor: null,
+        needsReview: false,
+        templateId: 'viral-hook',
+        templateVersion: '1.0.0',
+        style: {
+          x: 0.5,
+          y: hook.style?.y || 0.28,
+          fontSize: hook.style?.fontSize || 84,
+          color: p.brand?.text || '#FFFFFF',
+          boxColor: p.brand?.surface || '#000000',
+          boxOpacity: hook.style?.boxOpacity || 0.88,
+          font: p.brand?.font || 'poppins',
+        },
+        animation: {
+          in: hook.animation?.in || 'slide-up',
+          durationFrames: hook.animation?.durationFrames || 10,
+        },
+      };
+
+      let newOverlays = [...p.overlays];
+      if (existingIdx >= 0) {
+        newOverlays[existingIdx] = { ...newOverlays[existingIdx], ...newOverlay, id: newOverlays[existingIdx].id };
+      } else {
+        newOverlays.unshift({ ...newOverlay, id: `hook_${Date.now()}` });
+      }
+      return { ...p, overlays: newOverlays };
+    });
+    editor.setCurrentFrame(0);
+    editor.setIsPlaying(true);
+  };
+
+  const handleAutoGenerateCaptions = () => {
+    const text = (scriptText || hookInputText || '').trim();
+    if (!text) {
+      alert('Please paste or extract a script first to generate captions.');
+      return;
+    }
+    const words = text.split(/\s+/).filter(Boolean);
+    if (!words.length) return;
+
+    // Group into 3-word chunks
+    const chunks = [];
+    for (let i = 0; i < words.length; i += 3) {
+      chunks.push(words.slice(i, i + 3).join(' ').toUpperCase());
+    }
+
+    const fps = project.canvas?.fps || 30;
+    const totalFrames = project.timeline?.totalFrames || 300;
+    const chunkDurFrames = Math.min(75, Math.max(30, Math.round(2.2 * fps)));
+
+    editor.mutate((p) => {
+      const otherOverlays = p.overlays.filter((o) => o.startFrame === 0);
+
+      const generatedOverlays = chunks.slice(0, 8).map((chunk, idx) => {
+        const startFrame = 90 + idx * chunkDurFrames;
+        if (startFrame >= totalFrames - 15) return null;
+        const dur = Math.min(chunkDurFrames, totalFrames - startFrame);
+
+        return {
+          id: `cap_${Date.now()}_${idx}`,
+          kind: 'text',
+          text: chunk,
+          startFrame,
+          durationFrames: dur,
+          anchorMode: 'output',
+          anchor: null,
+          needsReview: false,
+          templateId: 'hormozi-caption',
+          templateVersion: '1.0.0',
+          style: {
+            x: 0.5,
+            y: 0.68,
+            fontSize: 78,
+            color: p.brand?.accent || '#FFE600',
+            boxColor: '#000000',
+            boxOpacity: 0.95,
+            font: p.brand?.font || 'poppins',
+          },
+          animation: { in: 'pop-in', durationFrames: 6 },
+        };
+      }).filter(Boolean);
+
+      return {
+        ...p,
+        overlays: [...otherOverlays, ...generatedOverlays],
+      };
+    });
+
+    editor.setCurrentFrame(90);
+    editor.setIsPlaying(true);
   };
 
   // Voice dictation toggle
@@ -729,7 +892,7 @@ export function GuidedStepStage({
 
         {/* ── STEP 3: HOOK ── */}
         {currentStepIndex === 3 && (
-          <div className="space-y-5">
+          <div className="space-y-6">
             {/* Explainer Banner */}
             <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-start gap-3">
               <HelpCircle className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
@@ -738,26 +901,221 @@ export function GuidedStepStage({
                   What is a Hook?
                 </h4>
                 <p className="text-xs text-purple-200 mt-0.5 leading-relaxed">
-                  The Hook is the scroll-stopping title that appears in the first 3 seconds (0:00 - 0:03). It grabs viewers before they swipe away on Instagram Reels or TikTok.
+                  The Hook is the scroll-stopping title that appears in the first 3 seconds (0:00 - 0:03). It grabs viewers before they swipe away on Instagram Reels, TikTok, and YouTube Shorts.
                 </p>
               </div>
             </div>
 
-            {/* Editable Hook Input Bar */}
-            <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-zinc-300">
-                  Opening Hook Headline
-                </label>
-                <button
-                  onClick={() => handleRunAiDirector('Generate a high-converting viral hook for this reel')}
-                  disabled={isAiEditing}
-                  className="text-xs font-bold text-[#c8f135] hover:underline flex items-center gap-1"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>AI Generate Best Hook</span>
-                </button>
+            {/* ── 1. SCRIPT & VIDEO ANALYSIS HUB ── */}
+            <div className="p-4 md:p-5 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-[#c8f135]" />
+                    <span>1. Video Script & Speech Extraction</span>
+                  </h3>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Extract the exact words spoken in your video, or paste your script to generate tailored viral hooks.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleExtractScript}
+                    disabled={isExtractingScript || isAnalyzingHooks}
+                    className="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-xs font-bold text-purple-300 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    title="Transcribes audio from your video clip using AI"
+                  >
+                    {isExtractingScript ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Transcribing…</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                        <span>✨ Analyze Video</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleAnalyzeHooks()}
+                    disabled={isExtractingScript || isAnalyzingHooks}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#c8f135] hover:bg-[#d4fa4b] text-black text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 disabled:opacity-50 shadow-md shadow-[#c8f135]/20"
+                  >
+                    {isAnalyzingHooks ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
+                        <span>Analyzing…</span>
+                      </>
+                    ) : (
+                      <>
+                        <Flame className="w-3.5 h-3.5 fill-current" />
+                        <span>Generate 3 Hooks</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
+
+              {/* Script Textarea */}
+              <div className="space-y-1.5">
+                <textarea
+                  rows={2}
+                  value={scriptText}
+                  onChange={(e) => setScriptText(e.target.value)}
+                  placeholder="Paste your video script or talking points here (e.g. 'This is a hook. Here is the secret to getting 100k views...'), or click '✨ Analyze Video' above to extract it from the footage..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black border border-white/10 focus:border-[#c8f135] text-xs text-white outline-none font-medium transition-colors resize-none placeholder:text-zinc-600"
+                />
+                {scriptText && (
+                  <div className="flex items-center justify-between text-[10px] text-zinc-500 px-1">
+                    <span>{scriptText.split(/\s+/).filter(Boolean).length} spoken words detected</span>
+                    <button
+                      onClick={() => handleAnalyzeHooks(scriptText)}
+                      className="text-[#c8f135] font-bold hover:underline"
+                    >
+                      Regenerate Hooks from this Script →
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── 2. TAILORED HOOK CHOICES (3 Options: Curiosity, Question, Contrarian) ── */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-amber-400" />
+                    <span>2. Choose Your Best Hook (Tailored to Video)</span>
+                  </h3>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Select the hook formula that best fits your video topic. Click to apply directly to the reel frame.
+                  </p>
+                </div>
+
+                {!suggestedHooks && (
+                  <button
+                    onClick={() => handleAnalyzeHooks()}
+                    className="text-xs font-bold text-[#c8f135] hover:underline flex items-center gap-1"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Generate Options</span>
+                  </button>
+                )}
+              </div>
+
+              {suggestedHooks?.length ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                  {suggestedHooks.map((hook) => {
+                    const isApplied = appliedHookId === hook.id || hookInputText === hook.headline;
+
+                    return (
+                      <div
+                        key={hook.id}
+                        className={`rounded-2xl p-4 flex flex-col justify-between transition-all border ${
+                          isApplied
+                            ? 'border-[#c8f135] bg-zinc-900 shadow-md ring-1 ring-[#c8f135]'
+                            : 'border-white/10 bg-zinc-950/80 hover:border-white/25 hover:bg-zinc-900/50'
+                        }`}
+                        style={{ minHeight: '190px' }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white">
+                            {hook.badge || hook.type}
+                          </span>
+                          {isApplied && (
+                            <span className="text-[10px] font-bold text-[#c8f135] bg-[#c8f135]/15 px-2 py-0.5 rounded-full border border-[#c8f135]/30 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Active</span>
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="my-2.5 space-y-1.5">
+                          <p className="text-sm font-black text-white whitespace-pre-line leading-tight">
+                            {hook.headline}
+                          </p>
+                          {hook.whyItWorks && (
+                            <p className="text-[10px] text-zinc-400 italic leading-snug">
+                              💡 {hook.whyItWorks}
+                            </p>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={() => handleApplySuggestedHook(hook)}
+                          className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${
+                            isApplied
+                              ? 'bg-[#c8f135] text-black font-black'
+                              : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
+                          }`}
+                        >
+                          {isApplied ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              <span>Applied to Frame 0</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Apply to Reel</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Default 3 Quick Starter Hooks */
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    {
+                      id: 'curiosity',
+                      badge: '🎯 Curiosity Gap',
+                      headline: 'THIS IS A HOOK 🛑\nWatch How To Double Retention',
+                      whyItWorks: 'Opens an immediate curiosity loop to keep viewers watching past 3s.',
+                    },
+                    {
+                      id: 'question',
+                      badge: '❓ Viral Question',
+                      headline: 'CAN 1 HOOK DOUBLE\nYour Video Views?',
+                      whyItWorks: 'Questions trigger an involuntary mental reflex to find the answer.',
+                    },
+                    {
+                      id: 'contrarian',
+                      badge: '🛑 Contrarian Truth',
+                      headline: 'STOP MAKING HOOKS\nThat People Skip ⚡',
+                      whyItWorks: 'Pattern interrupts break the mindless thumb scrolling habit.',
+                    },
+                  ].map((hook) => (
+                    <div
+                      key={hook.id}
+                      onClick={() => handleApplySuggestedHook(hook)}
+                      className="rounded-2xl p-4 border border-white/10 bg-zinc-950/70 hover:border-white/30 hover:bg-zinc-900/40 cursor-pointer transition-all flex flex-col justify-between"
+                      style={{ minHeight: '170px' }}
+                    >
+                      <span className="text-[10px] font-bold text-zinc-300">{hook.badge}</span>
+                      <p className="text-xs font-bold text-white whitespace-pre-line my-2">
+                        {hook.headline}
+                      </p>
+                      <button className="text-[11px] font-bold text-[#c8f135] flex items-center gap-1">
+                        <span>Click to Apply</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── 3. EDITABLE HEADLINE BAR & CHIPS ── */}
+            <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-2.5">
+              <label className="text-xs font-bold text-zinc-300">
+                Fine-Tune Hook Headline Text
+              </label>
               <input
                 type="text"
                 value={hookInputText}
@@ -770,11 +1128,11 @@ export function GuidedStepStage({
                   Try:
                 </span>
                 {[
-                  'Quit your job?',
+                  'This is a hook 🛑',
                   'Stop scrolling 🛑',
                   'The 1 secret nobody told you',
                   'Why everything you know is wrong',
-                  'How I got 100k views in 30 days',
+                  'Watch till the end ⚡',
                 ].map((chip) => (
                   <button
                     key={chip}
@@ -790,35 +1148,40 @@ export function GuidedStepStage({
               </div>
             </div>
 
-            {/* Grid of 6 Hook Style Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {HOOK_STYLES.map((hook, idx) => (
-                <div
-                  key={hook.id}
-                  onClick={() => handleSelectHookStyle(hook)}
-                  className="group relative rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all border border-white/10 bg-zinc-950/70 hover:border-white/30 hover:bg-zinc-900/40"
-                  style={{ minHeight: '260px' }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="w-6 h-6 rounded-full bg-black/60 border border-white/20 text-white font-mono text-xs flex items-center justify-center font-bold">
-                      {idx + 1}
-                    </span>
-                  </div>
+            {/* ── 4. HOOK TYPOGRAPHY & ANIMATION PRESETS ── */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                3. Choose Hook Typography & Animation Preset
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {HOOK_STYLES.map((hook, idx) => (
+                  <div
+                    key={hook.id}
+                    onClick={() => handleSelectHookStyle(hook)}
+                    className="group relative rounded-2xl p-3 flex flex-col justify-between cursor-pointer transition-all border border-white/10 bg-zinc-950/70 hover:border-white/30 hover:bg-zinc-900/40"
+                    style={{ minHeight: '200px' }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="w-5 h-5 rounded-full bg-black/60 border border-white/20 text-white font-mono text-[10px] flex items-center justify-center font-bold">
+                        {idx + 1}
+                      </span>
+                    </div>
 
-                  <div className="my-3 flex-1 rounded-xl p-3 flex flex-col justify-center items-center text-center bg-black/70 border border-white/5 relative overflow-hidden">
-                    <p className="text-xs font-bold text-white whitespace-pre-line leading-snug">
-                      {hookInputText || hook.defaultText}
-                    </p>
-                  </div>
+                    <div className="my-2 flex-1 rounded-xl p-2.5 flex flex-col justify-center items-center text-center bg-black/70 border border-white/5 relative overflow-hidden">
+                      <p className="text-[11px] font-bold text-white whitespace-pre-line leading-snug">
+                        {hookInputText || hook.defaultText}
+                      </p>
+                    </div>
 
-                  <div className="pt-2 border-t border-white/5">
-                    <h4 className="text-sm font-bold text-white group-hover:text-[#c8f135] transition-colors truncate">
-                      {hook.name}
-                    </h4>
-                    <p className="text-[11px] text-zinc-400 mt-0.5 truncate">{hook.vibe}</p>
+                    <div className="pt-1.5 border-t border-white/5">
+                      <h4 className="text-xs font-bold text-white group-hover:text-[#c8f135] transition-colors truncate">
+                        {hook.name}
+                      </h4>
+                      <p className="text-[10px] text-zinc-400 truncate">{hook.vibe}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -826,6 +1189,31 @@ export function GuidedStepStage({
         {/* ── STEP 4: CAPTIONS ── */}
         {currentStepIndex === 4 && (
           <div className="space-y-5">
+            {/* Auto-Generate Captions from Script Banner */}
+            <div className="p-4 md:p-5 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-400/10 px-2.5 py-0.5 rounded-full border border-cyan-400/20">
+                  ⚡ 1-Click Speech Captions
+                </span>
+                <h4 className="text-sm font-bold text-white">
+                  Auto-Generate Subtitles from Video Speech
+                </h4>
+                <p className="text-xs text-zinc-400">
+                  {scriptText
+                    ? `Create kinetic subtitle pills matching: "${scriptText.slice(0, 60)}..."`
+                    : 'Transcribe your video or use your script to create kinetic subtitle pills across the timeline.'}
+                </p>
+              </div>
+
+              <button
+                onClick={handleAutoGenerateCaptions}
+                className="px-4 py-2 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 shadow-md shadow-cyan-400/20"
+              >
+                <Sparkles className="w-3.5 h-3.5 fill-current" />
+                <span>Generate Captions</span>
+              </button>
+            </div>
+
             {/* Explainer Banner */}
             <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-start gap-3">
               <HelpCircle className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />

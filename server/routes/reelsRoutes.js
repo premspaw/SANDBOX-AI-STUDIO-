@@ -14,7 +14,8 @@ import crypto from 'crypto';
 import * as store from '../reels/store.js';
 import { probeMedia, sha256File, FFMPEG_RUNTIME } from '../reels/media.js';
 import { enqueue, cancelJob, startWorker, isTerminal } from '../reels/jobQueue.js';
-import { getAvailableEngines, executeAiEdit } from '../reels/aiEditor.js';
+import { getAvailableEngines, executeAiEdit, generateHookOptions } from '../reels/aiEditor.js';
+import { speechContext } from '../reels/speech.js';
 import {
   createEmptyProject, addSource, newId, validateForExport, LIMITS, FONTS, RENDERER, buildTimeline,
 } from '../../src/features/ReelsEditor/core/editPlan.js';
@@ -204,28 +205,64 @@ export default function createReelsRouter(deps) {
     if(activeAi >= 1) return res.status(429).json({error:'AI editor is busy. Try again shortly.'});
     activeAi++;
     try {
-    const result = await executeAiEdit({
-      project,
-      ownerId: req.ownerId,
-      engine,
-      style,
-      removeGaps: Boolean(removeGaps),
-      userPrompt,
-      scriptText,
-      referenceNotes,
-      proofNotes,
+      const result = await executeAiEdit({
+        project,
+        ownerId: req.ownerId,
+        engine,
+        style,
+        removeGaps: Boolean(removeGaps),
+        userPrompt,
+        scriptText,
+        referenceNotes,
+        proofNotes,
+      });
+      // Use mutate to merge atomically inside lock — avoids 409 Conflict if project changed during AI processing
+      const saved = await store.saveRevision(req.ownerId, project.id, {
+        mutate: (cur) => ({
+          ...cur,
+          brand: result.project.brand || cur.brand,
+          overlays: result.project.overlays || cur.overlays,
+          cuts: result.project.cuts?.length ? result.project.cuts : cur.cuts,
+        }),
+      });
+      res.json({
+        project: saved,
+        engineUsed: result.engineUsed,
+        overlaysCount: result.overlaysCount,
+        silenceRemoved: result.silenceRemoved,
+        paperEditSummary: result.paperEditSummary,
+      });
+    } finally { activeAi--; }
+  }));
+
+  router.post('/projects/:id/extract-script', express.json({ limit: '64kb' }), handle(async (req, res) => {
+    const project = await loadProject(req);
+    const { engine = 'gemini' } = req.body || {};
+    const text = await speechContext(project, req.ownerId, engine);
+    res.json({
+      transcript: text || '',
+      wordCount: text ? text.split(/\s+/).filter(Boolean).length : 0,
+      hasSources: project.sources?.length > 0,
     });
-    const saved = await store.saveRevision(req.ownerId, project.id, {
-      baseRevision: project.revision, incoming: result.project,
+  }));
+
+  router.post('/projects/:id/analyze-hooks', express.json({ limit: '64kb' }), handle(async (req, res) => {
+    const project = await loadProject(req);
+    let { scriptText = '', userPrompt = '', engine = 'gemini' } = req.body || {};
+    if (!scriptText?.trim()) {
+      scriptText = await speechContext(project, req.ownerId, engine).catch(() => '');
+    }
+    const tl = buildTimeline(project);
+    const result = await generateHookOptions({
+      scriptText,
+      userPrompt,
+      durationSec: tl.durationSec || 15,
     });
     res.json({
-      project: saved,
-      engineUsed: result.engineUsed,
-      overlaysCount: result.overlaysCount,
-      silenceRemoved: result.silenceRemoved,
-      paperEditSummary: result.paperEditSummary,
+      transcript: scriptText || '',
+      hooks: result.hooks || [],
+      captionPhrases: result.captionPhrases || [],
     });
-    } finally { activeAi--; }
   }));
 
   // ───────────────────────── Source upload ─────────────────────────

@@ -42,22 +42,8 @@ export async function speechContext(project, ownerId, engine) {
       }
 
       let text;
-      if (engine === 'openai') {
-        if (!process.env.REELS_TRANSCRIBE_MODEL) {
-          console.warn('[REELS-SPEECH] REELS_TRANSCRIBE_MODEL not set, skipping automatic speech analysis');
-          continue;
-        }
-        try {
-          const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 90000, maxRetries: 1 });
-          const r = await client.audio.transcriptions.create({
-            file: fs.createReadStream(audio),
-            model: process.env.REELS_TRANSCRIBE_MODEL,
-          });
-          text = r.text;
-        } catch (transcribeErr) {
-          console.warn('[REELS-SPEECH] OpenAI transcription warning:', transcribeErr.message);
-        }
-      } else {
+      // Try Gemini first if selected or available
+      if (engine !== 'openai') {
         const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_CLOUD_API_KEY;
         if (apiKey) {
           try {
@@ -79,9 +65,25 @@ export async function speechContext(project, ownerId, engine) {
           }
         }
       }
-      if (text) lines.push(`${source.id}: ${text}`);
+
+      // If Gemini failed (e.g. 402 prepayment depleted or 403) or engine is openai, use Whisper
+      if (!text && process.env.OPENAI_API_KEY) {
+        try {
+          const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 90000, maxRetries: 1 });
+          const r = await client.audio.transcriptions.create({
+            file: fs.createReadStream(audio),
+            model: process.env.REELS_TRANSCRIBE_MODEL || 'whisper-1',
+          });
+          text = r.text;
+          console.log(`[REELS-SPEECH] Transcribed with Whisper for ${source.id}: ${text?.slice(0, 60)}`);
+        } catch (whisperErr) {
+          console.warn('[REELS-SPEECH] OpenAI Whisper transcription warning:', whisperErr.message);
+        }
+      }
+
+      if (text) lines.push(text.trim());
     }
-    return lines.join('\n').slice(0, 24000);
+    return lines.join(' ').slice(0, 24000);
   } finally {
     await fsp.rm(dir, { recursive: true, force: true }).catch(() => {});
   }

@@ -215,4 +215,22 @@ export const reelsApi = {
     });
     return handleResponse(res);
   },
+
+  async extractScript(projectId, { engine = 'gemini' } = {}) {
+    const res = await fetch(`/api/reels/projects/${encodeURIComponent(projectId)}/extract-script`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ engine }),
+    });
+    return handleResponse(res);
+  },
+
+  async analyzeHooks(projectId, { scriptText = '', userPrompt = '', engine = 'gemini' } = {}) {
+    const res = await fetch(`/api/reels/projects/${encodeURIComponent(projectId)}/analyze-hooks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scriptText, userPrompt, engine }),
+    });
+    return handleResponse(res);
+  },
 };

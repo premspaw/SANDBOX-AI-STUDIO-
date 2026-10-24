@@ -195,6 +195,23 @@ ${JSON.stringify({
       } catch (fallbackErr) {
         console.warn('[REELS-AI] Gemini fallback warning:', fallbackErr.message);
       }
+      if (!text && process.env.OPENAI_API_KEY) {
+        try {
+          const openAiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 90000, maxRetries: 1 });
+          const response = await openAiClient.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'You are an elite short-form video editor for Instagram Reels. Output strictly valid JSON matching the schema.' },
+              { role: 'user', content: prompt },
+            ],
+            response_format: { type: 'json_object' },
+          });
+          text = response.choices[0]?.message?.content;
+          console.log('[REELS-AI] Successfully generated edit plan via OpenAI fallback');
+        } catch (openAiErr) {
+          console.warn('[REELS-AI] OpenAI fallback warning:', openAiErr.message);
+        }
+      }
     }
   } else if (config.id === 'claude') {
     try {
@@ -396,3 +413,134 @@ ${JSON.stringify({
     paperEditSummary: plan.paperEditSummary,
   };
 }
+
+export async function generateHookOptions({ scriptText = '', userPrompt = '', durationSec = 15 }) {
+  const cleanScript = (scriptText || '').trim();
+  const prompt = `You are a viral hook architect for Reels, TikTok, and YouTube Shorts.
+Analyze this video script/speech transcript: "${cleanScript || 'High retention creator video'}"
+User context: "${userPrompt || 'Create 3 scroll-stopping hooks'}"
+
+Create exactly 3 distinct viral opening hooks (each 1 to 3 short lines, punchy, under 10 words total) to show in the first 0-3 seconds of the reel:
+1. "curiosity": A Curiosity Gap hook that creates irresistible suspense (e.g. "Nobody noticed this secret...", "The 1 thing they hide from you").
+2. "question": A Viral Question hook that forces engagement and curiosity (e.g. "Did you know you can do this?", "Why is nobody talking about this?").
+3. "contrarian": A Bold Contrarian or Challenge hook (e.g. "Stop doing this immediately 🛑", "Everything they told you was wrong").
+
+Also suggest 2-4 short caption punchlines (each 2-5 words) extracted from or summarizing the speech for kinetic subtitles.
+
+Return valid JSON strictly matching:
+{
+  "hooks": [
+    {
+      "id": "curiosity",
+      "type": "curiosity",
+      "badge": "🎯 Curiosity Gap",
+      "headline": "THE 1 SECRET\\nNobody Told You",
+      "whyItWorks": "Hooks curiosity within 1.5 seconds by revealing insider knowledge.",
+      "style": { "fontSize": 84, "y": 0.28, "boxOpacity": 0.85 },
+      "animation": { "in": "slide-up", "durationFrames": 10 }
+    },
+    {
+      "id": "question",
+      "type": "question",
+      "badge": "❓ Viral Question",
+      "headline": "CAN THIS 1 THING\\nChange Everything?",
+      "whyItWorks": "Questions activate the open-loop cognitive bias in viewers.",
+      "style": { "fontSize": 80, "y": 0.26, "boxOpacity": 0.9 },
+      "animation": { "in": "pop-in", "durationFrames": 8 }
+    },
+    {
+      "id": "contrarian",
+      "type": "contrarian",
+      "badge": "🛑 Contrarian Truth",
+      "headline": "STOP DOING THIS 🛑\\nBefore It's Too Late",
+      "whyItWorks": "Loss aversion and pattern interrupts stop the mindless scrolling thumb.",
+      "style": { "fontSize": 84, "y": 0.3, "boxOpacity": 0.95 },
+      "animation": { "in": "glitch-fast", "durationFrames": 8 }
+    }
+  ],
+  "captionPhrases": [
+    "THIS CHANGES EVERYTHING",
+    "WATCH TILL THE END",
+    "SAVE FOR LATER"
+  ]
+}`;
+
+  let parsed = null;
+  // Try OpenAI first if available, else Gemini
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 45000, maxRetries: 1 });
+      const res = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a viral Reels video editor. Output strictly valid JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: 'json_object' },
+      });
+      parsed = JSON.parse(res.choices[0]?.message?.content || '{}');
+    } catch (err) {
+      console.warn('[REELS-HOOKS] OpenAI hook generation warning:', err.message);
+    }
+  }
+
+  if (!parsed?.hooks?.length && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY });
+      const res = await ai.models.generateContent({
+        model: process.env.REELS_GEMINI_MODEL || 'gemini-2.5-flash',
+        contents: prompt,
+        config: { responseMimeType: 'application/json' },
+      });
+      parsed = JSON.parse(res.text || '{}');
+    } catch (err) {
+      console.warn('[REELS-HOOKS] Gemini hook generation warning:', err.message);
+    }
+  }
+
+  // High-retention deterministic fallback tailored to script text
+  if (!parsed?.hooks?.length) {
+    const rawHead = cleanScript.split(/[.\n?!]/)[0]?.trim() || userPrompt || 'This is a hook';
+    const cleanHead = rawHead.slice(0, 60).toUpperCase();
+
+    parsed = {
+      hooks: [
+        {
+          id: 'curiosity',
+          type: 'curiosity',
+          badge: '🎯 Curiosity Gap',
+          headline: cleanHead.includes('HOOK') ? `${cleanHead} 🛑\nWatch how to keep 90% retention` : `THE SECRET TO\n${cleanHead}`,
+          whyItWorks: 'Opens a curiosity loop within the first 2 seconds.',
+          style: { fontSize: 84, y: 0.28, boxOpacity: 0.85 },
+          animation: { in: 'slide-up', durationFrames: 10 },
+        },
+        {
+          id: 'question',
+          type: 'question',
+          badge: '❓ Viral Question',
+          headline: `DID YOU KNOW THIS?\n${cleanHead}`,
+          whyItWorks: 'Questions prompt instant mental engagement.',
+          style: { fontSize: 80, y: 0.26, boxOpacity: 0.9 },
+          animation: { in: 'pop-in', durationFrames: 8 },
+        },
+        {
+          id: 'contrarian',
+          type: 'contrarian',
+          badge: '🛑 Contrarian Truth',
+          headline: `STOP SCROLLING 🛑\n${cleanHead}\nis not what you think`,
+          whyItWorks: 'Pattern interrupt breaks mindless scrolling.',
+          style: { fontSize: 84, y: 0.3, boxOpacity: 0.95 },
+          animation: { in: 'glitch-fast', durationFrames: 8 },
+        },
+      ],
+      captionPhrases: [
+        cleanHead,
+        'THIS CHANGES EVERYTHING',
+        'SAVE FOR LATER',
+      ],
+    };
+  }
+
+  return parsed;
+}
+
