@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import { STEPS } from './GuidedStepperHeader.jsx';
+import { STEPS } from '../core/guidedPresets.js';
 
 export function GuidedBottomBar({
   currentStepIndex,

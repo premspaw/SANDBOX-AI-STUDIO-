@@ -45,13 +45,19 @@ export function GuidedPlayerPanel({
   const activeSourceId = activeSegment?.sourceId || null;
   const activeStreamUrl = activeSourceId ? sourceUrls[activeSourceId] : null;
 
+  const currentMappingRef = useRef(currentMapping);
+  currentMappingRef.current = currentMapping;
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
+
   // Segment change seek
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !currentMapping) return;
-    video.currentTime = currentMapping.sourceSec;
-    if (isPlaying) video.play().catch(() => setIsPlaying(false));
-  }, [activeSegment?.clipId, activeStreamUrl]);
+    const mapping = currentMappingRef.current;
+    if (!video || !mapping) return;
+    video.currentTime = mapping.sourceSec;
+    if (isPlayingRef.current) video.play().catch(() => setIsPlaying(false));
+  }, [activeSegment?.clipId, activeStreamUrl, setIsPlaying]);
 
   // Playhead frame loop
   useEffect(() => {

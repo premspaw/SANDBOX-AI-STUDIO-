@@ -11,16 +11,7 @@ import {
   Film,
   Upload,
 } from 'lucide-react';
-
-export const STEPS = [
-  { id: 'start', label: 'Start', stepNumber: 0 },
-  { id: 'colours', label: '1 Colours', stepNumber: 1, title: 'Pick your colours', description: 'They are applied across your text, cards, spotlights and accents.' },
-  { id: 'fonts', label: '2 Fonts', stepNumber: 2, title: 'Pick your fonts', description: 'They are used for your hook, captions, cards and motion.' },
-  { id: 'hook', label: '3 Hook', stepNumber: 3, title: 'Choose your opening hook', description: 'This stops the scroll in the first 3 seconds.' },
-  { id: 'captions', label: '4 Captions', stepNumber: 4, title: 'Pick your caption style', description: 'Dynamic subtitles keep viewers engaged without sound.' },
-  { id: 'extras', label: '5 Extras', stepNumber: 5, title: 'Enhance with cinematic extras', description: 'Polished details that boost retention.' },
-  { id: 'watch', label: '6 Watch', stepNumber: 6, title: 'Watch your Reel & Export', description: 'Review the finished video or make AI tweaks.' },
-];
+import { STEPS } from '../core/guidedPresets.js';
 
 export function GuidedStepperHeader({
   project,
@@ -58,7 +49,9 @@ export function GuidedStepperHeader({
                   try {
                     await editor.flushSave();
                     onCreateNewProject();
-                  } catch {}
+                  } catch (err) {
+                    console.warn('Failed to start new reel:', err);
+                  }
                 }}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs font-bold text-[#c8f135] hover:bg-white/5 transition-colors"
               >
@@ -75,7 +68,9 @@ export function GuidedStepperHeader({
                       try {
                         await editor.flushSave();
                         onSelectProject(p.id);
-                      } catch {}
+                      } catch (err) {
+                        console.warn('Failed to select project:', err);
+                      }
                     }}
                     className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium truncate transition-colors ${
                       p.id === project.id

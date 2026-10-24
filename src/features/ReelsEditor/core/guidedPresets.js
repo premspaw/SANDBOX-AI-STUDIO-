@@ -3,6 +3,16 @@
  * Mirrors the exact visual cards and 6-step workflow from the reference photo.
  */
 
+export const STEPS = [
+  { id: 'start', label: 'Start', stepNumber: 0 },
+  { id: 'colours', label: '1 Colours', stepNumber: 1, title: 'Pick your colours', description: 'They are applied across your text, cards, spotlights and accents.' },
+  { id: 'fonts', label: '2 Fonts', stepNumber: 2, title: 'Pick your fonts', description: 'They are used for your hook, captions, cards and motion.' },
+  { id: 'hook', label: '3 Hook', stepNumber: 3, title: 'Choose your opening hook', description: 'This stops the scroll in the first 3 seconds.' },
+  { id: 'captions', label: '4 Captions', stepNumber: 4, title: 'Pick your caption style', description: 'Dynamic subtitles keep viewers engaged without sound.' },
+  { id: 'extras', label: '5 Extras', stepNumber: 5, title: 'Enhance with cinematic extras', description: 'Polished details that boost retention.' },
+  { id: 'watch', label: '6 Watch', stepNumber: 6, title: 'Watch your Reel & Export', description: 'Review the finished video or make AI tweaks.' },
+];
+
 export const COLOUR_PALETTES = [
   {
     id: 'midnight-neon',

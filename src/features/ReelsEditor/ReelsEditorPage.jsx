@@ -13,11 +13,11 @@ import { applyBrand } from './core/brand.js';
 import { SilenceModal } from './components/SilenceModal.jsx';
 import { ReelsExportModal } from './components/ReelsExportModal.jsx';
 import { AiSmartEditModal } from './components/AiSmartEditModal.jsx';
-import { GuidedStepperHeader, STEPS } from './components/GuidedStepperHeader.jsx';
+import { GuidedStepperHeader } from './components/GuidedStepperHeader.jsx';
 import { GuidedPlayerPanel } from './components/GuidedPlayerPanel.jsx';
 import { GuidedBottomBar } from './components/GuidedBottomBar.jsx';
 import { GuidedStepStage } from './components/GuidedStepStage.jsx';
-import { COLOUR_PALETTES, FONT_PAIRINGS, HOOK_STYLES, CAPTION_STYLES } from './core/guidedPresets.js';
+import { STEPS, COLOUR_PALETTES, FONT_PAIRINGS, HOOK_STYLES, CAPTION_STYLES } from './core/guidedPresets.js';
 
 export default function ReelsEditorPage() {
   const [projectsList, setProjectsList] = useState([]);
