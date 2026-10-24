@@ -1,4 +1,5 @@
 // services/gcsService.js
+import {fetchAllowedProxyResource} from '../server/utils/safeProxy.js';
 import { Storage } from '@google-cloud/storage';
 
 // These should be added to your Railway (or local .env) environment variables:
@@ -13,11 +14,7 @@ export async function uploadToGCS(fileUrl, userId, type) {
   try {
     console.log(`[GCS_SERVICE] Fetching file from: ${fileUrl}`);
     // fetch the file from Veo/Imagen URL
-    const response = await fetch(fileUrl);
-    if (!response.ok) throw new Error(`Failed to fetch file from ${fileUrl}: ${response.statusText}`);
-    
-    const buffer = await response.arrayBuffer();
-    const contentType = response.headers.get('content-type') || 'video/mp4';
+    const {buffer,contentType}=await fetchAllowedProxyResource(fileUrl,{maxBytes:250*1024*1024});
     
     const ext = contentType.includes('video') ? 'mp4' : 'png';
     const filename = `users/${userId}/${type}/${Date.now()}.${ext}`;

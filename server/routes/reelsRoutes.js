@@ -22,8 +22,8 @@ import {
 const MAX_UPLOAD_MB = Number(process.env.REELS_MAX_UPLOAD_MB) || 250;
 const MAX_SOURCE_SEC = Number(process.env.REELS_MAX_SOURCE_SEC) || LIMITS.maxSourceSec;
 const MEDIA_TTL_SEC = 15 * 60;
-const MEDIA_SECRET = process.env.REELS_MEDIA_SECRET
-  || crypto.createHash('sha256').update(`reels-media:${process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || 'local-dev'}`).digest('hex');
+const MEDIA_SECRET = process.env.REELS_MEDIA_SECRET && Buffer.byteLength(process.env.REELS_MEDIA_SECRET)>=32
+  ? process.env.REELS_MEDIA_SECRET : crypto.randomBytes(32).toString('hex');
 
 const isLoopback = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket?.remoteAddress);
 
@@ -258,6 +258,7 @@ export default function createReelsRouter(deps) {
       if (probe.durationSec > MAX_SOURCE_SEC + 0.5) {
         return res.status(422).json({ error: `This clip is ${probe.durationSec.toFixed(1)}s. The current limit is ${MAX_SOURCE_SEC}s per source clip — trim it before uploading.` });
       }
+      if(Math.max(probe.width,probe.height)>3840 || probe.width*probe.height>3840*2160)return res.status(422).json({error:'Upload footage up to 4K resolution.'});
       const checksum = await sha256File(tmp);
       const source = {
         id: newId('s'),

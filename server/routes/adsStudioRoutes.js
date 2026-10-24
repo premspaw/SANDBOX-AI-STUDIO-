@@ -1,10 +1,12 @@
 import express from 'express';
+import {createUtilityAuth} from '../utils/utilityAuth.js';
 import { createHiggsfieldClient } from '@higgsfield/client/v2';
 import fetch from 'node-fetch';
 import multer from 'multer';
 
 export default function createAdsStudioRouter(deps) {
     const router = express.Router();
+    const authenticate=createUtilityAuth(deps.requireAuth);
     const {
         requireAuth,
         claimOrCreateSpend,
@@ -38,9 +40,9 @@ export default function createAdsStudioRouter(deps) {
     /**
      * Upload product reference image for Ads Studio (converts uploaded file/buffer to public URL)
      */
-    router.post(['/upload-asset', '/ads-studio/upload-asset'], upload.single('image'), async (req, res) => {
+    router.post(['/upload-asset', '/ads-studio/upload-asset'], authenticate, upload.single('image'), async (req, res) => {
         try {
-            const userId = req.headers['x-user-id'] || req.body.userId || 'anonymous';
+            const userId = req.utilityUser.id;
             let buffer = null;
             let mimeType = 'image/png';
 
@@ -58,6 +60,7 @@ export default function createAdsStudioRouter(deps) {
                 }
             }
 
+            if(buffer && (buffer.length>25*1024*1024 || !['image/jpeg','image/png','image/webp'].includes(mimeType)))return res.status(400).json({error:'Use a JPEG, PNG or WebP up to 25 MB.'});
             if (!buffer) {
                 return res.status(400).json({ error: 'No image file or base64 provided.' });
             }
@@ -97,8 +100,8 @@ export default function createAdsStudioRouter(deps) {
      * - 'openai-2.5-sunburst' / 'openai-2.5-flare' (Our custom high-conversion commercial workflow)
      * - 'nano-banana-pro' (Google Nano Banana 4K)
      */
-    router.post(['/generate', '/ads-studio/generate'], async (req, res) => {
-        const userId = req.headers['x-user-id'] || req.body.userId || 'anonymous';
+    router.post(['/generate', '/ads-studio/generate'], authenticate, async (req, res) => {
+        const userId = req.utilityUser.id;
         const {
             prompt = '',
             niche = '',
@@ -111,10 +114,12 @@ export default function createAdsStudioRouter(deps) {
             sync = true
         } = req.body;
 
-        if (!prompt || !prompt.trim()) {
+        if (typeof prompt !== 'string' || !prompt.trim() || prompt.length>20000) {
             return res.status(400).json({ error: 'Ad brief / prompt is required.' });
         }
 
+        if(!Array.isArray(image_urls)||image_urls.length>8||image_urls.some(u=>typeof u!=='string'||u.length>5000))return res.status(400).json({error:'Invalid reference images'});
+        if(!claimOrCreateSpend)return res.status(503).json({error:'Billing service unavailable'});
         const safeBatchSize = Math.max(1, Math.min(8, Number(batch_size) || 1));
         const activeHfKey = getActiveHfKey(req);
         const engineLower = (engine || '').toLowerCase();
@@ -174,6 +179,7 @@ export default function createAdsStudioRouter(deps) {
                     }
                 );
 
+                if(hfResult?.request_id)await deps.updateJobStatus?.(hfResult.request_id,hfResult.status,{userId});
                 console.log(`[ADS-STUDIO] Response status: ${hfResult?.status}, request_id: ${hfResult?.request_id}`);
 
                 if (hfResult.status === 'failed') {
@@ -368,8 +374,10 @@ Style & Layout: Billboard-grade commercial advertising photography, luxury studi
     /**
      * Poll status for async Higgsfield requests
      */
-    router.get(['/status/:requestId', '/ads-studio/status/:requestId'], async (req, res) => {
+    router.get(['/status/:requestId', '/ads-studio/status/:requestId'], authenticate, async (req, res) => {
         const { requestId } = req.params;
+        const job=await deps.getJobStatus?.(requestId);
+        if(!job || job.userId!==req.utilityUser.id)return res.status(404).json({error:'Job not found'});
         const activeHfKey = getActiveHfKey(req);
 
         if (!activeHfKey) {

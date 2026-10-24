@@ -11,7 +11,6 @@ export default function createRouter(deps) {
         const user = await requireAuth(req);
         const client = supabaseAdmin || supabase;
         if (!client) {
-            if (process.env.NODE_ENV !== 'production' || user.email === 'premspaw@gmail.com') return user;
             throw Object.assign(new Error('Database not configured'), { status: 503 });
         }
         const { data: profile } = await client
@@ -20,10 +19,10 @@ export default function createRouter(deps) {
             .eq('id', user.id)
             .maybeSingle();
 
-        if (user.email === 'premspaw@gmail.com') {
+        if (profile?.role === 'admin') {
             return user;
         }
-        throw Object.assign(new Error('Forbidden: Admin access restricted to premspaw@gmail.com'), { status: 403 });
+        throw Object.assign(new Error('Forbidden: Admin access required'), { status: 403 });
     }
 
     /**
@@ -173,111 +172,11 @@ export default function createRouter(deps) {
      * Header: Authorization: Bearer <supabase_access_token>
      * Refunds credits to the authenticated user's balance server-side.
      */
-    router.post('/credits/refund', async (req, res) => {
-        try {
-            const user = await requireAuth(req);
-            const { amount, reason } = req.body;
-
-            if (!amount || typeof amount !== 'number' || amount <= 0) {
-                return res.status(400).json({ error: 'Invalid amount. Must be a positive number.' });
-            }
-            if (!reason || typeof reason !== 'string') {
-                return res.status(400).json({ error: 'reason is required.' });
-            }
-
-            const client = supabaseAdmin || supabase;
-
-            // 1. Fetch current balance
-            const { data: profile, error: fetchErr } = await client
-                .from('profiles')
-                .select('shorts_balance, brand_voice')
-                .eq('id', user.id)
-                .single();
-
-            if (fetchErr) throw fetchErr;
-
-            // 2. Security validation: Verify user has a matching spend transaction in the last 15 minutes
-            const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-            const roundedAmount = Math.round(amount);
-            
-            const { data: recentSpends, error: spendErr } = await client
-                .from('shorts_transactions')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('amount', -roundedAmount)
-                .eq('action_type', reason)
-                .gte('created_at', fifteenMinutesAgo);
-
-            if (spendErr) {
-                console.error('[REFUND_SECURITY_ERROR] Spend check failed:', spendErr);
-                return res.status(500).json({ error: 'Failed to verify transaction history.' });
-            }
-
-            if (!recentSpends || recentSpends.length === 0) {
-                return res.status(403).json({ error: 'Forbidden: No matching recent generation found to refund.' });
-            }
-
-            // Check if we already refunded this transaction
-            const { data: recentRefunds, error: refundErr } = await client
-                .from('shorts_transactions')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('amount', roundedAmount)
-                .eq('action_type', `refund_${reason}`)
-                .gte('created_at', fifteenMinutesAgo);
-
-            if (refundErr) {
-                console.error('[REFUND_SECURITY_ERROR] Refund check failed:', refundErr);
-                return res.status(500).json({ error: 'Failed to verify refund history.' });
-            }
-
-            if (recentRefunds && recentRefunds.length >= recentSpends.length) {
-                return res.status(403).json({ error: 'Forbidden: This transaction has already been refunded.' });
-            }
-
-            const brandVoice = profile?.brand_voice || {};
-            const fractionalShorts = brandVoice.fractional_shorts || 0;
-            const currentBalance = (profile?.shorts_balance ?? 0) + fractionalShorts;
-            const newTotalBalance = currentBalance + amount;
-
-            const newIntBalance = Math.floor(newTotalBalance);
-            const newFractBalance = Number((newTotalBalance - newIntBalance).toFixed(4));
-
-            const isImageRefund = reason === 'cinematic_image_generation' || reason.includes('image');
-            const isVideoRefund = reason === 'cinematic_video_generation' || reason.includes('video');
-            let updatedBrandVoice = { ...brandVoice, fractional_shorts: newFractBalance };
-            if (isImageRefund && typeof brandVoice.free_image_credits === 'number') {
-                updatedBrandVoice.free_image_credits = Math.min(10, Number((brandVoice.free_image_credits + amount).toFixed(2)));
-            } else if (isVideoRefund && typeof brandVoice.free_video_credits === 'number') {
-                updatedBrandVoice.free_video_credits = Math.min(50, Number((brandVoice.free_video_credits + amount).toFixed(2)));
-            }
-
-            // 3. Refund balance
-            const { error: updateErr } = await client
-                .from('profiles')
-                .update({ 
-                    shorts_balance: newIntBalance,
-                    brand_voice: updatedBrandVoice
-                })
-                .eq('id', user.id);
-
-            if (updateErr) throw updateErr;
-
-            // 4. Audit log
-            await client.from('shorts_transactions').insert({
-                user_id: user.id,
-                amount: roundedAmount,
-                action_type: `refund_${reason}`,
-                created_at: new Date().toISOString()
-            });
-
-            console.log(`[CREDITS] ✅ Refunded ${amount} credits for user ${user.id} (${reason}). New balance: ${newTotalBalance}`);
-            res.json({ success: true, newBalance: newTotalBalance });
-
-        } catch (err) {
-            console.error('[CREDITS_REFUND_ERROR]:', err);
-            res.status(err.status || 500).json({ error: err.message });
-        }
+    router.post('/credits/refund', async (req,res)=>{
+        try{
+            await requireAuth(req);
+            return res.status(403).json({error:'Refunds are issued by the server after a verified failed generation.'});
+        }catch(err){return res.status(err.status===503?503:401).json({error:'Authentication required'});}
     });
 
     /**
@@ -287,6 +186,7 @@ export default function createRouter(deps) {
      */
     router.post('/pricing/purchase', async (req, res) => {
         try {
+            await requireAdmin(req);
             if (process.env.NODE_ENV === 'production') {
                 return res.status(403).json({ error: "Purchase simulation is disabled in production." });
             }

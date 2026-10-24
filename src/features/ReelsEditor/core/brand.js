@@ -32,6 +32,8 @@ export function templatePanels(overlay, brand, width, height) {
     rect(0,0,1,1,brand.background),rect(.06,.1,.88,.8,brand.surface),
     rect(.06,.1,.88,.012,brand.accent),rect(.06,.888,.88,.012,brand.secondary),
   ];
-  const y=Math.max(.02,Math.min(.93,overlay.style.y+.09));
+  const lines=overlay.text.split('\n').length;
+  const belowText=(overlay.style.fontSize*lines*1.12/2+Math.round(overlay.style.fontSize*.28))/height;
+  const y=Math.max(.02,Math.min(.96,overlay.style.y+belowText+.02));
   return [rect(.12,y,.5,.012,brand.accent),rect(.62,y,.26,.012,brand.secondary)];
 }

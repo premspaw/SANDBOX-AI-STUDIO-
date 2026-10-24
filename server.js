@@ -465,7 +465,7 @@ let videoQueue = null;
 const inMemoryJobStatus = new Map();
 
 let updateJobStatus = async (jobId, state, data = null, error = null) => {
-    const statusData = { state, timestamp: Date.now(), ...data, error };
+    const statusData = { ...inMemoryJobStatus.get(jobId), ...data, state, timestamp: Date.now(), error };
     inMemoryJobStatus.set(jobId, statusData);
     setTimeout(() => inMemoryJobStatus.delete(jobId), 3600_000);
 };
@@ -499,7 +499,8 @@ if (await isRedisAvailable()) {
         });
 
         updateJobStatus = async (jobId, state, data = null, error = null) => {
-            const statusData = { state, timestamp: Date.now(), ...data, error };
+            const previous=await getJobStatus(jobId);
+            const statusData = { ...previous, ...data, state, timestamp: Date.now(), error };
             await redisConn.set(`job-status:${jobId}`, JSON.stringify(statusData), 'EX', 3600);
         };
         getJobStatus = async (jobId) => {
@@ -2192,26 +2193,38 @@ function broadcastComplete(taskId, resultData = null) {
 }
 
 import { WebSocketServer } from 'ws';
-const wss = new WebSocketServer({ server: httpServer });
-
-wss.on('connection', (ws) => {
-    console.log('[WS] Client connected');
-    ws.send(JSON.stringify({ type: 'connected', message: 'Neural link established' }));
-
-    ws.on('message', (msgStr) => {
-        try {
-            const data = JSON.parse(msgStr);
-            if (data.type === 'subscribe' && data.taskId) {
-                activeTaskWS.set(data.taskId, ws);
-                console.log(`[WS] Subscribed to task: ${data.taskId}`);
+const wss = new WebSocketServer({server:httpServer,maxPayload:16384});
+wss.on('connection',(ws,req)=>{
+    if(wss.clients.size>100 || !isOriginAllowed(req.headers.origin))return ws.close(1008,'Connection refused');
+    let user=null,busy=false,messages=0;
+    const authDeadline=setTimeout(()=>ws.close(1008,'Authentication required'),10000);
+    const lifetime=setTimeout(()=>ws.close(1008,'Reconnect with a fresh session'),15*60*1000);
+    const windowTimer=setInterval(()=>{messages=0;},60000);
+    ws.on('message',async raw=>{
+        if(++messages>120 || busy)return ws.close(1008,'Message limit');
+        busy=true;
+        try{
+            const data=JSON.parse(raw);
+            if(!user){
+                if(data.type!=='authenticate'||typeof data.token!=='string'||data.token.length>16384)
+                    return ws.close(1008,'Authentication required');
+                const client=supabaseAdmin||supabase;
+                const result=await client?.auth?.getUser(data.token);
+                if(result?.error||!result?.data?.user?.id)return ws.close(1008,'Invalid session');
+                user=result.data.user;clearTimeout(authDeadline);
+                if(ws.readyState===1)ws.send(JSON.stringify({type:'connected'}));
+                return;
             }
-        } catch (_) {}
+            if(data.type==='subscribe' && typeof data.taskId==='string' && data.taskId.length<=128){
+                const job=await getJobStatus(data.taskId);
+                if(!job || job.userId!==user.id)return ws.close(1008,'Job not found');
+                if(ws.readyState===1)activeTaskWS.set(data.taskId,ws);
+            }
+        }catch{ws.close(1008,'Invalid message');}finally{busy=false;}
     });
-
-    ws.on('close', () => {
-        for (const [key, value] of activeTaskWS.entries()) {
-            if (value === ws) activeTaskWS.delete(key);
-        }
+    ws.on('close',()=>{
+        clearTimeout(authDeadline);clearTimeout(lifetime);clearInterval(windowTimer);
+        for(const [key,value] of activeTaskWS)if(value===ws)activeTaskWS.delete(key);
     });
 });
 
@@ -2334,8 +2347,6 @@ app.post('/api/webhook/razorpay',
 });
 
 // JSON parsers
-app.use(express.json({ limit: '200mb' }));
-app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
 // Rate Limiting
 const apiLimiter = rateLimit({
@@ -2344,12 +2355,11 @@ const apiLimiter = rateLimit({
     message: { error: 'Too many requests' },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => {
-        const ip = req.ip || req.connection?.remoteAddress || '';
-        return ip.includes('127.0.0.1') || ip.includes('::1') || ip.includes('localhost');
-    }
+    skip: () => false
 });
 app.use('/api/', apiLimiter);
+app.use(express.json({limit:'32mb'}));
+app.use(express.urlencoded({limit:'64kb',extended:false}));
 
 // ── Automated Welcome Email Endpoint (support@zerolens.in) ─────────
 app.post('/api/auth/welcome', createWelcomeEmailHandler({

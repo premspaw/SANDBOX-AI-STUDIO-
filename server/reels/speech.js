@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import OpenAI from 'openai';
 import {GoogleGenAI} from '@google/genai';
-import {FFMPEG, runProcess} from './media.js';
+import {FFMPEG, runProcess, LOCAL_MEDIA_INPUT} from './media.js';
 import * as store from './store.js';
 /** Small mono speech files only; originals never sent to a model. Temporary files removed on every exit. */
 export async function speechContext(project,ownerId,engine){
@@ -14,7 +14,7 @@ export async function speechContext(project,ownerId,engine){
   for(const source of project.sources){
    if(!source.meta.hasAudio)continue;
    const audio=path.join(dir,`${source.id}.mp3`);
-   await runProcess(FFMPEG,['-y','-v','error','-threads','1','-i',store.paths.media(ownerId,source.id),'-vn','-ac','1','-ar','16000','-b:a','32k','-t','120',audio]);
+   await runProcess(FFMPEG,['-y','-v','error','-threads','1',...LOCAL_MEDIA_INPUT,'-i',store.paths.media(ownerId,source.id),'-vn','-ac','1','-ar','16000','-b:a','32k','-t','120',audio]);
    let text;
    if(engine==='openai'){
     if(!process.env.REELS_TRANSCRIBE_MODEL)throw new Error('Set REELS_TRANSCRIBE_MODEL for automatic OpenAI speech analysis, or supply a transcript.');

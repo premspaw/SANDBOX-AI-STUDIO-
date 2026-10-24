@@ -8,6 +8,8 @@ import crypto from 'crypto';
 import ffmpegPath from 'ffmpeg-static';
 import ffprobeStatic from 'ffprobe-static';
 
+export const LOCAL_MEDIA_INPUT=Object.freeze(['-protocol_whitelist','file,pipe','-format_whitelist','mov,matroska,webm,avi']);
+
 export const FFMPEG = process.env.REELS_FFMPEG_PATH || ffmpegPath;
 export const FFPROBE = process.env.REELS_FFPROBE_PATH || ffprobeStatic.path;
 
@@ -78,7 +80,7 @@ const parseRate = (r) => {
 /** Inspect a media file with ffprobe. Returns null when no video stream is present. */
 export async function probeMedia(filePath) {
   const { stdout } = await runProcess(FFPROBE, [
-    '-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', filePath,
+    ...LOCAL_MEDIA_INPUT, '-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', filePath,
   ], { timeoutMs: 30000 });
   const info = JSON.parse(stdout);
   const v = info.streams?.find((s) => s.codec_type === 'video' && !s.disposition?.attached_pic);
@@ -123,7 +125,7 @@ export async function detectSilence(filePath, { noiseDb = -35, minSilenceSec = 0
   const nd = Math.max(-70, Math.min(-10, Number(noiseDb)));
   const md = Math.max(0.2, Math.min(5, Number(minSilenceSec)));
   const { stderr } = await runProcess(FFMPEG, [
-    '-hide_banner', '-nostats', '-i', filePath, '-map', '0:a:0',
+    '-hide_banner', '-nostats', ...LOCAL_MEDIA_INPUT, '-i', filePath, '-map', '0:a:0',
     '-af', `silencedetect=noise=${nd}dB:d=${md}`, '-f', 'null', '-',
   ], { timeoutMs: 120000, signal, maxBuffer: 2 * 1024 * 1024 });
   const silences = [];

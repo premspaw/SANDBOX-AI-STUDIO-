@@ -11,6 +11,7 @@
  */
 import { buildTimeline, FONTS, SLIDE_DISTANCE, RENDERER } from '../../src/features/ReelsEditor/core/editPlan.js';
 
+import { LOCAL_MEDIA_INPUT } from './media.js';
 import { templatePanels } from '../../src/features/ReelsEditor/core/brand.js';
 
 export const PROFILES = Object.freeze({
@@ -194,7 +195,7 @@ export function buildRenderPlan(project, { sourcePaths, profile = 'export', rang
   const threads = String(Math.max(1, Number(process.env.REELS_FFMPEG_THREADS) || 2));
   const args = [
     '-hide_banner', '-nostdin', '-y',
-    ...inputs.flatMap((p) => ['-i', p]),
+    ...inputs.flatMap((p) => [...LOCAL_MEDIA_INPUT, '-i', p]),
     '-filter_complex_threads', '1',
     '-filter_complex_script', 'graph.txt',
     '-map', '[vout]',

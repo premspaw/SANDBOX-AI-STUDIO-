@@ -1,4 +1,5 @@
 import express from 'express';
+import {fetchAllowedProxyResource} from '../utils/safeProxy.js';
 import { v4 as uuidv4 } from 'uuid';
 import fetch from 'node-fetch';
 import { buildBoardPrompt } from '../services/avatarPromptBuilder.js';
@@ -35,11 +36,8 @@ export default function createRouter(deps) {
     const resolveImageToBuffer = async (imgSrc) => {
         if (!imgSrc) return null;
         if (imgSrc.startsWith('http://') || imgSrc.startsWith('https://')) {
-            const resp = await fetch(imgSrc);
-            if (!resp.ok) throw new Error(`Failed to fetch image from URL: ${resp.statusText}`);
-            const mimeType = resp.headers.get('content-type') || 'image/png';
-            const buffer = await resp.buffer();
-            return { buffer, mimeType };
+            const {buffer,contentType}=await fetchAllowedProxyResource(imgSrc,{maxBytes:25*1024*1024});
+            return {buffer,mimeType:contentType};
         }
         if (imgSrc.startsWith('data:')) {
             const [header, b64] = imgSrc.split(',');
@@ -189,17 +187,8 @@ export default function createRouter(deps) {
                 await Promise.all(urlsToFetch.map(async (item) => {
                     try {
                         console.log(`[Avatar Board] Downloading ${item.type} to pass to Gemini: ${item.url}`);
-                        const imgResp = await fetch(item.url);
-                        if (imgResp.ok) {
-                            const imgBuffer = await imgResp.buffer();
-                            const mimeType = imgResp.headers.get('content-type') || 'image/png';
-                            imageParts.push({
-                                inlineData: {
-                                    mimeType,
-                                    data: imgBuffer.toString('base64')
-                                }
-                            });
-                        }
+                        const {buffer,contentType}=await fetchAllowedProxyResource(item.url,{maxBytes:25*1024*1024});
+                        imageParts.push({inlineData:{mimeType:contentType,data:buffer.toString('base64')}});
                     } catch (fetchErr) {
                         console.warn(`[Avatar Board] Warning: Failed to download ${item.type} image for Gemini:`, fetchErr.message);
                     }

@@ -69,7 +69,7 @@ export default function createRouter(deps) {
                 .eq('id', user.id)
                 .single();
 
-            if (profile?.role === 'admin' || profile?.email?.startsWith('premspaw@gmail')) {
+            if (profile?.role === 'admin') {
                 return res.json({
                     configured: Boolean(process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY),
                     mode: 'server'

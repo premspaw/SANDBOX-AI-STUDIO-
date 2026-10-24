@@ -1,4 +1,6 @@
 import express from 'express';
+import {fetchAllowedProxyResource} from '../utils/safeProxy.js';
+import {getVerifiedVideoIdentity} from '../auth/videoIdentity.js';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import fs from 'fs';
@@ -101,20 +103,8 @@ async function resolveMediaToBase64(mediaUrl) {
         let lastErr = null;
         for (let attempt = 0; attempt < 3; attempt++) {
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 20000);
-                const resp = await fetch(fullUrl, {
-                    signal: controller.signal,
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Accept': '*/*'
-                    }
-                });
-                clearTimeout(timeoutId);
-                if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
-                const buffer = await resp.arrayBuffer();
-                data = Buffer.from(buffer).toString('base64');
-                const contentType = resp.headers.get('content-type');
+                const {buffer,contentType}=await fetchAllowedProxyResource(fullUrl,{maxBytes:50*1024*1024,timeoutMs:20000});
+                data=buffer.toString('base64');
                 if (contentType) mimeType = contentType;
                 success = true;
                 break;
@@ -343,21 +333,18 @@ export default function createRouter(deps) {
     // Gemini Omni/Omni Flash Video Generation Route
     const handleOmniGenerate = async (req, res) => {
         try {
-            let user;
-            try {
-                user = await requireAuth(req);
-            } catch (authErr) {
-                if (process.env.NODE_ENV === 'production') {
-                    return res.status(401).json({ error: 'Authentication required to generate video.' });
-                }
-            }
+            let identity;
+            try{identity=await getVerifiedVideoIdentity(req,requireAuth,deps.supabaseAdmin||deps.supabase);}
+            catch(error){return res.status(error.status===503?503:401).json({error:'Authentication required to generate video.'});}
+            const {user,isAdmin}=identity;
+            req.body.userId=user.id;
 
             const { image, motionPrompt, prompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '720p', model } = req.body;
             const rawTask = req.body.task && req.body.task !== 'auto' ? req.body.task : null;
             const requestedTask = (rawTask === 'extension' || rawTask === 'extend') ? 'extend' : rawTask;
             if (!motionPrompt && !prompt && requestedTask !== 'extend' && requestedTask !== 'motion_control') throw new Error('No motion prompt provided');
 
-            const targetUserId = user ? user.id : userId;
+            const targetUserId = user.id;
 
             const validDuration = Number(duration) >= 3 && Number(duration) <= 15 ? Number(duration) : 8;
             const rawRes = (resolution || '720p').toLowerCase();
@@ -396,9 +383,7 @@ export default function createRouter(deps) {
                 requiredCredits = 3 * validDuration;
             }
 
-            if (typeof req.body.creditCost === 'number' && req.body.creditCost > 0) {
-                requiredCredits = req.body.creditCost;
-            }
+            // Client-supplied credit amounts never override server pricing.
 
             if (targetUserId) {
                 const creditReason = req.body.creditReason || 'cinematic_video_generation';
@@ -411,33 +396,6 @@ export default function createRouter(deps) {
 
             console.log(`[OMNI-I2V] Starting | taskId: ${taskId} | duration: ${validDuration}s | ratio: ${validAspectRatio} | model: ${model} | image: ${!!image}`);
             const isOmniFlash = modelLower.includes('flash');
-
-            const adminPassword = req?.headers?.['x-admin-password'] || '';
-            const isHeaderAdmin = adminPassword === 'admin123' || adminPassword === '10000';
-            
-            let isAdmin = isHeaderAdmin || req.body?.isAdmin === true || req.headers?.['x-is-admin'] === 'true';
-            if (!isAdmin && user) {
-                if (user.role === 'admin' || (user.email && (user.email.startsWith('premspaw') || user.email.includes('admin')))) {
-                    isAdmin = true;
-                }
-            }
-            if (!isAdmin && targetUserId) {
-                const adminClient = deps.supabaseAdmin || deps.supabase;
-                if (adminClient) {
-                    try {
-                        const { data: profile } = await adminClient
-                            .from('profiles')
-                            .select('role, email')
-                            .eq('id', targetUserId)
-                            .single();
-                        if (profile?.role === 'admin' || (profile?.email && (profile.email.startsWith('premspaw') || profile.email.includes('admin')))) {
-                            isAdmin = true;
-                        }
-                    } catch (err) {
-                        console.warn('[OMNI-I2V] Role lookup failed:', err.message);
-                    }
-                }
-            }
 
             console.log(`[OMNI-I2V] ⚡ Requesting Omni Flash (isAdmin: ${isAdmin}). Prioritizing Vertex AI Service Account as PRIMARY.`);
 
@@ -1194,7 +1152,7 @@ export default function createRouter(deps) {
                                 generation_config: generationConfig
                             };
 
-                            console.log(`[OMNI-I2V] [AI Studio Fallback] Trying key ${studioKey.substring(0, 10)}... (model: ${testModel}) on ${endpoint}`);
+                            console.log(`[OMNI-I2V] [AI Studio Fallback] Trying key [configured key] (model: ${testModel}) on ${endpoint}`);
                             const restResponse = await fetch(endpoint, {
                                 method: 'POST',
                                 headers,

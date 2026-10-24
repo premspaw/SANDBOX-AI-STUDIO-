@@ -1,9 +1,10 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createZeroLensMcpServer, dispatchMcpToolCall, getAllMcpTools, formatToolCallResponseText } from '../mcp/server.js';
 import { generateOpenAPISpec } from '../mcp/openapiSpec.js';
-import { resolveMcpUser } from '../mcp/auth/mcpAuthMiddleware.js';
+import { resolveMcpUser, createMcpAuthMiddleware } from '../mcp/auth/mcpAuthMiddleware.js';
 import {
   handleAuthorizeGet,
   handleAuthorizePost,
@@ -17,12 +18,14 @@ import { renderWidgetHtml } from '../mcp/ui/widgetRenderer.js';
 
 export default function createMcpRouter(deps = {}) {
   const router = express.Router();
+  const authenticate=createMcpAuthMiddleware(deps);
+  router.use('/auth',rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-8',legacyHeaders:false}));
 
   // Active SSE transports map (for session-based SSE connections)
   const activeSseTransports = new Map();
 
   // Parse URL-encoded bodies for OAuth form submissions
-  router.use(express.urlencoded({ extended: true }));
+  router.use(express.urlencoded({ extended: false, limit:'16kb' }));
 
   // ─────────────────────────────────────────────────────────────
   // OAUTH 2.0 & OIDC DISCOVERY (RFC 8414)
@@ -30,7 +33,7 @@ export default function createMcpRouter(deps = {}) {
   const sendOAuthDiscovery = (req, res) => {
     const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
     const host = req.get('host') || 'zerolens.in';
-    const baseUrl = `${protocol}://${host}`;
+    const baseUrl = process.env.PUBLIC_APP_URL || 'https://zerolens.in';
     res.setHeader('Content-Type', 'application/json');
     res.json(getOAuthMetadata(baseUrl));
   };
@@ -84,11 +87,11 @@ export default function createMcpRouter(deps = {}) {
     });
   });
 
-  router.post(['/', '/streamable'], async (req, res) => {
+  router.post(['/', '/streamable'], authenticate, async (req, res) => {
     try {
       patchAcceptHeader(req);
 
-      const user = await resolveMcpUser(req, deps);
+      const user = req.user;
 
       // Create an MCP server instance scoped to this authenticated user
       const server = createZeroLensMcpServer(user, deps);
@@ -114,12 +117,12 @@ export default function createMcpRouter(deps = {}) {
   // ─────────────────────────────────────────────────────────────
   // 2. REMOTE SSE ENDPOINTS (Backward Compatibility & Deep Research)
   // ─────────────────────────────────────────────────────────────
-  router.get(['/sse', '/sse/'], async (req, res) => {
+  router.get(['/sse', '/sse/'], authenticate, async (req, res) => {
     try {
-      const user = await resolveMcpUser(req, deps);
+      const user = req.user;
       const host = req.get('host') || 'zerolens.in';
       const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-      const baseUrl = (process.env.PUBLIC_APP_URL || `${protocol}://${host}`).replace(/\/+$/, '');
+      const baseUrl = (process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
       const messagesPath = '/api/mcp/messages';
       const messagesUrl = `${baseUrl}${messagesPath}`;
 
@@ -143,12 +146,17 @@ export default function createMcpRouter(deps = {}) {
         return _write(chunk, encoding, cb);
       };
 
+      if(activeSseTransports.size>=100 || [...activeSseTransports.values()].filter(s=>s.user.id===user.id).length>=3)
+        return res.status(429).json({error:'Too many open sessions'});
       const transport = new SSEServerTransport(messagesUrl, res);
       const server = createZeroLensMcpServer(user, deps);
 
       activeSseTransports.set(transport.sessionId, { transport, server, user });
 
+      const expiry=setTimeout(()=>{transport.close().catch(()=>{});res.end();},15*60*1000);
+      expiry.unref();
       transport.onclose = () => {
+        clearTimeout(expiry);
         activeSseTransports.delete(transport.sessionId);
       };
 
@@ -162,11 +170,11 @@ export default function createMcpRouter(deps = {}) {
     }
   });
 
-  router.post(['/messages', '/messages/'], async (req, res) => {
+  router.post(['/messages', '/messages/'], authenticate, async (req, res) => {
     const sessionId = req.query.sessionId;
     const session = activeSseTransports.get(sessionId);
 
-    if (!session) {
+    if (!session || session.user.id !== req.user.id) {
       return res.status(404).json({ error: 'MCP SSE Session not found' });
     }
 
@@ -188,8 +196,8 @@ export default function createMcpRouter(deps = {}) {
     await handleTokenPost(req, res, deps);
   });
 
-  router.get('/auth/userinfo', async (req, res) => {
-    const user = await resolveMcpUser(req, deps);
+  router.get('/auth/userinfo', authenticate, async (req, res) => {
+    const user = req.user;
     await handleUserInfoGet(req, res, user);
   });
 
@@ -208,7 +216,7 @@ export default function createMcpRouter(deps = {}) {
       error
     } = req.query;
 
-    const appBaseUrl = `${req.protocol}://${req.get('host') || 'zerolens.in'}`;
+    const appBaseUrl = process.env.PUBLIC_APP_URL || 'https://zerolens.in';
     const html = renderWidgetHtml({
       generationId: id,
       type,
@@ -223,16 +231,17 @@ export default function createMcpRouter(deps = {}) {
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('X-Frame-Options', 'ALLOWALL'); // Allow embedding in ChatGPT canvas
-    res.setHeader('Content-Security-Policy', "frame-ancestors *");
+    res.setHeader('Content-Security-Policy', "default-src 'none'; img-src https:; media-src https:; style-src 'unsafe-inline'; sandbox allow-popups; base-uri 'none'; frame-ancestors https://chatgpt.com https://*.chatgpt.com");
+    res.setHeader('Referrer-Policy','no-referrer');
     res.send(html);
   });
 
-  router.get('/ui/status/:generationId', async (req, res) => {
+  router.get('/ui/status/:generationId', authenticate, async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     try {
       const { generationId } = req.params;
-      const statusResult = await dispatchMcpToolCall('check_generation', { generation_id: generationId }, null, deps);
+      const statusResult = await dispatchMcpToolCall('check_generation', { generation_id: generationId }, req.user, deps);
       res.json(statusResult);
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -260,9 +269,9 @@ export default function createMcpRouter(deps = {}) {
   // ─────────────────────────────────────────────────────────────
   // 6. CHATGPT CUSTOM GPT ACTIONS REST DISPATCHER
   // ─────────────────────────────────────────────────────────────
-  router.post('/action/:actionName', async (req, res) => {
+  router.post('/action/:actionName', authenticate, async (req, res) => {
     try {
-      const user = await resolveMcpUser(req, deps);
+      const user = req.user;
       const { actionName } = req.params;
 
       const result = await dispatchMcpToolCall(actionName, req.body || {}, user, deps);
@@ -292,7 +301,7 @@ export default function createMcpRouter(deps = {}) {
   // ─────────────────────────────────────────────────────────────
   // 7. VERTEX AI MCP DIRECT STUDIO ASSISTANTS
   // ─────────────────────────────────────────────────────────────
-  router.post('/enhance-prompt', async (req, res) => {
+  router.post('/enhance-prompt', authenticate, async (req, res) => {
     try {
       const { prompt, style, engine, aspectRatio } = req.body;
       const { enhancePromptWithMcp } = await import('../services/vertexMcpService.js');
@@ -304,7 +313,7 @@ export default function createMcpRouter(deps = {}) {
     }
   });
 
-  router.post('/generate-shotlist', async (req, res) => {
+  router.post('/generate-shotlist', authenticate, async (req, res) => {
     try {
       const { idea, sceneCount, aspectRatio, style } = req.body;
       const { generateShotlistWithMcp } = await import('../services/vertexMcpService.js');
@@ -316,7 +325,7 @@ export default function createMcpRouter(deps = {}) {
     }
   });
 
-  router.post('/count-tokens', async (req, res) => {
+  router.post('/count-tokens', authenticate, async (req, res) => {
     try {
       const { text, model } = req.body;
       const { countTokensWithMcp } = await import('../services/vertexMcpService.js');

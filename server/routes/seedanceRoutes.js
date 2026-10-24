@@ -1,4 +1,5 @@
 import express from 'express';
+import {fetchAllowedProxyResource} from '../utils/safeProxy.js';
 import { createHiggsfieldClient } from '@higgsfield/client/v2';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
@@ -85,10 +86,8 @@ async function conformImageToAspectRatio(imageSource, targetAspectRatio, targetU
         if (typeof imageSource === 'string' && imageSource.startsWith('data:')) {
             inputBuffer = Buffer.from(imageSource.split(',')[1], 'base64');
         } else if (typeof imageSource === 'string' && (imageSource.startsWith('http://') || imageSource.startsWith('https://'))) {
-            const resp = await fetch(imageSource);
-            if (!resp.ok) return imageSource;
-            const ab = await resp.arrayBuffer();
-            inputBuffer = Buffer.from(ab);
+            const media=await fetchAllowedProxyResource(imageSource,{maxBytes:25*1024*1024});
+            inputBuffer=media.buffer;
         } else if (Buffer.isBuffer(imageSource)) {
             inputBuffer = imageSource;
         } else {

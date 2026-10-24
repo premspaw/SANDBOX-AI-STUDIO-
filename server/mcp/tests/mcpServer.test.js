@@ -7,6 +7,9 @@ import { resolveMcpUser } from '../auth/mcpAuthMiddleware.js';
 import { renderWidgetHtml } from '../ui/widgetRenderer.js';
 
 describe('ZeroLens OpenAI App / MCP Test Suite', () => {
+  const previousSecret=process.env.ZEROLENS_MCP_SECRET;
+  before(()=>{process.env.ZEROLENS_MCP_SECRET='fixture-secret-for-tests-only-at-least-32-bytes';});
+  after(()=>{if(previousSecret===undefined)delete process.env.ZEROLENS_MCP_SECRET;else process.env.ZEROLENS_MCP_SECRET=previousSecret;});
 
   // Mock dependencies object replicating ZeroLens backend environment
   const mockUser = {
@@ -204,6 +207,7 @@ describe('ZeroLens OpenAI App / MCP Test Suite', () => {
   it('6. check_generation: reports status from job system and renders completed widget', async () => {
     const testJobId = 'test_vid_status_job_1';
     mockJobStatuses.set(testJobId, {
+      userId:mockUser.id,
       state: 'completed',
       url: 'https://zerolensbucket-cdn.r2.cloudflarestorage.com/generated/test_video.mp4',
       progress: 1.0,
