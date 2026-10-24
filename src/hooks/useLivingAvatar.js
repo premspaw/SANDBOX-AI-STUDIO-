@@ -84,9 +84,9 @@ export function useLivingAvatar() {
   const getApiKey = () => {
     const userProfile = useAppStore.getState().userProfile;
     if (userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com') {
-      return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
+      return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || '';
     }
-    return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
+    return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || '';
   };
 
   // Helper to append a message to the transcript

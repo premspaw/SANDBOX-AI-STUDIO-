@@ -108,7 +108,7 @@ export const REEL_TEMPLATES = [
     suggestedDurationSec: 3.5,
     style: {
       x: 0.5,
-      y: 0.20,
+      y: 0.5,
       fontSize: 76,
       color: '#FFFFFF',
       boxColor: '#0C0A09',

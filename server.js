@@ -1828,7 +1828,7 @@ async function handleGoogle(req, res) {
                         for (const studioModel of studioCandidateModels) {
                             try {
                                 const studioUrl = `https://generativelanguage.googleapis.com/v1beta/models/${studioModel}:generateContent?key=${studioKey}`;
-                                console.log(`[handleGoogle] [REST Fallback AI Studio] Calling ${studioUrl}`);
+                                console.log('[handleGoogle] Calling configured AI Studio endpoint');
                                 const sResp = await fetch(studioUrl, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -1858,7 +1858,7 @@ async function handleGoogle(req, res) {
                         if (!success) {
                             try {
                                 const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${studioKey}`;
-                                console.log(`[handleGoogle] [REST Fallback Imagen 3] Calling ${imagenUrl}`);
+                                console.log('[handleGoogle] Calling configured Imagen endpoint');
                                 const imgResp = await fetch(imagenUrl, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },

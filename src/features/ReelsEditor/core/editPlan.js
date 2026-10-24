@@ -15,7 +15,7 @@
  */
 import { z } from 'zod';
 import { REEL_TEMPLATES } from './templates.js';
-import { brandLayer } from './brand.js';
+import { brandLayer, DEFAULT_BRAND } from './brand.js';
 
 export const SCHEMA_VERSION = 1;
 export const RENDERER = Object.freeze({ name: 'zerolens-ffmpeg', version: '1.0.0' });
@@ -168,6 +168,7 @@ export function createEmptyProject({ id, ownerId, name = 'Untitled reel', now = 
     revision: 0,
     name,
     canvas: { width: 1080, height: 1920, fps: { num: 30, den: 1 } },
+    brand: {...DEFAULT_BRAND},
     sources: [],
     clips: [],
     overlays: [],

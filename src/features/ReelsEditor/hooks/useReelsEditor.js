@@ -16,7 +16,7 @@ import {
   LIMITS,
 } from '../core/editPlan.js';
 import { instantiateTemplate } from '../core/templates.js';
-import { brandLayer } from '../core/brand.js';
+import { brandLayer, DEFAULT_BRAND } from '../core/brand.js';
 import { reelsApi } from '../services/reelsApi.js';
 
 export function useReelsEditor(initialProject, onProjectUpdated) {
@@ -167,6 +167,7 @@ export function useReelsEditor(initialProject, onProjectUpdated) {
 
   const applyTemplate = useCallback((template, { textOverride, targetOverlayId } = {}) => {
     mutate((p) => {
+      p={...p,brand:p.brand||{...DEFAULT_BRAND}};
       const targetId = targetOverlayId || selectedOverlayId;
       if (targetId && p.overlays.some((o) => o.id === targetId)) {
         // Restyle existing selected overlay
