@@ -104,7 +104,7 @@ async function withApp(run){
  const user={id:'alice',email:'alice@example.invalid',email_confirmed_at:'2026-01-01'};
  const client={auth:{getUser:async token=>({data:{user:token==='fixture-session'?user:null},error:token!=='fixture-session'})}};
  const billed=[];
- const deps={requireAuth:req=>requireAppUser(req,client),supabaseAdmin:client,
+ const deps={requireAuth:req=>requireAppUser(req,client),supabaseAdmin:client,broadcastProgress:()=>{},
   claimOrCreateSpend:async(...args)=>billed.push(args),
   getVertexToken:async()=>{throw new Error('Fixture stops before provider');},
   getJobStatus:async()=>({userId:'bob'})};

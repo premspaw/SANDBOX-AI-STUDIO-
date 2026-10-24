@@ -64,8 +64,14 @@ jobs:
         run: |
           node scripts/reels-smoke.mjs
           node scripts/reels-brand-smoke.mjs
-      - name: Verify bundled FFmpeg defaults
+      - name: Verify automatic renderer selection
         run: |
           node node_modules/ffmpeg-static/install.js
+          env -u REELS_FFMPEG_PATH -u REELS_FFPROBE_PATH node scripts/reels-doctor.mjs
           env -u REELS_FFMPEG_PATH -u REELS_FFPROBE_PATH node scripts/reels-smoke.mjs
           env -u REELS_FFMPEG_PATH -u REELS_FFPROBE_PATH node scripts/reels-brand-smoke.mjs
+      - name: Production container render
+        run: |
+          docker build -t reels-ci .
+          docker run --rm -v "$PWD/scripts:/app/scripts:ro" reels-ci node scripts/reels-smoke.mjs
+          docker run --rm -v "$PWD/scripts:/app/scripts:ro" reels-ci node scripts/reels-brand-smoke.mjs

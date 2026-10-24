@@ -7,14 +7,17 @@ import { createReadStream } from 'fs';
 import crypto from 'crypto';
 import ffmpegPath from 'ffmpeg-static';
 import ffprobeStatic from 'ffprobe-static';
+import {resolveReelsFfmpeg} from './ffmpegRuntime.js';
 
 export const LOCAL_MEDIA_INPUT=Object.freeze(['-protocol_whitelist','file,pipe','-format_whitelist','mov,matroska,webm,avi']);
 
-export const FFMPEG = process.env.REELS_FFMPEG_PATH || ffmpegPath;
+export const FFMPEG_RUNTIME = resolveReelsFfmpeg({configured:process.env.REELS_FFMPEG_PATH,bundled:ffmpegPath});
+export const FFMPEG = FFMPEG_RUNTIME.binary;
 export const FFPROBE = process.env.REELS_FFPROBE_PATH || ffprobeStatic.path;
 
 /** Run a binary with an argument array, collecting bounded stdout/stderr. */
 export function runProcess(bin, args, { cwd, timeoutMs = 120000, signal, onStdout, onSpawn, maxBuffer = 8 * 1024 * 1024 } = {}) {
+  if (!bin) return Promise.reject(Object.assign(new Error(FFMPEG_RUNTIME.error),{status:503}));
   return new Promise((resolve, reject) => {
     const child = spawn(bin, args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     if (child.pid) onSpawn?.(child.pid);

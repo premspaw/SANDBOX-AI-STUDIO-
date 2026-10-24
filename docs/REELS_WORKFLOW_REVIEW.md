@@ -36,7 +36,7 @@ Server configuration:
 - `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) and `REELS_GEMINI_MODEL` for Gemini.
 - `REELS_DATA_DIR` on a persistent private volume.
 - `REELS_MEDIA_SECRET`: a private random value of at least 32 bytes, stable across restarts.
-- `REELS_FFMPEG_PATH` / `REELS_FFPROBE_PATH` when using system binaries with drawtext support.
+- A full FFmpeg 6.1+ build with drawtext support, and FFprobe. The bundled Linux FFmpeg currently lacks drawtext; the app detects this and tries a compatible `ffmpeg` on PATH. Set `REELS_FFMPEG_PATH` / `REELS_FFPROBE_PATH` for explicit binary paths. Run `npm run doctor:reels` and `npm run smoke:reels` before starting an edit. The Docker image installs a full system build.
 - Existing Supabase authentication configuration.
 
 Never put provider or admin secrets in `VITE_*` variables. See [security review](SECURITY_REVIEW_2026-10-24.md) for OAuth configuration and the database migration.

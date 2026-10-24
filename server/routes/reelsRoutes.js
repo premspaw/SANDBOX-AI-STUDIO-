@@ -12,7 +12,7 @@ import fsp from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import * as store from '../reels/store.js';
-import { probeMedia, sha256File } from '../reels/media.js';
+import { probeMedia, sha256File, FFMPEG_RUNTIME } from '../reels/media.js';
 import { enqueue, cancelJob, startWorker, isTerminal } from '../reels/jobQueue.js';
 import { getAvailableEngines, executeAiEdit } from '../reels/aiEditor.js';
 import {
@@ -129,7 +129,7 @@ export default function createReelsRouter(deps) {
   router.get('/config', handle(async (req, res) => {
     res.json({
       limits: { ...LIMITS, maxUploadMb: MAX_UPLOAD_MB, maxSourceSec: MAX_SOURCE_SEC },
-      renderer: RENDERER,
+      renderer: { ...RENDERER, available: FFMPEG_RUNTIME.available, error: FFMPEG_RUNTIME.error },
       fonts: Object.entries(FONTS).map(([id, f]) => ({ id, label: f.label, family: f.family, url: `/api/reels/fonts/${f.file}` })),
       capabilities: {
         manualEditing: { available: true },
@@ -137,12 +137,12 @@ export default function createReelsRouter(deps) {
         denoise: { available: true, note: 'FFmpeg afftdn; audible in rendered previews/exports only.' },
         normalize: { available: true, note: 'FFmpeg loudnorm (single pass).' },
         speed: { available: true, note: 'Constant speed 0.25×–4×. Slowed footage repeats source frames; no interpolation.' },
-        transcription: { available: false, note: 'No transcription provider configured yet.' },
-        storyPlanning: { available: false, note: 'Needs transcript analysis — planned milestone.' },
-        templates: { available: false, note: 'Template registry ships in the templates milestone.' },
+        transcription: { available: getAvailableEngines().some(e=>e.available), note: 'Selected provider analyzes compressed speech audio; timing is approximate.' },
+        storyPlanning: { available: getAvailableEngines().some(e=>e.available), note: 'Uses speech/transcript and existing timeline context.' },
+        templates: { available: true, note: 'Six brand-aware text and card presets.' },
         autoCutout: { available: false, note: 'Requires a segmentation model — not configured.' },
       },
-      processing: 'Footage is uploaded to ZeroLens servers and processed there. It is not sent to external AI providers.',
+      processing: 'Footage is stored and rendered on the server. AI editing sends transcript and timeline context to the selected provider, plus compressed speech audio when no transcript is supplied.',
     });
   }));
 
@@ -341,6 +341,7 @@ export default function createReelsRouter(deps) {
 
   router.post('/projects/:id/renders', express.json({ limit: '8kb' }), handle(async (req, res) => {
     const project = await loadProject(req);
+    if (!FFMPEG_RUNTIME.available) return res.status(503).json({error:FFMPEG_RUNTIME.error});
     const profile = req.body?.profile === 'preview' ? 'preview' : 'export';
     const revision = Number(req.body?.revision);
     // Export renders exactly the requested saved revision.
