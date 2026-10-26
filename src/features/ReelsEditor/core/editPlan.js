@@ -399,7 +399,7 @@ export function deleteClip(project, clipId) {
 export function applyGapRemoval(project, gaps) {
   const clips = [];
   for (const clip of project.clips) {
-    if (!clip.enabled) { clips.push(clip); continue; }
+    if (!clip.enabled || clip.origin === 'gap-removal') { clips.push(clip); continue; }
     const ranges = gaps.filter(g => g.sourceId === clip.sourceId &&
       Number.isFinite(g.startSec) && Number.isFinite(g.endSec) &&
       g.endSec > g.startSec && g.endSec > clip.inSec && g.startSec < clip.outSec)

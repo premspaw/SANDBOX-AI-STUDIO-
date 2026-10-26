@@ -52,7 +52,7 @@ export const Plan = z.object({
     id: z.string(),
     text: z.string().min(1).max(280),
     startSec: z.number().min(0),
-    durationSec: z.number().positive(),
+    durationSec: z.number().min(0.001),
     templateId: z.string(),
   })).max(30),
 });

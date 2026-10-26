@@ -64,6 +64,8 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           node scripts/reels-studio-ui-check.mjs
+      - name: Retained speech audio extraction
+        run: node scripts/reels-speech-smoke.mjs
       - name: Real video export
         run: |
           node scripts/reels-smoke.mjs
