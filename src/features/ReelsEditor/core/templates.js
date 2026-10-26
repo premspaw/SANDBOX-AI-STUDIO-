@@ -143,7 +143,22 @@ export const REEL_TEMPLATES = [
       durationFrames: 12,
     },
   },
+  {
+    id: 'raw-footage-motion-editor',
+    name: 'Raw Footage Motion Editor',
+    category: 'Content-aware motion',
+    tag: 'Skill v1',
+    badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    description: 'Keeps the speaker and voice primary, then uses only supported process, comparison, inset, highlight and caption components when they explain the verified transcript.',
+    defaultText: 'CONTENT-AWARE\nMOTION EDIT',
+    suggestedDurationSec: 3.0,
+    style: { x: 0.5, y: 0.18, fontSize: 72, color: '#FFFFFF', boxColor: '#101525', boxOpacity: 0.76, font: 'poppins' },
+    animation: { in: 'fade', durationFrames: 10 },
+  },
 ];
+
+// V2 consumes the same supported template catalog; keep one canonical list.
+export const ALL_TEMPLATES = REEL_TEMPLATES;
 
 export const TEMPLATE_CATEGORIES = [
   'All',

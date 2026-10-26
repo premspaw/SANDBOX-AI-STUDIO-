@@ -17,6 +17,7 @@ import * as store from './store.js';
 import { buildRenderPlan } from './renderPlan.js';
 import { FFMPEG, runProcess, probeMedia, detectSilence } from './media.js';
 import { validateForExport, proposeGaps } from '../../src/features/ReelsEditor/core/editPlan.js';
+import { executeAiEdit } from './aiEditor.js';
 
 const CONCURRENCY = Math.min(2, Math.max(1, Number(process.env.REELS_WORKER_CONCURRENCY) || 1));
 const JOB_TIMEOUT_MS = Number(process.env.REELS_JOB_TIMEOUT_MS) || 15 * 60 * 1000;
@@ -132,6 +133,7 @@ async function execute(job, ctl) {
     let patch;
     if (job.type === 'render') patch = await runRender(job, workDir, ctl.signal, setStage);
     else if (job.type === 'silence') patch = await runSilence(job, ctl.signal, setStage);
+    else if (job.type === 'auto_edit') patch = await runAutoEdit(job, ctl.signal, setStage);
     else throw Object.assign(new Error(`Unknown job type ${job.type}`), { deterministic: true });
     clearInterval(heartbeat);
     await store.updateJob(job.id, {
@@ -249,6 +251,38 @@ async function runSilence(job, signal, setStage) {
   });
   const gaps = proposeGaps(silences, { sourceId, minGapSec: minSilenceSec, paddingSec });
   return { result: { sourceId, silences, gaps, settings: { noiseDb, minSilenceSec, paddingSec } } };
+}
+
+/** The model proposes only a validated edit plan; FFmpeg remains responsible
+ * for rendering the saved revision later through the normal render job. */
+async function runAutoEdit(job, signal, setStage) {
+  if (signal.aborted) throw Object.assign(new Error('Cancelled'), { code: 'ECANCELLED' });
+  setStage('transcribe', 0.1);
+  const result = await executeAiEdit({
+    project: job.snapshot,
+    ownerId: job.ownerId,
+    engine: job.params.provider,
+    model: job.params.model,
+    removeGaps: Boolean(job.params.removeGaps),
+    userPrompt: job.params.userPrompt || '',
+    scriptText: job.params.scriptText || '',
+    referenceNotes: job.params.referenceNotes || '',
+  });
+  if (signal.aborted) throw Object.assign(new Error('Cancelled'), { code: 'ECANCELLED' });
+  setStage('apply_revision', 0.8);
+  const project = await store.saveRevision(job.ownerId, job.projectId, {
+    baseRevision: job.revision,
+    mutate: () => result.project,
+  });
+  return {
+    result: {
+      project,
+      engineUsed: result.engineUsed,
+      overlaysCount: result.overlaysCount,
+      silenceRemoved: result.silenceRemoved,
+      paperEditSummary: result.paperEditSummary,
+    },
+  };
 }
 
 /** Only disposable finished render outputs expire; sources and project revisions are preserved. */

@@ -77,7 +77,7 @@ export function Layout({ children, activeTab, setActiveTab }) {
                 />
             </div>
 
-            <main className={`flex-1 relative transition-all duration-300 ${FULL_BLEED_TABS.has(activeTab) ? 'p-0 overflow-hidden' : 'p-4 md:p-8 overflow-auto'} pb-20 md:pb-0`}>
+            <main className={`flex-1 relative transition-all duration-300 ${FULL_BLEED_TABS.has(activeTab) ? (activeTab === 'reels' ? 'p-0 overflow-y-auto overflow-x-hidden' : 'p-0 overflow-hidden') : 'p-4 md:p-8 overflow-auto'} pb-20 md:pb-0`}>
                 <div className="absolute inset-0 bg-black -z-10 pointer-events-none" />
                 <motion.div
                     key={activeTab}
@@ -86,7 +86,7 @@ export function Layout({ children, activeTab, setActiveTab }) {
                     transition={{ duration: 0.3 }}
                     className={
                         FULL_BLEED_TABS.has(activeTab)
-                            ? "w-full h-full"
+                            ? (activeTab === 'reels' ? "w-full min-h-full" : "w-full h-full")
                             : (isCollapsed ? "max-w-[95%] mx-auto" : "max-w-6xl mx-auto")
                     }
                 >

@@ -21,6 +21,9 @@ const supabase = (supabaseUrl && supabaseKey && supabaseUrl.startsWith('https://
 // ── Bucket / folder constants ────────────────────────────────────────────────
 const GCS_BUCKET   = process.env.GCS_BUCKET_NAME || 'zerolensbucket_1';
 const R2_BUCKET    = process.env.R2_BUCKET_NAME  || 'zerolensbucket-cdn';
+// Do not put customer originals in the public CDN bucket. This must be a
+// distinct, private R2 bucket with no public domain attached.
+const REELS_PRIVATE_R2_BUCKET = (process.env.REELS_R2_BUCKET_NAME || '').trim();
 
 // Marketing assets live under marketing/ subfolder — no separate bucket needed.
 export const MARKETING_BUCKET = R2_BUCKET;   // R2 is now primary
@@ -249,6 +252,21 @@ export const writeToR2 = async (fileName, content, contentType = 'application/js
         ContentLength: body.length,
     }));
 };
+
+/** Store editor originals without exposing them through the public CDN. */
+export const uploadPrivateToR2 = async (data, fileName, contentType = 'application/octet-stream') => {
+    if (!r2Client || !REELS_PRIVATE_R2_BUCKET) return { stored: false, provider: null, key: null };
+    const buffer = await toBuffer(data);
+    await r2Client.send(new PutObjectCommand({
+        Bucket: REELS_PRIVATE_R2_BUCKET, Key: fileName, Body: buffer, ContentType: contentType,
+        ContentLength: buffer.length, CacheControl: 'private, no-store',
+        Metadata: { visibility: 'private', purpose: 'reels-original' },
+    }));
+    return { stored: true, provider: 'r2', key: fileName };
+};
+
+export const isR2Configured = () => Boolean(r2Client);
+export const isReelsPrivateR2Configured = () => Boolean(r2Client && REELS_PRIVATE_R2_BUCKET);
 
 /**
  * List assets (R2 first, GCS fallback).

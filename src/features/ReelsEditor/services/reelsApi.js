@@ -157,6 +157,28 @@ export const reelsApi = {
     return data.job;
   },
 
+  /** Start the durable v2 editing pipeline. This endpoint intentionally only
+   * returns a job; the saved project changes after a successful revision. */
+  async startAutoEdit(projectId, request = {}) {
+    const res = await fetch(`/api/reels/projects/${encodeURIComponent(projectId)}/auto-edit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    const data = await handleResponse(res);
+    return data.job;
+  },
+
+  /** Apply an explicit, optimistic-concurrency revision operation. */
+  async applyRevisionPatch(projectId, request = {}) {
+    const res = await fetch(`/api/reels/projects/${encodeURIComponent(projectId)}/revisions/patch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    return handleResponse(res);
+  },
+
   async listRecentExports(projectId) {
     const res = await fetch(`/api/reels/projects/${encodeURIComponent(projectId)}/jobs`);
     const data = await handleResponse(res);
@@ -191,9 +213,8 @@ export const reelsApi = {
   async applyAiEdit(
     projectId,
     {
-      engine = 'openai',
-      style = 'reference-editor',
-      baseRevision,
+      engine = 'gemini',
+      style = 'viral-hook',
       removeGaps = true,
       userPrompt = '',
       scriptText = '',
@@ -207,7 +228,6 @@ export const reelsApi = {
       body: JSON.stringify({
         engine,
         style,
-        baseRevision,
         removeGaps,
         userPrompt,
         scriptText,
@@ -232,6 +252,18 @@ export const reelsApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ scriptText, userPrompt, engine }),
+    });
+    return handleResponse(res);
+  },
+
+  async getHyperFramesHtml(projectId) {
+    const res = await fetch(`/api/reels/projects/${encodeURIComponent(projectId)}/hyperframes`);
+    return handleResponse(res);
+  },
+
+  async exportHyperFramesBundle(projectId) {
+    const res = await fetch(`/api/reels/projects/${encodeURIComponent(projectId)}/hyperframes/bundle`, {
+      method: 'POST',
     });
     return handleResponse(res);
   },

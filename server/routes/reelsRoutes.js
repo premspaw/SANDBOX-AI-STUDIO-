@@ -16,8 +16,11 @@ import { probeMedia, sha256File, FFMPEG_RUNTIME } from '../reels/media.js';
 import { enqueue, cancelJob, startWorker, isTerminal } from '../reels/jobQueue.js';
 import { getAvailableEngines, executeAiEdit, generateHookOptions } from '../reels/aiEditor.js';
 import { speechContext } from '../reels/speech.js';
+import { generateHyperFramesHtml, exportHyperFramesBundle } from '../reels/hyperframesBridge.js';
+import { uploadPrivateToR2, isReelsPrivateR2Configured } from '../../services/storageService.js';
 import {
   createEmptyProject, addSource, newId, validateForExport, LIMITS, FONTS, RENDERER, buildTimeline,
+  applyCleanupCandidates, restoreCleanupCandidates, restoreSourceSpan, outputFrameToSource,
 } from '../../src/features/ReelsEditor/core/editPlan.js';
 
 const MAX_UPLOAD_MB = Number(process.env.REELS_MAX_UPLOAD_MB) || 250;
@@ -194,17 +197,14 @@ export default function createReelsRouter(deps) {
   router.post('/projects/:id/ai-edit', express.json({ limit: '64kb' }), handle(async (req, res) => {
     const project = await loadProject(req);
     const {
-      engine = 'openai',
-      style = 'reference-editor',
-      baseRevision,
+      engine = 'gemini',
+      style = 'viral-hook',
       removeGaps = true,
       userPrompt = '',
       scriptText = '',
       referenceNotes = '',
       proofNotes = '',
     } = req.body || {};
-    if (baseRevision !== undefined && baseRevision !== project.revision) return res.status(409).json({ error: 'Project changed. Reload before editing.' });
-    if (![userPrompt, scriptText, referenceNotes].every(v => typeof v === 'string')) return res.status(400).json({error:'Editing instructions must be text.'});
     if(activeAi >= 1) return res.status(429).json({error:'AI editor is busy. Try again shortly.'});
     activeAi++;
     try {
@@ -219,14 +219,19 @@ export default function createReelsRouter(deps) {
         referenceNotes,
         proofNotes,
       });
-      // Reject stale AI results rather than overwriting intervening user changes.
+      // Use mutate to merge atomically inside lock — avoids 409 Conflict if project changed during AI processing
       const saved = await store.saveRevision(req.ownerId, project.id, {
-        baseRevision: project.revision,
-        mutate: (cur) => ({
-          ...cur,
-          brand: result.project.brand || cur.brand,
-          overlays: result.project.overlays || cur.overlays,
-        }),
+        mutate: (cur) => {
+          const updated = {
+            ...cur,
+            brand: result.project.brand || cur.brand,
+            overlays: result.project.overlays || cur.overlays,
+          };
+          if (result.project.clips?.length) {
+            updated.clips = result.project.clips;
+          }
+          return updated;
+        },
       });
       res.json({
         project: saved,
@@ -234,7 +239,6 @@ export default function createReelsRouter(deps) {
         overlaysCount: result.overlaysCount,
         silenceRemoved: result.silenceRemoved,
         paperEditSummary: result.paperEditSummary,
-        transcript: result.transcript,
       });
     } finally { activeAi--; }
   }));
@@ -248,6 +252,88 @@ export default function createReelsRouter(deps) {
       wordCount: text ? text.split(/\s+/).filter(Boolean).length : 0,
       hasSources: project.sources?.length > 0,
     });
+  }));
+
+  // Revision-aware v2 patch endpoint.  Keep this deliberately typed: free text
+  // can request a supported restoration, but it must never become an arbitrary
+  // model-authored project mutation.
+  router.post('/projects/:id/revisions/patch', express.json({ limit: '32kb' }), handle(async (req, res) => {
+    const project = await loadProject(req);
+    const { expectedRevision, timeContext = {}, patch } = req.body || {};
+    if (!Number.isInteger(expectedRevision) || expectedRevision !== project.revision) {
+      return res.status(409).json({ error: 'Project changed elsewhere — reload to continue', current: project });
+    }
+    if (timeContext.revision !== undefined && timeContext.revision !== expectedRevision) {
+      return res.status(409).json({ error: 'Correction was made against a different revision', current: project });
+    }
+    if (!patch || typeof patch !== 'object') return res.status(400).json({ error: 'A typed revision patch is required' });
+
+    let operation = null;
+    const saved = await store.saveRevision(req.ownerId, project.id, {
+      baseRevision: expectedRevision,
+      mutate: (current) => {
+        if (patch.type === 'setCleanupDecisions') {
+          const decisions = Array.isArray(patch.decisions) ? patch.decisions : [];
+          if (!decisions.length || decisions.length > 1000) throw Object.assign(new Error('Choose one or more cleanup decisions'), { status: 422 });
+          const changes = new Map();
+          for (const item of decisions) {
+            if (!item || !/^[A-Za-z0-9_-]{1,64}$/.test(String(item.candidateId || '')) || !['remove', 'keep'].includes(item.decision) || changes.has(item.candidateId)) {
+              throw Object.assign(new Error('Cleanup decisions are invalid'), { status: 422 });
+            }
+            changes.set(item.candidateId, item.decision);
+          }
+          const known = new Set((current.cleanup?.candidates || []).map((candidate) => candidate.id));
+          for (const id of changes.keys()) if (!known.has(id)) throw Object.assign(new Error('Cleanup candidate no longer exists'), { status: 422 });
+          const candidates = (current.cleanup?.candidates || []).map((candidate) => changes.has(candidate.id)
+            ? { ...candidate, decision: changes.get(candidate.id) === 'remove' ? 'accepted' : 'rejected' }
+            : candidate);
+          let next = restoreCleanupCandidates(current, [...changes.entries()].filter(([, decision]) => decision === 'keep').map(([id]) => id));
+          next = applyCleanupCandidates({ ...next, cleanup: { ...next.cleanup, candidates } }, candidates, { wordAnchors: next.wordAnchors });
+          operation = 'cleanup_decision';
+          return next;
+        }
+        if (patch.type === 'naturalLanguageCorrection') {
+          const request = String(patch.request || '').trim();
+          const match = /\brestore\b[\s\S]*?\b(?:at\s*)?(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\b/i.exec(request);
+          if (!match) throw Object.assign(new Error('Supported correction: “restore video at 00:10”'), { status: 422 });
+          const seconds = Number(match[1]) * 60 + Number(match[2]) + Number(`0.${match[3] || 0}`);
+          const frame = Number.isInteger(timeContext.outputFrame) ? timeContext.outputFrame : Math.round(seconds * 30);
+          const hit = outputFrameToSource(buildTimeline(current), frame);
+          if (!hit) throw Object.assign(new Error('That time is outside this revision’s rendered timeline'), { status: 422 });
+          const sourceUs = Math.round(hit.sourceSec * 1e6);
+          const disabled = current.clips.find((clip) => !clip.enabled && clip.sourceId === hit.segment.sourceId
+            && sourceUs >= Math.round(clip.inSec * 1e6) - 500000 && sourceUs <= Math.round(clip.outSec * 1e6) + 500000);
+          if (!disabled) throw Object.assign(new Error('No removed source span was found near that point'), { status: 422 });
+          operation = 'restore_span';
+          return restoreSourceSpan(current, { sourceId: disabled.sourceId, startUs: Math.round(disabled.inSec * 1e6), endUs: Math.round(disabled.outSec * 1e6) });
+        }
+        throw Object.assign(new Error('Unsupported revision patch'), { status: 422 });
+      },
+    });
+    res.status(201).json({ project: saved, operation, previewRequired: operation === 'restore_span' });
+  }));
+
+  router.post('/projects/:id/auto-edit', express.json({ limit: '32kb' }), handle(async (req, res) => {
+    const project = await loadProject(req);
+    const { expectedRevision, provider = 'openai', model = null, cleanupProfile = 'natural', userPrompt = '', scriptText = '', referenceNotes = '' } = req.body || {};
+    if (!Number.isInteger(expectedRevision) || expectedRevision !== project.revision) {
+      return res.status(409).json({ error: 'Project changed elsewhere — reload to continue', current: project });
+    }
+    if (provider !== 'openai') return res.status(422).json({ error: 'This workflow currently supports the selected OpenAI editor only.' });
+    const configured = getAvailableEngines().find((engine) => engine.id === 'openai');
+    if (!configured?.available) return res.status(503).json({ error: 'Configure OPENAI_API_KEY on the server to use OpenAI editing.' });
+    const job = await enqueue({
+      id: newId('j'), ownerId: req.ownerId, projectId: project.id, revision: project.revision,
+      type: 'auto_edit', snapshot: project,
+      params: {
+        provider, model: model || configured.defaultModel, cleanupProfile,
+        // Apply only acoustically measured dead air.  The editor stores the
+        // removed spans as disabled, restorable clips; it never deletes the
+        // original upload or guesses at spoken-word removals.
+        removeGaps: cleanupProfile !== 'manual', userPrompt, scriptText, referenceNotes,
+      },
+    });
+    res.status(202).json({ job: publicJob(job) });
   }));
 
   router.post('/projects/:id/analyze-hooks', express.json({ limit: '64kb' }), handle(async (req, res) => {
@@ -271,13 +357,43 @@ export default function createReelsRouter(deps) {
     });
   }));
 
+  router.get('/projects/:id/hyperframes', handle(async (req, res) => {
+    const project = await loadProject(req);
+    let videoUrl = '';
+    if (project.sources?.[0]?.id) {
+      const token = signMedia({ k: 'src', o: req.ownerId, f: project.sources[0].id });
+      videoUrl = `/api/reels/media/${token}`;
+    }
+    const html = generateHyperFramesHtml(project, { videoUrl });
+    if (req.query.format === 'html') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(html);
+    }
+    res.json({
+      html,
+      durationSec: buildTimeline(project).durationSec,
+      overlaysCount: project.overlays?.length || 0,
+    });
+  }));
+
+  router.post('/projects/:id/hyperframes/bundle', handle(async (req, res) => {
+    const project = await loadProject(req);
+    const result = await exportHyperFramesBundle(project, req.ownerId);
+    res.json({
+      success: true,
+      workDir: result.workDir,
+      indexPath: result.indexPath,
+      metadataPath: result.metadataPath,
+    });
+  }));
+
   // ───────────────────────── Source upload ─────────────────────────
   const upload = multer({
     storage: multer.diskStorage({
       destination: (req, file, cb) => fsp.mkdir(store.paths.uploadTmp(), { recursive: true }).then(() => cb(null, store.paths.uploadTmp()), cb),
       filename: (req, file, cb) => cb(null, `${crypto.randomUUID()}.upload`),
     }),
-    limits: { fileSize: MAX_UPLOAD_MB * 1024 * 1024, files: 1, fields: 4 },
+    limits: { fileSize: MAX_UPLOAD_MB * 1024 * 1024, files: LIMITS.maxSources, fields: 4 },
     fileFilter: (req, file, cb) => cb(null, /^video\//.test(file.mimetype) || file.mimetype === 'application/octet-stream'),
   });
 
@@ -319,6 +435,16 @@ export default function createReelsRouter(deps) {
       await fsp.mkdir(path.dirname(dest), { recursive: true });
       await fsp.rename(tmp, dest).catch(async () => { await fsp.copyFile(tmp, dest); });
       await fsp.chmod(dest, 0o440).catch(() => {});
+      // Keep the worker's local immutable cache for FFmpeg, and archive the
+      // original in private R2 when configured.  Do not use the public CDN
+      // uploader for customer footage.
+      if (isReelsPrivateR2Configured()) {
+        await uploadPrivateToR2(
+          await fsp.readFile(dest),
+          `reels/originals/${req.ownerId}/${project.id}/${source.id}`,
+          req.file.mimetype || 'application/octet-stream',
+        );
+      }
       const saved = await store.saveRevision(req.ownerId, project.id, { mutate: (cur) => addSource(cur, source) });
       const warnings = [];
       if (probe.durationSec > LIMITS.maxOutputSec) warnings.push(`Clip is ${probe.durationSec.toFixed(1)}s; the first ${LIMITS.maxOutputSec}s were selected. Adjust the trim to choose a different 60s segment.`);
