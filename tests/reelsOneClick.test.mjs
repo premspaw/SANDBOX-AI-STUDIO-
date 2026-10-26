@@ -66,7 +66,7 @@ test('gap union never duplicates footage and all original spans remain recoverab
   ]);
   assert.equal(validateProject(p).ok, true);
   assert.deepEqual(p.clips.map(c => [c.inSec, c.outSec, c.enabled]), [[0, 2, true], [2, 6, false], [6, 10, true]]);
-  assert.equal(p.clips.reduce((sum, c) => sum + c.outSec - c.inSec, 0), 10);
+  assert.ok(Math.abs(p.clips.reduce((sum, c) => sum + c.outSec - c.inSec, 0) - 10) < 1e-9);
 });
 test('cleanup retains tiny word fragments instead of dropping them', () => {
   const p = applyGapRemoval(fixture(), [{ sourceId: 's1', startSec: 0.04, endSec: 9.96 }]);
@@ -74,7 +74,7 @@ test('cleanup retains tiny word fragments instead of dropping them', () => {
   assert.equal(p.clips[0].enabled, true);
   assert.equal(p.clips.at(-1).outSec, 10);
   assert.equal(p.clips.at(-1).enabled, true);
-  assert.equal(p.clips.reduce((sum, c) => sum + c.outSec - c.inSec, 0), 10);
+  assert.ok(Math.abs(p.clips.reduce((sum, c) => sum + c.outSec - c.inSec, 0) - 10) < 1e-9);
 });
 test('provider schema requires every object property for strict structured output', () => {
   const schema = z.toJSONSchema(Plan);

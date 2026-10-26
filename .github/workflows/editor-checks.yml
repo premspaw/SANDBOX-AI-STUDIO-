@@ -60,6 +60,10 @@ jobs:
         run: node --test server/tests/*.test.js tests/security/*.test.js server/mcp/tests/*.test.js tests/reels*.mjs
       - name: Production build
         run: npm run build
+      - name: Browser workflow and mobile layout checks
+        run: |
+          npx playwright install --with-deps chromium
+          node scripts/reels-studio-ui-check.mjs
       - name: Real video export
         run: |
           node scripts/reels-smoke.mjs
