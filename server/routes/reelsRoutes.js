@@ -194,14 +194,17 @@ export default function createReelsRouter(deps) {
   router.post('/projects/:id/ai-edit', express.json({ limit: '64kb' }), handle(async (req, res) => {
     const project = await loadProject(req);
     const {
-      engine = 'gemini',
-      style = 'viral-hook',
+      engine = 'openai',
+      style = 'reference-editor',
+      baseRevision,
       removeGaps = true,
       userPrompt = '',
       scriptText = '',
       referenceNotes = '',
       proofNotes = '',
     } = req.body || {};
+    if (baseRevision !== undefined && baseRevision !== project.revision) return res.status(409).json({ error: 'Project changed. Reload before editing.' });
+    if (![userPrompt, scriptText, referenceNotes].every(v => typeof v === 'string')) return res.status(400).json({error:'Editing instructions must be text.'});
     if(activeAi >= 1) return res.status(429).json({error:'AI editor is busy. Try again shortly.'});
     activeAi++;
     try {
@@ -216,13 +219,13 @@ export default function createReelsRouter(deps) {
         referenceNotes,
         proofNotes,
       });
-      // Use mutate to merge atomically inside lock — avoids 409 Conflict if project changed during AI processing
+      // Reject stale AI results rather than overwriting intervening user changes.
       const saved = await store.saveRevision(req.ownerId, project.id, {
+        baseRevision: project.revision,
         mutate: (cur) => ({
           ...cur,
           brand: result.project.brand || cur.brand,
           overlays: result.project.overlays || cur.overlays,
-          cuts: result.project.cuts?.length ? result.project.cuts : cur.cuts,
         }),
       });
       res.json({
@@ -231,6 +234,7 @@ export default function createReelsRouter(deps) {
         overlaysCount: result.overlaysCount,
         silenceRemoved: result.silenceRemoved,
         paperEditSummary: result.paperEditSummary,
+        transcript: result.transcript,
       });
     } finally { activeAi--; }
   }));

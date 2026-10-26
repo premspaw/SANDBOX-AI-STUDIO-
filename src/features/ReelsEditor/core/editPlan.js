@@ -145,6 +145,7 @@ export const ProjectSchema = z.strictObject({
   ownerId: z.string().min(1).max(80),
   revision: Int.min(0),
   name: z.string().min(1).max(120),
+  editStyle: z.string().max(80).optional(),
   canvas: z.strictObject({
     width: Int.min(64).max(3840).multipleOf(2),
     height: Int.min(64).max(3840).multipleOf(2),
@@ -398,34 +399,40 @@ export function deleteClip(project, clipId) {
 export function applyGapRemoval(project, gaps) {
   const clips = [];
   for (const clip of project.clips) {
-    const relevant = gaps
-      .filter((g) => g.sourceId === clip.sourceId && g.endSec > clip.inSec && g.startSec < clip.outSec)
-      .sort((a, b) => a.startSec - b.startSec);
-    if (!clip.enabled || !relevant.length) { clips.push(clip); continue; }
-    let cursor = clip.inSec;
-    let first = true;
-    const pushPiece = (inSec, outSec, enabled) => {
-      if (outSec - inSec < LIMITS.minClipSec) return;
-      clips.push({
-        ...clip,
-        id: first ? clip.id : newId('c'),
-        inSec: round3(inSec),
-        outSec: round3(outSec),
-        enabled,
-        origin: enabled ? clip.origin : 'gap-removal',
-        fadeInSec: first ? clip.fadeInSec : 0,
-        fadeOutSec: 0,
-      });
-      first = false;
-    };
-    for (const g of relevant) {
-      const s = Math.max(g.startSec, clip.inSec);
-      const e = Math.min(g.endSec, clip.outSec);
-      pushPiece(cursor, s, true);
-      pushPiece(s, e, false);
-      cursor = e;
+    if (!clip.enabled || clip.origin === 'gap-removal') { clips.push(clip); continue; }
+    const ranges = gaps.filter(g => g.sourceId === clip.sourceId &&
+      Number.isFinite(g.startSec) && Number.isFinite(g.endSec) &&
+      g.endSec > g.startSec && g.endSec > clip.inSec && g.startSec < clip.outSec)
+      .map(g => ({ start: Math.max(clip.inSec, g.startSec), end: Math.min(clip.outSec, g.endSec) }))
+      .sort((a, b) => a.start - b.start);
+    const merged = [];
+    for (const range of ranges) {
+      const last = merged[merged.length - 1];
+      if (last && range.start <= last.end) last.end = Math.max(last.end, range.end);
+      else merged.push({ ...range });
     }
-    pushPiece(cursor, clip.outSec, true);
+    let cursor = clip.inSec;
+    const pieces = [];
+    for (const range of merged) {
+      // Shrink a cut rather than dropping a short retained word fragment.
+      let start = range.start;
+      let end = range.end;
+      if (start > cursor && start - cursor < LIMITS.minClipSec) start = cursor + LIMITS.minClipSec;
+      if (clip.outSec > end && clip.outSec - end < LIMITS.minClipSec) end = clip.outSec - LIMITS.minClipSec;
+      if (end - start < LIMITS.minClipSec) continue;
+      if (start > cursor) pieces.push({ inSec: cursor, outSec: start, enabled: true });
+      pieces.push({ inSec: start, outSec: end, enabled: false });
+      cursor = end;
+    }
+    if (cursor < clip.outSec) pieces.push({ inSec: cursor, outSec: clip.outSec, enabled: true });
+    if (!pieces.length) { clips.push(clip); continue; }
+    pieces.forEach((piece, i) => clips.push({
+      ...clip, ...piece, id: i === 0 ? clip.id : newId('c'),
+      inSec: round3(piece.inSec), outSec: round3(piece.outSec),
+      origin: piece.enabled ? clip.origin : 'gap-removal',
+      fadeInSec: i === 0 ? clip.fadeInSec : 0,
+      fadeOutSec: i === pieces.length - 1 ? clip.fadeOutSec : 0,
+    }));
   }
   return reconcile(project, touch(project, { clips }));
 }

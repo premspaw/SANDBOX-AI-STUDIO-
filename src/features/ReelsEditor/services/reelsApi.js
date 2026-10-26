@@ -191,8 +191,9 @@ export const reelsApi = {
   async applyAiEdit(
     projectId,
     {
-      engine = 'gemini',
-      style = 'viral-hook',
+      engine = 'openai',
+      style = 'reference-editor',
+      baseRevision,
       removeGaps = true,
       userPrompt = '',
       scriptText = '',
@@ -206,6 +207,7 @@ export const reelsApi = {
       body: JSON.stringify({
         engine,
         style,
+        baseRevision,
         removeGaps,
         userPrompt,
         scriptText,

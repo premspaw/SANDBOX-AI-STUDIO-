@@ -1,5 +1,7 @@
 # Reels editor workflow and verified limits
 
+> The interface and OpenAI editing flow have been redesigned. Start with [One-click Reels Studio](REELS_ONE_CLICK_STUDIO.md) for the current workflow. The sections below describe the earlier guided editor and its underlying renderer limits.
+
 This updates the existing Reels Editor in the application. It preserves the uploaded source clips and edits a versioned timeline.
 
 ## What now happens
